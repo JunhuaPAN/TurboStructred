@@ -24,6 +24,7 @@
   <ItemGroup>
     <ClInclude Include="..\src\kernel\kernel.h" />
     <ClInclude Include="..\src\kernel\KernelConfiguration.h" />
+    <ClInclude Include="..\src\utility\Matrix.h" />
     <ClInclude Include="..\src\utility\Vector.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

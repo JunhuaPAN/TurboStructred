@@ -4,6 +4,8 @@
 
 std::vector<double> SODinitialDistribution(Vector r) {
 	//Left
+
+	return std::vector<double>();
 };
 
 int main(int argc, char *argv[])
@@ -25,7 +27,7 @@ int main(int argc, char *argv[])
 	//run computation
 	kernel.Run();
 
-	kernel.SetInitialConditions();
+	//kernel.SetInitialConditions();
 
 	//finalize kernel
 	kernel.Finilaze();

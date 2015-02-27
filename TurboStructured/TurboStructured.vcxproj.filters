@@ -32,5 +32,8 @@
     <ClInclude Include="..\src\utility\Vector.h">
       <Filter>Header Files\Utility</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\utility\Matrix.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
