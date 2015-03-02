@@ -18,7 +18,10 @@ public:
 
 	//Solution method parameters
 
+
 	//Calculation parameters
+
+
 };
 
 #endif
