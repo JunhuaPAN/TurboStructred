@@ -20,7 +20,8 @@ public:
 	double Time;
 	double TimeStep;	
 	int Iteration;
-	std::vector<double> Residual;	
+	std::vector<double> Residual;
+	bool NeedResidual;
 };
 
 //Calculation kernel
@@ -343,7 +344,7 @@ public:
 	};
 
 	//Compute fluxes in X direction and write values_new array
-	void Xfluxes(double dt) {
+	void Xfluxes() {
 		direction dir = X_direction;
 
 		//initialize data containers
@@ -357,7 +358,7 @@ public:
 		Matrix R(5, 5);
 		Matrix Rinv(5, 5);
 
-		double dx = dt/hx;
+		double dx = stepInfo.TimeStep/hx;
 		for (int iz = kMin; iz <= kMax; iz++)
 		{
 			for (int iy = jMin; iy <= jMax; iy++)
@@ -430,7 +431,7 @@ public:
 					{
 						//compute new conservative values
 						std::vector<double> res(nVariables);
-						for(int k = 0; k < nVariables; k++) res[k] = Ui[k] - (fr[k]-fl[k])*dx;
+						for(int k = 0; k < nVariables; k++) res[k] = Ui[k] - (fr[k] - fl[k])*dx;
 						ExchangeVelocityComponents(res, dir);
 
 						//write them
@@ -448,7 +449,7 @@ public:
 	};
 
 	//Compute fluxes in Y direction and write values_new array
-	/*void Yfluxes(double dt) {
+	void Yfluxes() {
 		direction dir = Y_direction;
 
 		//initialize data containers
@@ -462,18 +463,18 @@ public:
 		Matrix R(5, 5);
 		Matrix Rinv(5, 5);
 
-		double dx = dt/hx;
-		for (int iz = kMin; iz <= kMax; iz++)
+		double dy = stepInfo.TimeStep/hy;
+		for (int ix = iMin; ix <= iMax; ix++)
 		{
-			for (int ix = iMin; ix <= iMax; iy++)
+			for (int iz = kMin; iz <= kMax; iz++)
 			{
-				Uim1 = PrepareConservativeVariables(iMin-2, iy, iz, dir);
-				Ui = PrepareConservativeVariables(iMin-1, iy, iz, dir);
-				Uip1 = PrepareConservativeVariables(iMin, iy, iz, dir);
+				Uim1 = PrepareConservativeVariables(ix, jMin-2, iz, dir);
+				Ui = PrepareConservativeVariables(ix, jMin-1, iz, dir);
+				Uip1 = PrepareConservativeVariables(ix, jMin, iz, dir);
 
-				for (int iy = iMin; iy <= iMax + 1; iy++)
+				for (int iy = jMin; iy <= jMax + 1; iy++)
 				{
-					Uip2 = PrepareConservativeVariables(ix+1, iy, iz, dir);
+					Uip2 = PrepareConservativeVariables(ix, iy+1, iz, dir);
 					PrepareEigenMatrix(Ui, Uip1, R, Rinv, eigenvals);
 
 					//Characteristic values
@@ -490,7 +491,7 @@ public:
 						double dGlr = (Gip2[k] - Gip1[k]) - (Gi[k] - Gim1[k]);
 						double a = eigenvals[k];
 						double Gk = a*dG*dGlr;		//the condition for stencil switching
-						double c = a*dx;			//local courant number
+						double c = a*dy;			//local courant number
 						
 						//Compute stencil coefficients
 						if(a >= 0)
@@ -531,11 +532,11 @@ public:
 					fr = R*fr;
 					
 					//for all inner cells
-					if(ix > iMin)
+					if(iy > jMin)
 					{
 						//compute new conservative values
 						std::vector<double> res(nVariables);
-						for(int k = 0; k < nVariables; k++) res[k] = Ui[k] - (fr[k]-fl[k])*dx;
+						for(int k = 0; k < nVariables; k++) res[k] = Ui[k] - (fr[k]-fl[k])*dy;
 						ExchangeVelocityComponents(res, dir);
 
 						//write them
@@ -550,9 +551,114 @@ public:
 				 };
 			};
 		};
-	};*/
+	};
 
-	double ComputeTimeStep() {
+	//Compute fluxes in Z direction and write values_new array
+	void Zfluxes() {
+		direction dir = Z_direction;
+
+		//initialize data containers
+		std::vector<double> Uim1, Ui, Uip1, Uip2;	//vectors of conservative variables in i-1  i  i+1  i+2 cells
+		std::vector<double> Gim1, Gi, Gip1, Gip2;	//vectors of characteristic variables computed as Gj = Rinv(i+1/2)*Uj,  j = im1, im, ip1, ip2
+		double alf, bet, gam, del;					//coefficients of monotone scheme
+		std::vector<double> fr, fl;					//left and right fluxes
+		
+		//Initialize eigenvalues and eigenvectors structures
+		std::vector<double> eigenvals(5);
+		Matrix R(5, 5);
+		Matrix Rinv(5, 5);
+
+		double dz = stepInfo.TimeStep/hz;
+		for (int iy = jMin; iy <= jMax; iy++)
+		{
+			for (int ix = iMin; ix <= iMax; ix++)
+			{
+				Uim1 = PrepareConservativeVariables(ix, iy, kMin-2, dir);
+				Ui = PrepareConservativeVariables(ix, iy, kMin-1, dir);
+				Uip1 = PrepareConservativeVariables(ix, iy, kMin, dir);
+
+				for (int iz = kMin; iz <= kMax + 1; iz++)
+				{
+					Uip2 = PrepareConservativeVariables(ix, iy, iz+1, dir);
+					PrepareEigenMatrix(Ui, Uip1, R, Rinv, eigenvals);
+
+					//Characteristic values
+					Gim1 = Rinv*Uim1;
+					Gi = Rinv*Ui;
+					Gip1 = Rinv*Uip1;
+					Gip2 = Rinv*Uip2;
+
+					//Compute characteristic flux
+					for (int k = 0; k < nVariables; k++)
+					{
+						//Check hybridization condition
+						double dG = Gip1[k] - Gi[k];
+						double dGlr = (Gip2[k] - Gip1[k]) - (Gi[k] - Gim1[k]);
+						double a = eigenvals[k];
+						double Gk = a*dG*dGlr;		//the condition for stencil switching
+						double c = a*dz;			//local courant number
+						
+						//Compute stencil coefficients
+						if(a >= 0)
+						{
+							if(Gk >= 0)
+							{
+								alf = -0.5*(1-c);
+								bet = 1-alf;
+								gam = 0;
+								del = 0;
+							} else {
+								alf = 0;
+								gam = 0.5*(1-c);
+								bet = 1-gam;
+								del = 0;
+							};
+						} else {
+							if(Gk >= 0)
+							{
+								alf = 0;
+								del = -0.5*(1-c);
+								gam = 1-del;
+								bet = 0;
+							} else {
+								alf = 0;
+								bet = 0.5*(1-c);
+								gam = 1-bet;
+								del = 0;
+							};
+						};
+            
+						//Compute characteristic flux
+						fr[k] = Gim1[k]*alf + Gi[k]*bet + Gip1[k]*gam + Gip2[k]*del;
+						fr[k] *= a;
+					};
+
+					//Return to the conservative variables
+					fr = R*fr;
+					
+					//for all inner cells
+					if(iz > kMin)
+					{
+						//compute new conservative values
+						std::vector<double> res(nVariables);
+						for(int k = 0; k < nVariables; k++) res[k] = Ui[k] - (fr[k] - fl[k])*dz;
+						ExchangeVelocityComponents(res, dir);
+
+						//write them
+						int sBegin = getSerialIndex(ix, iy, iz) * nVariables;
+						for (int k = 0; k < nVariables; k++) values_new[sBegin + k] = res[k];
+					};
+          
+					fl = fr;
+					Uim1 = Ui;
+					Ui = Uip1;
+					Uip1 = Uip2;
+				 };
+			};
+		};
+	};
+
+	void ComputeTimeStep() {
 		//variables to collect maximum values
 		double dmax  = 0;
 		double ccmax = 0;
@@ -600,15 +706,49 @@ public:
 			};
 		};
 
-        return CFL/dmax;
+		stepInfo.TimeStep = CFL/dmax;
+	};
+
+	//a half of full time step
+	void HalfStep() {
+		//Compute residuals if needed
+		if(stepInfo.NeedResidual == true)
+		{
+			std::vector<double> res(values.size());
+			for(int i = 0; i < res.size(); i++) {
+				res[i] = values_new[i] - values[i];
+			};
+
+			stepInfo.Residual.resize(5, 0);
+			for (int ix = iMin; ix <= iMax; ix++)
+			{
+				for (int iy = jMin; iy <= jMax; iy++)
+				{
+					for (int iz = kMin; iz <= kMax; iz++)
+					{
+						int idx = getSerialIndex(ix, iy, iz);
+						stepInfo.Residual[0] = abs(res[idx]);			//ro
+						stepInfo.Residual[1] = abs(res[idx + 1]);		//rou
+						stepInfo.Residual[2] = abs(res[idx + 2]);		//rov
+						stepInfo.Residual[3] = abs(res[idx + 3]);		//row
+						stepInfo.Residual[4] = abs(res[idx + 4]);		//roE
+					};
+				};
+			};
+		};
 	};
 
 	//Explicit time step
 	void ExplicitTimeStep() {		
 		//Determine timestep
-		double dt = ComputeTimeStep();
-		Xfluxes(dt);
+		ComputeTimeStep();
+
+		//Determine order of spacial directions
+		Xfluxes();
+
+		//Update conservative variables
 		values = values_new;
+
 		//refresh dummy valuies
 	};	
 
