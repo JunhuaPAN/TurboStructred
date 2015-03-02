@@ -2,10 +2,44 @@
 #include <vector>
 #include "kernel\kernel.h";
 
-std::vector<double> SODinitialDistribution(Vector r) {
-	//Left
+struct ShockTubeParameters {
+	double gammaL;
+	double roL;
+	double PL; 
+	double uL; 
+	double roR;
+	double PR;
+	double uR;
+	double gammaR;
+};
 
-	return std::vector<double>();
+std::vector<double> SODinitialDistribution(Vector r, double xI, ShockTubeParameters params) {
+	std::vector<double> U(5);	
+	double ro;
+	double u;
+	double gamma;
+	double P;
+
+	//Left
+	if (r.x <= xI) {
+		ro = params.roL;
+		u = params.uL;
+		P = params.PL;
+		gamma = params.gammaL;
+	} else {
+		ro = params.roR;
+		u = params.uR;
+		P = params.PR;
+		gamma = params.gammaR;
+	};
+
+	U[0] = ro;
+	U[1] = u * ro;
+	U[2] = 0;
+	U[3] = 0;
+	U[4] = P / (gamma - 1.0) + ro * u * u / 2.0;
+
+	return U;
 };
 
 int main(int argc, char *argv[])
@@ -15,7 +49,7 @@ int main(int argc, char *argv[])
 	conf.nDims = 2;
 	conf.nX = 100;
 	conf.nY = 100;
-	conf.LX = 1.0;
+	conf.LX = 2.0;
 	conf.LY = 1.0;
 	conf.isPeriodicX = true;
 	conf.isPeriodicY = true;
@@ -23,11 +57,24 @@ int main(int argc, char *argv[])
 	//init kernel
 	Kernel kernel;
 	kernel.Init(conf);
+
+	// initial conditions
+	ShockTubeParameters params;
+	params.gammaL = params.gammaR = 1.4;
+	params.roL = 1.0;
+	params.PL = 1.0;
+	params.uL = 0.0;
+	params.roR = 0.1;
+	params.PR = 0.125;
+	params.uR = 0.0;
+	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 1.0, params);	
+	kernel.SetInitialConditions(initD);
+
+	//save solution
+	kernel.SaveSolution("init.dat");
 	
 	//run computation
-	kernel.Run();
-
-	//kernel.SetInitialConditions();
+	kernel.Run();		
 
 	//finalize kernel
 	kernel.Finilaze();

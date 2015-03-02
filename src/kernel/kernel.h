@@ -48,23 +48,29 @@ public:
 	//Current step information
 	StepInfo stepInfo;
 
-	//Function for shifting indexes
-	inline int shiftIndex(int ind[3], int shift[3]) {
-		return 0;
-	};
-
 	//Grid information	
 	int nDims; //Number of dimensions
 	int nX; //Number of cells in x dimension
 	int nY; //Number of cells in y dimension
 	int nZ; //Number of cells in z dimension
+	int nXAll; //Number of cells in x dimension including dummy layers
+	int nYAll; //Number of cells in y dimension including dummy layers
+	int nZAll; //Number of cells in z dimension including dummy layers
+	//Same for local cells
+	int nlocalX;
+	int nlocalY;
+	int nlocalZ;
+	int nlocalXAll;
+	int nlocalYAll;
+	int nlocalZAll;
 	double hx, hy, hz;	//cell sizes
 	bool IsPeriodicX; //X periodicity
 	bool IsPeriodicY; //Y periodicity
 	bool IsPeriodicZ; //Z periodicity
 	std::vector<double> CoordinateX; //Cell center coordinates
 	std::vector<double> CoordinateY; //Cell center coordinates
-	std::vector<double> CoordinateZ; //Cell center coordinates	
+	std::vector<double> CoordinateZ; //Cell center coordinates
+	int dummyCellLayers; //number of dummy cell layers
 	
 	//Solution information
 	//Gas model information
@@ -74,15 +80,20 @@ public:
 	std::vector<double> values_new;	//array of new values
 
 	//Get serial index for cell
-	inline int getSerialIndex(int i, int j, int k) {
-		int sI = (i * nX * nY + j * nX + k);
+	inline int getSerialIndexGlobal(int i, int j, int k) {
+		int sI = (k * nXAll * nYAll + j * nXAll + i);
+		return sI;
+	};
+
+	inline int getSerialIndexLocal(int i, int j, int k) {
+		int sI =  (k - kMin + dummyCellLayers) * nlocalXAll * nlocalYAll + (j - jMin + dummyCellLayers) * nlocalXAll + (i - iMin + dummyCellLayers);
 		return sI;
 	};
 	
 	//Get cell values
-	inline std::vector<double> getCellValues(int i, int j, int k) {
-		int sBegin = getSerialIndex(i, j, k) * nVariables;
-		return std::vector<double>(values.begin() + sBegin, values.begin() + sBegin + nVariables);
+	inline double* getCellValues(int i, int j, int k) {
+		int sBegin = getSerialIndexLocal(i, j, k) * nVariables;		
+		return &values[sBegin];
 	};
 
 	//Calculation parameters
@@ -101,14 +112,14 @@ public:
 
 	//Set initial conditions
 	void SetInitialConditions(std::function<std::vector<double>(Vector r)> initF) {		
-		for (int i = iMin; i < iMax; i++) {
-			for (int j = jMin; j < jMax; j++) {
-				for (int k = kMin; k < kMax; k++) {
+		for (int i = iMin; i <= iMax; i++) {
+			for (int j = jMin; j <= jMax; j++) {
+				for (int k = kMin; k <= kMax; k++) {
 					//Obtain cell data
 					double x = CoordinateX[i];
 					double y = CoordinateY[j];
 					double z = CoordinateZ[k];
-					int sBegin = getSerialIndex(i, j, k) * nVariables;
+					int sBegin = getSerialIndexLocal(i, j, k) * nVariables;
 					std::vector<double> U = initF(Vector(x,y,z));
 					for (int varn = 0; varn < nVariables; varn++) values[sBegin + varn] = U[varn];					
 				};
@@ -125,21 +136,84 @@ public:
 		rankCart[2] = 0;
 		dimsCart[0] = 1;
 		dimsCart[1] = 1;
-		dimsCart[2] = 1;
+		dimsCart[2] = 1;		
 
 		//Initialize local grid
-		int nlocalX = nX / dimsCart[0];
-		int nlocalY = nY / dimsCart[1];
-		int nlocalZ = nZ / dimsCart[2];		
-		iMin = rankCart[0] * nlocalX;
-		iMax = (rankCart[0]+1) * nlocalX;
-		jMin = rankCart[1] * nlocalY;
-		jMax = (rankCart[1]+1) * nlocalY;
-		kMin = rankCart[2] * nlocalZ;
-		kMax = (rankCart[2]+1) * nlocalZ;
+		nDims = config.nDims;
+		nX = config.nX;
+		IsPeriodicX = config.isPeriodicX;
+		nY = 1;
+		IsPeriodicY = true;
+		nZ = 1;
+		IsPeriodicZ = true;
+		if (nDims > 1) {
+			nY = config.nY;
+			IsPeriodicY = config.isPeriodicY;
+		};
+		if (nDims > 2) {
+			nZ = config.nZ;
+			IsPeriodicZ = config.isPeriodicZ;
+		};
+		dummyCellLayers = 2; //number of dummy cell layers
+		nlocalX = nX / dimsCart[0];
+		nlocalY = nY / dimsCart[1];
+		nlocalZ = nZ / dimsCart[2];		
+		iMin = rankCart[0] * nlocalX + dummyCellLayers;
+		iMax = (rankCart[0]+1) * nlocalX + dummyCellLayers - 1;
+		jMin = rankCart[1] * nlocalY + dummyCellLayers;
+		jMax = (rankCart[1]+1) * nlocalY + dummyCellLayers - 1;
+		kMin = rankCart[2] * nlocalZ + dummyCellLayers;
+		kMax = (rankCart[2]+1) * nlocalZ + dummyCellLayers - 1;
+		double Lx = config.LX;
+		double Ly = config.LY;
+		double Lz = config.LZ;		
+
+		//Generate cells (uniform grid)
+		nXAll = nX + 2 * dummyCellLayers;
+		nYAll = nY + 2 * dummyCellLayers;
+		nZAll = nZ + 2 * dummyCellLayers;
+		nlocalXAll = nlocalX + 2 * dummyCellLayers;
+		nlocalYAll = nlocalY + 2 * dummyCellLayers;
+		nlocalZAll = nlocalZ + 2 * dummyCellLayers;
+		CoordinateX.resize(nXAll);
+		CoordinateY.resize(nYAll);
+		CoordinateZ.resize(nZAll);
+		double dx = Lx / nlocalX;
+		double xMin = 0;
+		xMin = xMin - (dummyCellLayers * dx) + 0.5 * dx;
+		double xMax = Lx;
+		xMax = xMax + (dummyCellLayers * dx) - 0.5 * dx;
+		for (int i = iMin - dummyCellLayers; i <= iMax + dummyCellLayers; i++) {
+			double x = xMin + (xMax - xMin) * 1.0 * i / nlocalX;							
+			CoordinateX[i] = x;
+		};		
+
+		double dy = Ly / nlocalY;
+		double yMin = 0;
+		yMin = yMin - (dummyCellLayers * dy) + 0.5 * dy;
+		double yMax = Ly;
+		yMax = yMax + (dummyCellLayers * dy) - 0.5 * dy;
+		for (int j = jMin - dummyCellLayers; j <= jMax + dummyCellLayers; j++) {
+			double y = yMin + (yMax - yMin) * 1.0 * j / nlocalY;					
+			CoordinateY[j] = y;
+		};
+
+		double dz = Lz / nlocalZ;
+		double zMin = 0;
+		zMin = zMin - (dummyCellLayers * dz) + 0.5 * dz;
+		double zMax = Lz;
+		zMax = zMax + (dummyCellLayers * dz) - 0.5 * dz;
+		for (int k = kMin - dummyCellLayers; k <= kMax + dummyCellLayers; k++) {
+			double z = zMin + (zMax - zMin) * 1.0 * k / nlocalZ;
+			CoordinateZ[k] = z;
+		};
 
 		//Initialize gas model parameters
 		gamma = 1.4;
+		nVariables = 5;
+
+		//Allocate memory for values
+		values.resize(nVariables * nlocalXAll * nlocalYAll * nlocalZAll);		
 
 		//Initialize calculation parameters
 		CFL = 0.5;
@@ -150,6 +224,66 @@ public:
 
 		//Initialize boundary conditions
 		//TO DO
+	};
+
+	//Exchange values between processors
+	void ExchangeValues() {
+		//Index variables
+		int i = 0;
+		int j = 0;
+		int k = 0;
+		
+		//X direction exchange
+		for (j = jMin; j <= jMax; j++) {
+			for (k = kMin; k <= kMax; k++) {
+				for (int layer = 1; layer <= dummyCellLayers; layer++) {
+					// minus direction
+					i = iMin - layer; // layer index					
+					if ((rankCart[0] == 0) && (IsPeriodicX)) {
+						int iMirror = nX - i + 1; // mirror cell index
+						int sI = getSerialIndexLocal(i, j, k);
+						int sIMirror = getSerialIndexLocal(iMirror, j, k);
+						for (int nv = 0; nv < nVariables; nv++) {
+							values[sI * nVariables + nv] = values[sIMirror * nVariables + nv]; //TO DO serial version for now	
+						};
+					};
+
+					// plus direction		
+					i = iMax + layer; // layer index					
+					if ((rankCart[0] == dimsCart[0] - 1) && (IsPeriodicX)) {
+						int iMirror =  dummyCellLayers - layer; // mirror cell index
+						int sI = getSerialIndexLocal(i, j, k);
+						int sIMirror = getSerialIndexLocal(iMirror, j, k);
+						for (int nv = 0; nv < nVariables; nv++) {
+							values[sI * nVariables + nv] = values[sIMirror * nVariables + nv]; //TO DO serial version for now	
+						};
+					};
+				};
+			};
+		};
+	};
+
+	//Compute dummy cell values as result of boundary conditions and interprocessor exchange communication
+	void ComputeDummyCellValues() {
+		//Index variables
+		int i = 0;
+		int j = 0;
+		int k = 0;
+
+		//Interprocessor exchange
+		ExchangeValues();
+
+		//X direction		
+		for (j = jMin; j <= jMax; j++) {
+			for (k = kMin; k <= kMax; k++) {
+				for (int layer = 1; layer <= dummyCellLayers; layer++) {
+					i = iMin - layer; // layer index
+					if (!IsPeriodicX) {
+						//Apply boundary conditions
+					};
+				};
+			};
+		};
 	};
 
 	//Save solution
@@ -166,14 +300,14 @@ public:
 		ofs<<std::endl;
 
 		//Solution
-		for (int i = iMin; i < iMax; i++) {
-			for (int j = jMin; j < jMax; j++) {
-				for (int k = kMin; k < kMax; k++) {
+		for (int i = iMin; i <= iMax; i++) {
+			for (int j = jMin; j <= jMax; j++) {
+				for (int k = kMin; k <= kMax; k++) {
 					//Obtain cell data
 					double x = CoordinateX[i];
 					double y = CoordinateY[j];
 					double z = CoordinateZ[k];
-					std::vector<double> U = getCellValues(i,j,k);
+					double* U = getCellValues(i,j,k);
 					double ro = U[0];
 					double u = U[1] / ro;
 					double v = U[2] / ro;
@@ -196,7 +330,7 @@ public:
 	};
 
 	//for splitting over x, y, z directions
-	void ExchangeVelocityComponents(std::vector<double> &U, direction dir) {
+	void ExchangeVelocityComponents(double* U, direction dir) {
 		if(dir == X_direction) return;
 		
 		//	(u, v, w) -> (v, w, u)
@@ -221,9 +355,9 @@ public:
 	//Prepare conservative variables for appropriate directions
 	//(u v w) components of velocity have feature that u is a normal velocity component everytime and v and w are considered as passive scalar
 	//only for x_direction now
-	std::vector<double> PrepareConservativeVariables(int i,int j, int k, direction dir) {
+	double* PrepareConservativeVariables(int i,int j, int k, direction dir) {
 		//EKR need to implement MPI request part and dummy cells
-		std::vector<double> U = getCellValues(i, j, k);
+		double* U = getCellValues(i, j, k);
 		ExchangeVelocityComponents(U, dir);
 		return U;
 	};
@@ -435,7 +569,7 @@ public:
 						ExchangeVelocityComponents(res, dir);
 
 						//write them
-						int sBegin = getSerialIndex(ix, iy, iz) * nVariables;
+						int sBegin = getSerialIndexLocal(ix, iy, iz) * nVariables;
 						for (int k = 0; k < nVariables; k++) values_new[sBegin + k] = res[k];
 					};
           
@@ -760,11 +894,7 @@ public:
 			snapshotTimePrecision = 1 - std::floor(std::log10(SaveSolutionSnapshotTime));
 		};
 
-		//Start timer
-		double workTime = 0.0;
-		clock_t start, stop;
-		/* Start timer */
-		assert((start = clock())!=-1);
+		//Start timer		
 
 		//Calc loop		
 		if (rank == 0) {
@@ -829,9 +959,8 @@ public:
 			std::cout<<"Calculation finished!\n";
 		};
 
-		/* Stop timer */
-		stop = clock();
-		workTime = (double) (stop-start)/CLOCKS_PER_SEC;		
+		//Stop timer
+		double workTime = 0.0;
 		std::cout<<"Total work time = " << workTime << " seconds.\n";			
 	};
 
