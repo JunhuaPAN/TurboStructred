@@ -7,7 +7,6 @@
 //Implementation of matrix product operation
 //Matrix type
 struct Matrix {
-public:
 	int Nrows;	//number of rows
 	int Mcolumns;	//number of columns
 
