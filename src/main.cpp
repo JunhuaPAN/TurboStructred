@@ -46,13 +46,25 @@ int main(int argc, char *argv[])
 {
 	//main function
 	KernelConfiguration conf;
-	conf.nDims = 2;
-	conf.nX = 100;
-	conf.nY = 100;
+	conf.nDims = 1;
+	conf.nX = 1000;
+	conf.nY = 1;
 	conf.LX = 2.0;
 	conf.LY = 1.0;
 	conf.isPeriodicX = true;
 	conf.isPeriodicY = true;
+
+	conf.gamma = 1.4;
+	conf.nVariables = 5;
+
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+
+	conf.MaxTime = 0.2;
+	conf.MaxIteration = 10000000;
+	conf.SaveSolutionSnapshotTime = 0.1;
+	conf.SaveSolutionSnapshotIterations = 0;
 
 	//init kernel
 	Kernel kernel;
