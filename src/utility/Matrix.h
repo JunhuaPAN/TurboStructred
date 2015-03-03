@@ -73,4 +73,21 @@ inline std::vector<double> operator*(const Matrix& A, const std::vector<double>&
 	return res;
 };
 
+inline std::vector<double> operator*(const Matrix& A, const double *B)
+{
+	int N = A.Nrows;
+	int M = A.Mcolumns;
+
+	//Unsafe 
+	
+	std::vector<double> res(N, 0);
+	for(int n = 0; n < N; n++) {
+		for(int m = 0; m < M; m++) {
+				res[n] += A.element[n][m]*B[m];
+		};
+	};
+
+	return res;
+};
+
 #endif

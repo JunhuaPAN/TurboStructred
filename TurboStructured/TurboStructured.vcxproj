@@ -24,7 +24,15 @@
   <ItemGroup>
     <ClInclude Include="..\src\kernel\kernel.h" />
     <ClInclude Include="..\src\kernel\KernelConfiguration.h" />
+    <ClInclude Include="..\src\Methods\ExplicitRungeKuttaFVM.h" />
+    <ClInclude Include="..\src\Methods\HybridFVM.h" />
+    <ClInclude Include="..\src\Methods\Method.h" />
+    <ClInclude Include="..\src\Methods\MethodConfiguration.h" />
+    <ClInclude Include="..\src\RiemannSolvers\RiemannSolversList.h" />
+    <ClInclude Include="..\src\RiemannSolvers\RoeSolverPerfectGasEOS.h" />
+    <ClInclude Include="..\src\RiemannSolvers\RiemannSolver.h" />
     <ClInclude Include="..\src\utility\Matrix.h" />
+    <ClInclude Include="..\src\utility\Timer.h" />
     <ClInclude Include="..\src\utility\Vector.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -88,7 +96,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\src;..\src\kernel;..\src\utility;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src;..\src\kernel;..\src\utility;..\src\RiemannSolvers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -113,7 +121,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\src;..\src\kernel;..\src\utility;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src;..\src\kernel;..\src\utility;..\src\RiemannSolvers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

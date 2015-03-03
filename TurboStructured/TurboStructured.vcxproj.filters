@@ -16,6 +16,12 @@
     <Filter Include="Header Files\Utility">
       <UniqueIdentifier>{910d03a7-cf2f-47dd-810a-b48afa743edd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\RiemannSolvers">
+      <UniqueIdentifier>{3955352b-6615-4ff7-ad01-d52816de6fd0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Methods">
+      <UniqueIdentifier>{bff737a7-692a-41a6-8413-d08d878710e6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -34,6 +40,30 @@
     </ClInclude>
     <ClInclude Include="..\src\utility\Matrix.h">
       <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\Timer.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\RiemannSolvers\RiemannSolver.h">
+      <Filter>Header Files\RiemannSolvers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\RiemannSolvers\RoeSolverPerfectGasEOS.h">
+      <Filter>Header Files\RiemannSolvers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\RiemannSolvers\RiemannSolversList.h">
+      <Filter>Header Files\RiemannSolvers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Methods\Method.h">
+      <Filter>Header Files\Methods</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Methods\ExplicitRungeKuttaFVM.h">
+      <Filter>Header Files\Methods</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Methods\HybridFVM.h">
+      <Filter>Header Files\Methods</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Methods\MethodConfiguration.h">
+      <Filter>Header Files\Methods</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
