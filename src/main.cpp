@@ -1,6 +1,8 @@
 #include <iostream>
 #include <vector>
 #include "kernel\kernel.h";
+#include "Methods\ExplicitRungeKuttaFVM.h"
+#include "Methods\HybridFVM.h"
 
 struct ShockTubeParameters {
 	double gammaL;
@@ -62,13 +64,14 @@ int main(int argc, char *argv[])
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 
 	conf.MaxTime = 0.2;
-	conf.MaxIteration = 10000000;
+	conf.MaxIteration = 100;
 	conf.SaveSolutionSnapshotTime = 0.1;
-	conf.SaveSolutionSnapshotIterations = 0;
+	conf.SaveSolutionSnapshotIterations = 1;
 
 	//init kernel
-	Kernel kernel;
-	kernel.Init(conf);
+	//std::unique_ptr<Kernel> kernel(new ExplicitRungeKuttaFVM());
+	std::unique_ptr<Kernel> kernel(new HybridFVM());
+	kernel->Init(conf);
 
 	// initial conditions
 	ShockTubeParameters params;
@@ -80,16 +83,16 @@ int main(int argc, char *argv[])
 	params.PR = 0.125;
 	params.uR = 0.0;
 	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 1.0, params);	
-	kernel.SetInitialConditions(initD);
+	kernel->SetInitialConditions(initD);
 
 	//save solution
-	kernel.SaveSolution("init.dat");
+	kernel->SaveSolution("init.dat");
 	
 	//run computation
-	kernel.Run();		
+	kernel->Run();		
 
 	//finalize kernel
-	kernel.Finilaze();
+	kernel->Finilaze();
 
 	return 0;
 };

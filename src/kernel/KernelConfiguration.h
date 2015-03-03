@@ -3,6 +3,17 @@
 
 #include "Methods\MethodConfiguration.h"
 
+enum class BoundaryConditionType {
+	Wall,
+	Symmetry,
+	General
+};
+
+class BoundaryConditionConfiguration {
+public:
+	BoundaryConditionType BCType;	
+};
+
 //Class that manages all configurable parameters
 class KernelConfiguration {
 public:
@@ -36,7 +47,13 @@ public:
 	double SaveSolutionSnapshotTime;	
 	int SaveSolutionSnapshotIterations;
 	
-
+	//Boundary conditions configuration
+	BoundaryConditionConfiguration xLeftBoundary;
+	BoundaryConditionConfiguration xRightBoundary;
+	BoundaryConditionConfiguration yLeftBoundary;
+	BoundaryConditionConfiguration yRightBoundary;
+	BoundaryConditionConfiguration zLeftBoundary;
+	BoundaryConditionConfiguration zRightBoundary;
 };
 
 #endif

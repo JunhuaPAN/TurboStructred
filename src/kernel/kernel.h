@@ -15,12 +15,24 @@
 #include "utility\Matrix.h"
 #include "utility\Timer.h"
 #include "RiemannSolvers\RoeSolverPerfectGasEOS.h"
-#include "Methods\ExplicitRungeKuttaFVM.h"
 
+//Step info
+class StepInfo {
+public:
+	double Time;
+	double TimeStep;	
+	int Iteration;
+	std::vector<double> Residual;
+	double NextSnapshotTime;
+};
 
 //Calculation kernel
 class Kernel {
 public:
+	//Interface part
+	virtual int GetDummyCellLayerSize() = 0; // request as much dummy cell layers as required
+	virtual void IterationStep() = 0; // main function
+
 	//Parallel run information
 	int rank; //Rank of process
 	int rankCart[3]; //Position of process in cartesian mpi grid
@@ -31,13 +43,6 @@ public:
 	int jMax;
 	int kMin;
 	int kMax;
-
-	//splitting over directions types
-	enum direction {
-		X_direction,
-		Y_direction,
-		Z_direction
-	};
 
 	//Current step information
 	StepInfo stepInfo;
@@ -51,6 +56,7 @@ public:
 	int nXAll; //Number of cells in x dimension including dummy layers
 	int nYAll; //Number of cells in y dimension including dummy layers
 	int nZAll; //Number of cells in z dimension including dummy layers
+
 	//Same for local cells
 	int nlocalX;
 	int nlocalY;
@@ -73,7 +79,10 @@ public:
 	//Gas model information
 	int nVariables; // number of conservative variables
 	double gamma;
-	std::unique_ptr<Method> method; // method implementation
+
+	//Solution data
+	std::vector<double> values;	
+	std::vector<double> residual;
 
 	//Get serial index for cell
 	inline int getSerialIndexGlobal(int i, int j, int k) {
@@ -89,7 +98,7 @@ public:
 	//Get cell values
 	inline double* getCellValues(int i, int j, int k) {
 		int sBegin = getSerialIndexLocal(i, j, k) * nVariables;		
-		return &method->values[sBegin];
+		return &values[sBegin];
 	};
 
 	//Calculation parameters	
@@ -113,14 +122,14 @@ public:
 					double z = CoordinateZ[k];
 					int sBegin = getSerialIndexLocal(i, j, k) * nVariables;
 					std::vector<double> U = initF(Vector(x,y,z));
-					for (int varn = 0; varn < nVariables; varn++) method->values[sBegin + varn] = U[varn];					
+					for (int varn = 0; varn < nVariables; varn++) values[sBegin + varn] = U[varn];					
 				};
 			};
 		};
 	};
 
 	//Initialize kernel
-	void Init(KernelConfiguration& config) {
+	virtual void Init(KernelConfiguration& config) {
 		//Initialize MPI
 		rank = 0;
 		rankCart[0] = 0;
@@ -129,20 +138,11 @@ public:
 		dimsCart[0] = 1;
 		dimsCart[1] = 1;
 		dimsCart[2] = 1;
-
-		//Create method object
-		method = nullptr;
-		if (config.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-			method = (std::unique_ptr<Method>)std::move(new ExplicitRungeKuttaFVM());
-		};
-		if (config.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
-			method = (std::unique_ptr<Method>)std::move(new ExplicitRungeKuttaFVM());
-		};
-
+	
 		nDims = config.nDims;
 
 		//Initialize local grid
-		int dummyCellLayers = method->GetDummyCellLayerSize(); //number of dummy cell layers				
+		int dummyCellLayers = GetDummyCellLayerSize(); //number of dummy cell layers				
 		nX = config.nX;
 		IsPeriodicX = config.isPeriodicX;
 		dummyCellLayersX = dummyCellLayers;
@@ -227,10 +227,11 @@ public:
 
 		//Initialize gas model parameters and riemann solver
 		gamma = config.gamma;
-		nVariables = config.nVariables;
+		nVariables = config.nVariables;	
 
-		//Initialize method
-		method->Init(config);
+		//Allocate data structures
+		values.resize(nVariables * nlocalXAll * nlocalYAll * nlocalZAll);	
+		residual.resize(nVariables * nlocalXAll * nlocalYAll * nlocalZAll);	
 
 		//Initialize calculation parameters
 		MaxTime = config.MaxTime;
@@ -243,6 +244,35 @@ public:
 
 		//Initialize boundary conditions
 		//TO DO
+
+	};
+
+	//Update solution
+	void UpdateSolution(double dt) {
+		//Compute cell volume
+		double volume = hx * hy * hz;
+		stepInfo.Residual.resize(5, 0);
+
+		for (int i = iMin; i <= iMax; i++)
+		{
+			for (int j = jMin; j <= jMax; j++)
+			{
+				for (int k = kMin; k <= kMax; k++)
+				{
+					int idx = getSerialIndexLocal(i, j, k);
+
+					//Update cell values
+					for(int nv = 0; nv < nVariables; nv++) values[idx * nVariables + nv] += residual[idx * nVariables + nv] * dt / volume;
+
+					//Compute total residual
+					stepInfo.Residual[0] += abs(residual[idx * nVariables]);			//ro
+					stepInfo.Residual[1] += abs(residual[idx * nVariables + 1]);		//rou
+					stepInfo.Residual[2] += abs(residual[idx * nVariables + 2]);		//rov
+					stepInfo.Residual[3] += abs(residual[idx * nVariables + 3]);		//row
+					stepInfo.Residual[4] += abs(residual[idx * nVariables + 4]);		//roE
+				};
+			};
+		};
 	};
 
 	//Exchange values between processormos
@@ -263,7 +293,7 @@ public:
 						int sI = getSerialIndexLocal(i, j, k);
 						int sIMirror = getSerialIndexLocal(iMirror, j, k);
 						for (int nv = 0; nv < nVariables; nv++) {
-							method->values[sI * nVariables + nv] = method->values[sIMirror * nVariables + nv]; //TO DO serial version for now	
+							values[sI * nVariables + nv] = values[sIMirror * nVariables + nv]; //TO DO serial version for now	
 						};
 					};
 
@@ -274,7 +304,7 @@ public:
 						int sI = getSerialIndexLocal(i, j, k);
 						int sIMirror = getSerialIndexLocal(iMirror, j, k);
 						for (int nv = 0; nv < nVariables; nv++) {
-							method->values[sI * nVariables + nv] = method->values[sIMirror * nVariables + nv]; //TO DO serial version for now	
+							values[sI * nVariables + nv] = values[sIMirror * nVariables + nv]; //TO DO serial version for now	
 						};
 					};
 				};
@@ -369,7 +399,7 @@ public:
 			ComputeDummyCellValues();
 
 			//Calculate one time step
-			method->IterationStep(stepInfo);
+			IterationStep();
 
 			//Output step information						
 			if (rank == 0) {

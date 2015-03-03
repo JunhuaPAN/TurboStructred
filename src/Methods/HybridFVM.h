@@ -6,10 +6,19 @@
 #include "utility\Vector.h"
 #include "utility\Matrix.h"
 #include "utility\Timer.h"
+#include "kernel.h"
 
 //Base class for all solution methods that desribe iterations process in detail
-class HybridFVM : Method {
-		//for splitting over x, y, z directions
+class HybridFVM : public Kernel {
+public:
+	//splitting over directions types
+	enum direction {
+		X_direction,
+		Y_direction,
+		Z_direction
+	};
+
+	//for splitting over x, y, z directions
 	void ExchangeVelocityComponents(double* U, direction dir) {
 		if(dir == X_direction) return;
 		
@@ -159,319 +168,325 @@ class HybridFVM : Method {
 
 
 	//Compute fluxes in X direction and write values_new array
-	//void Xfluxes() {
-	//	direction dir = X_direction;
+	void Xfluxes() {
+		direction dir = X_direction;
 
-	//	//initialize data containers
-	//	double* Uim1, *Ui, *Uip1, *Uip2;	//vectors of conservative variables in i-1  i  i+1  i+2 cells
-	//	std::vector<double> Gim1, Gi, Gip1, Gip2;	//vectors of characteristic variables computed as Gj = Rinv(i+1/2)*Uj,  j = im1, im, ip1, ip2
-	//	double alf, bet, gam, del;					//coefficients of monotone scheme
-	//	std::vector<double> fr(nVariables), fl(nVariables);					//left and right fluxes
-	//	
-	//	//Initialize eigenvalues and eigenvectors structures
-	//	std::vector<double> eigenvals(5);
-	//	Matrix R(5, 5);
-	//	Matrix Rinv(5, 5);
+		//initialize data containers
+		double* Uim1, *Ui, *Uip1, *Uip2;	//vectors of conservative variables in i-1  i  i+1  i+2 cells
+		std::vector<double> Gim1, Gi, Gip1, Gip2;	//vectors of characteristic variables computed as Gj = Rinv(i+1/2)*Uj,  j = im1, im, ip1, ip2
+		double alf, bet, gam, del;					//coefficients of monotone scheme
+		std::vector<double> fr(nVariables), fl(nVariables);					//left and right fluxes
+		
+		//Initialize eigenvalues and eigenvectors structures
+		std::vector<double> eigenvals(5);
+		Matrix R(5, 5);
+		Matrix Rinv(5, 5);
 
-	//	double dx = stepInfo.TimeStep/hx;
-	//	for (int iz = kMin; iz <= kMax; iz++)
-	//	{
-	//		for (int iy = jMin; iy <= jMax; iy++)
-	//		{
-	//			Uim1 = PrepareConservativeVariables(iMin-2, iy, iz, dir);
-	//			Ui = PrepareConservativeVariables(iMin-1, iy, iz, dir);
-	//			Uip1 = PrepareConservativeVariables(iMin, iy, iz, dir);
+		double dx = stepInfo.TimeStep/hx;
+		for (int iz = kMin; iz <= kMax; iz++)
+		{
+			for (int iy = jMin; iy <= jMax; iy++)
+			{
+				//Compute face square
+				double fS = 0;
+				if (nDims == 1) fS = 1.0;
+				if (nDims == 2) fS = hy;
+				if (nDims == 3) fS = hy * hz;
 
-	//			for (int ix = iMin; ix <= iMax + 1; ix++)
-	//			{
-	//				Uip2 = PrepareConservativeVariables(ix+1, iy, iz, dir);
-	//				PrepareEigenMatrix(Ui, Uip1, R, Rinv, eigenvals);
+				Uim1 = PrepareConservativeVariables(iMin-2, iy, iz, dir);
+				Ui = PrepareConservativeVariables(iMin-1, iy, iz, dir);
+				Uip1 = PrepareConservativeVariables(iMin, iy, iz, dir);
 
-	//				//Characteristic values
-	//				Gim1 = Rinv*Uim1;
-	//				Gi = Rinv*Ui;
-	//				Gip1 = Rinv*Uip1;
-	//				Gip2 = Rinv*Uip2;
+				for (int ix = iMin; ix <= iMax + 1; ix++)
+				{
+					Uip2 = PrepareConservativeVariables(ix+1, iy, iz, dir);
+					PrepareEigenMatrix(Ui, Uip1, R, Rinv, eigenvals);
 
-	//				//Compute characteristic flux
-	//				for (int k = 0; k < nVariables; k++)
-	//				{
-	//					//Check hybridization condition
-	//					double dG = Gip1[k] - Gi[k];
-	//					double dGlr = (Gip2[k] - Gip1[k]) - (Gi[k] - Gim1[k]);
-	//					double a = eigenvals[k];
-	//					double Gk = a*dG*dGlr;		//the condition for stencil switching
-	//					double c = a*dx;			//local courant number
-	//					
-	//					//Compute stencil coefficients
-	//					if(a >= 0)
-	//					{
-	//						if(Gk >= 0)
-	//						{
-	//							alf = -0.5*(1-c);
-	//							bet = 1-alf;
-	//							gam = 0;
-	//							del = 0;
-	//						} else {
-	//							alf = 0;
-	//							gam = 0.5*(1-c);
-	//							bet = 1-gam;
-	//							del = 0;
-	//						};
-	//					} else {
-	//						if(Gk >= 0)
-	//						{
-	//							alf = 0;
-	//							del = -0.5*(1-c);
-	//							gam = 1-del;
-	//							bet = 0;
-	//						} else {
-	//							alf = 0;
-	//							bet = 0.5*(1-c);
-	//							gam = 1-bet;
-	//							del = 0;
-	//						};
-	//					};
- //           
-	//					//Compute characteristic flux
-	//					fr[k] = Gim1[k]*alf + Gi[k]*bet + Gip1[k]*gam + Gip2[k]*del;
-	//					fr[k] *= a;
-	//				};
+					//Characteristic values
+					Gim1 = Rinv*Uim1;
+					Gi = Rinv*Ui;
+					Gip1 = Rinv*Uip1;
+					Gip2 = Rinv*Uip2;
 
-	//				//Return to the conservative variables
-	//				fr = R*fr;
-	//				
-	//				//for all inner cells
-	//				if(ix > iMin)
-	//				{
-	//					//compute new conservative values
-	//					std::vector<double> res(nVariables);
-	//					for(int k = 0; k < nVariables; k++) res[k] = Ui[k] - (fr[k] - fl[k])*dx;
-	//					ExchangeVelocityComponents(&res.front(), dir);
+					//Compute characteristic flux
+					for (int k = 0; k < nVariables; k++)
+					{
+						//Check hybridization condition
+						double dG = Gip1[k] - Gi[k];
+						double dGlr = (Gip2[k] - Gip1[k]) - (Gi[k] - Gim1[k]);
+						double a = eigenvals[k];
+						double Gk = a*dG*dGlr;		//the condition for stencil switching
+						double c = a*dx;			//local courant number
+						
+						//Compute stencil coefficients
+						if(a >= 0)
+						{
+							if(Gk >= 0)
+							{
+								alf = -0.5*(1-c);
+								bet = 1-alf;
+								gam = 0;
+								del = 0;
+							} else {
+								alf = 0;
+								gam = 0.5*(1-c);
+								bet = 1-gam;
+								del = 0;
+							};
+						} else {
+							if(Gk >= 0)
+							{
+								alf = 0;
+								del = -0.5*(1-c);
+								gam = 1-del;
+								bet = 0;
+							} else {
+								alf = 0;
+								bet = 0.5*(1-c);
+								gam = 1-bet;
+								del = 0;
+							};
+						};
+            
+						//Compute characteristic flux
+						fr[k] = Gim1[k]*alf + Gi[k]*bet + Gip1[k]*gam + Gip2[k]*del;
+						fr[k] *= a;
+					};
 
-	//					//write them
-	//					int sBegin = getSerialIndexLocal(ix-1, iy, iz) * nVariables;
-	//					for (int k = 0; k < nVariables; k++) values_new[sBegin + k] = res[k];
-	//				};
- //         
-	//				fl = fr;
-	//				Uim1 = Ui;
-	//				Ui = Uip1;
-	//				Uip1 = Uip2;
-	//			 };
-	//		};
-	//	};
-	//};
+					//Return to the conservative variables
+					fr = R*fr;
+					
+					//for all inner cells
+					if(ix > iMin)
+					{
+						//compute new conservative values
+						//std::vector<double> res(nVariables);
+						//for(int k = 0; k < nVariables; k++) res[k] = Ui[k] - (fr[k] - fl[k])*dx;
+						//ExchangeVelocityComponents(&res.front(), dir);
 
-	////Compute fluxes in Y direction and write values_new array
-	//void Yfluxes() {
-	//	direction dir = Y_direction;
+						//Fluxes difference equals residual 
+						int idx = getSerialIndexLocal(ix - 1, iy, iz);
+						for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] = - (fr[nv] - fl[nv]) * fS;
+					};
+          
+					fl = fr;
+					Uim1 = Ui;
+					Ui = Uip1;
+					Uip1 = Uip2;
+				 };
+			};
+		};
+	};
 
-	//	//initialize data containers
-	//	double* Uim1, *Ui, *Uip1, *Uip2;	//vectors of conservative variables in i-1  i  i+1  i+2 cells
-	//	std::vector<double> Gim1, Gi, Gip1, Gip2;	//vectors of characteristic variables computed as Gj = Rinv(i+1/2)*Uj,  j = im1, im, ip1, ip2
-	//	double alf, bet, gam, del;					//coefficients of monotone scheme
-	//	std::vector<double> fr, fl;					//left and right fluxes
-	//	
-	//	//Initialize eigenvalues and eigenvectors structures
-	//	std::vector<double> eigenvals(5);
-	//	Matrix R(5, 5);
-	//	Matrix Rinv(5, 5);
+	//Compute fluxes in Y direction and write values_new array
+	void Yfluxes() {
+		direction dir = Y_direction;
 
-	//	double dy = stepInfo.TimeStep/hy;
-	//	for (int ix = iMin; ix <= iMax; ix++)
-	//	{
-	//		for (int iz = kMin; iz <= kMax; iz++)
-	//		{
-	//			Uim1 = PrepareConservativeVariables(ix, jMin-2, iz, dir);
-	//			Ui = PrepareConservativeVariables(ix, jMin-1, iz, dir);
-	//			Uip1 = PrepareConservativeVariables(ix, jMin, iz, dir);
+		//initialize data containers
+		double* Uim1, *Ui, *Uip1, *Uip2;	//vectors of conservative variables in i-1  i  i+1  i+2 cells
+		std::vector<double> Gim1, Gi, Gip1, Gip2;	//vectors of characteristic variables computed as Gj = Rinv(i+1/2)*Uj,  j = im1, im, ip1, ip2
+		double alf, bet, gam, del;					//coefficients of monotone scheme
+		std::vector<double> fr, fl;					//left and right fluxes
+		
+		//Initialize eigenvalues and eigenvectors structures
+		std::vector<double> eigenvals(5);
+		Matrix R(5, 5);
+		Matrix Rinv(5, 5);
 
-	//			for (int iy = jMin; iy <= jMax + 1; iy++)
-	//			{
-	//				Uip2 = PrepareConservativeVariables(ix, iy+1, iz, dir);
-	//				PrepareEigenMatrix(Ui, Uip1, R, Rinv, eigenvals);
+		double dy = stepInfo.TimeStep/hy;
+		for (int ix = iMin; ix <= iMax; ix++)
+		{
+			for (int iz = kMin; iz <= kMax; iz++)
+			{
+				Uim1 = PrepareConservativeVariables(ix, jMin-2, iz, dir);
+				Ui = PrepareConservativeVariables(ix, jMin-1, iz, dir);
+				Uip1 = PrepareConservativeVariables(ix, jMin, iz, dir);
 
-	//				//Characteristic values
-	//				Gim1 = Rinv*Uim1;
-	//				Gi = Rinv*Ui;
-	//				Gip1 = Rinv*Uip1;
-	//				Gip2 = Rinv*Uip2;
+				for (int iy = jMin; iy <= jMax + 1; iy++)
+				{
+					Uip2 = PrepareConservativeVariables(ix, iy+1, iz, dir);
+					PrepareEigenMatrix(Ui, Uip1, R, Rinv, eigenvals);
 
-	//				//Compute characteristic flux
-	//				for (int k = 0; k < nVariables; k++)
-	//				{
-	//					//Check hybridization condition
-	//					double dG = Gip1[k] - Gi[k];
-	//					double dGlr = (Gip2[k] - Gip1[k]) - (Gi[k] - Gim1[k]);
-	//					double a = eigenvals[k];
-	//					double Gk = a*dG*dGlr;		//the condition for stencil switching
-	//					double c = a*dy;			//local courant number
-	//					
-	//					//Compute stencil coefficients
-	//					if(a >= 0)
-	//					{
-	//						if(Gk >= 0)
-	//						{
-	//							alf = -0.5*(1-c);
-	//							bet = 1-alf;
-	//							gam = 0;
-	//							del = 0;
-	//						} else {
-	//							alf = 0;
-	//							gam = 0.5*(1-c);
-	//							bet = 1-gam;
-	//							del = 0;
-	//						};
-	//					} else {
-	//						if(Gk >= 0)
-	//						{
-	//							alf = 0;
-	//							del = -0.5*(1-c);
-	//							gam = 1-del;
-	//							bet = 0;
-	//						} else {
-	//							alf = 0;
-	//							bet = 0.5*(1-c);
-	//							gam = 1-bet;
-	//							del = 0;
-	//						};
-	//					};
- //           
-	//					//Compute characteristic flux
-	//					fr[k] = Gim1[k]*alf + Gi[k]*bet + Gip1[k]*gam + Gip2[k]*del;
-	//					fr[k] *= a;
-	//				};
+					//Characteristic values
+					Gim1 = Rinv*Uim1;
+					Gi = Rinv*Ui;
+					Gip1 = Rinv*Uip1;
+					Gip2 = Rinv*Uip2;
 
-	//				//Return to the conservative variables
-	//				fr = R*fr;
-	//				
-	//				//for all inner cells
-	//				if(iy > jMin)
-	//				{
-	//					//compute new conservative values
-	//					std::vector<double> res(nVariables);
-	//					for(int k = 0; k < nVariables; k++) res[k] = Ui[k] - (fr[k]-fl[k])*dy;
-	//					ExchangeVelocityComponents(&res.front(), dir);
+					//Compute characteristic flux
+					for (int k = 0; k < nVariables; k++)
+					{
+						//Check hybridization condition
+						double dG = Gip1[k] - Gi[k];
+						double dGlr = (Gip2[k] - Gip1[k]) - (Gi[k] - Gim1[k]);
+						double a = eigenvals[k];
+						double Gk = a*dG*dGlr;		//the condition for stencil switching
+						double c = a*dy;			//local courant number
+						
+						//Compute stencil coefficients
+						if(a >= 0)
+						{
+							if(Gk >= 0)
+							{
+								alf = -0.5*(1-c);
+								bet = 1-alf;
+								gam = 0;
+								del = 0;
+							} else {
+								alf = 0;
+								gam = 0.5*(1-c);
+								bet = 1-gam;
+								del = 0;
+							};
+						} else {
+							if(Gk >= 0)
+							{
+								alf = 0;
+								del = -0.5*(1-c);
+								gam = 1-del;
+								bet = 0;
+							} else {
+								alf = 0;
+								bet = 0.5*(1-c);
+								gam = 1-bet;
+								del = 0;
+							};
+						};
+            
+						//Compute characteristic flux
+						fr[k] = Gim1[k]*alf + Gi[k]*bet + Gip1[k]*gam + Gip2[k]*del;
+						fr[k] *= a;
+					};
 
-	//					//write them
-	//					int sBegin = getSerialIndexLocal(ix, iy, iz) * nVariables;
-	//					for (int k = 0; k < nVariables; k++) values_new[sBegin + k] = res[k];
-	//				};
- //         
-	//				fl = fr;
-	//				Uim1 = Ui;
-	//				Ui = Uip1;
-	//				Uip1 = Uip2;
-	//			 };
-	//		};
-	//	};
-	//};
+					//Return to the conservative variables
+					fr = R*fr;
+					
+					//for all inner cells
+					if(iy > jMin)
+					{
+						//compute new conservative values
+						std::vector<double> res(nVariables);
+						for(int k = 0; k < nVariables; k++) res[k] = Ui[k] - (fr[k]-fl[k])*dy;
+						ExchangeVelocityComponents(&res.front(), dir);
 
-	////Compute fluxes in Z direction and write values_new array
-	//void Zfluxes() {
-	//	direction dir = Z_direction;
+						//write them
+						int sBegin = getSerialIndexLocal(ix, iy, iz) * nVariables;
+						//for (int k = 0; k < nVariables; k++) values_new[sBegin + k] = res[k];
+					};
+          
+					fl = fr;
+					Uim1 = Ui;
+					Ui = Uip1;
+					Uip1 = Uip2;
+				 };
+			};
+		};
+	};
 
-	//	//initialize data containers
-	//	double* Uim1, *Ui, *Uip1, *Uip2;	//vectors of conservative variables in i-1  i  i+1  i+2 cells
-	//	std::vector<double> Gim1, Gi, Gip1, Gip2;	//vectors of characteristic variables computed as Gj = Rinv(i+1/2)*Uj,  j = im1, im, ip1, ip2
-	//	double alf, bet, gam, del;					//coefficients of monotone scheme
-	//	std::vector<double> fr, fl;					//left and right fluxes
-	//	
-	//	//Initialize eigenvalues and eigenvectors structures
-	//	std::vector<double> eigenvals(5);
-	//	Matrix R(5, 5);
-	//	Matrix Rinv(5, 5);
+	//Compute fluxes in Z direction and write values_new array
+	void Zfluxes() {
+		direction dir = Z_direction;
 
-	//	double dz = stepInfo.TimeStep/hz;
-	//	for (int iy = jMin; iy <= jMax; iy++)
-	//	{
-	//		for (int ix = iMin; ix <= iMax; ix++)
-	//		{
-	//			Uim1 = PrepareConservativeVariables(ix, iy, kMin-2, dir);
-	//			Ui = PrepareConservativeVariables(ix, iy, kMin-1, dir);
-	//			Uip1 = PrepareConservativeVariables(ix, iy, kMin, dir);
+		//initialize data containers
+		double* Uim1, *Ui, *Uip1, *Uip2;	//vectors of conservative variables in i-1  i  i+1  i+2 cells
+		std::vector<double> Gim1, Gi, Gip1, Gip2;	//vectors of characteristic variables computed as Gj = Rinv(i+1/2)*Uj,  j = im1, im, ip1, ip2
+		double alf, bet, gam, del;					//coefficients of monotone scheme
+		std::vector<double> fr, fl;					//left and right fluxes
+		
+		//Initialize eigenvalues and eigenvectors structures
+		std::vector<double> eigenvals(5);
+		Matrix R(5, 5);
+		Matrix Rinv(5, 5);
 
-	//			for (int iz = kMin; iz <= kMax + 1; iz++)
-	//			{
-	//				Uip2 = PrepareConservativeVariables(ix, iy, iz+1, dir);
-	//				PrepareEigenMatrix(Ui, Uip1, R, Rinv, eigenvals);
+		double dz = stepInfo.TimeStep/hz;
+		for (int iy = jMin; iy <= jMax; iy++)
+		{
+			for (int ix = iMin; ix <= iMax; ix++)
+			{
+				Uim1 = PrepareConservativeVariables(ix, iy, kMin-2, dir);
+				Ui = PrepareConservativeVariables(ix, iy, kMin-1, dir);
+				Uip1 = PrepareConservativeVariables(ix, iy, kMin, dir);
 
-	//				//Characteristic values
-	//				Gim1 = Rinv*Uim1;
-	//				Gi = Rinv*Ui;
-	//				Gip1 = Rinv*Uip1;
-	//				Gip2 = Rinv*Uip2;
+				for (int iz = kMin; iz <= kMax + 1; iz++)
+				{
+					Uip2 = PrepareConservativeVariables(ix, iy, iz+1, dir);
+					PrepareEigenMatrix(Ui, Uip1, R, Rinv, eigenvals);
 
-	//				//Compute characteristic flux
-	//				for (int k = 0; k < nVariables; k++)
-	//				{
-	//					//Check hybridization condition
-	//					double dG = Gip1[k] - Gi[k];
-	//					double dGlr = (Gip2[k] - Gip1[k]) - (Gi[k] - Gim1[k]);
-	//					double a = eigenvals[k];
-	//					double Gk = a*dG*dGlr;		//the condition for stencil switching
-	//					double c = a*dz;			//local courant number
-	//					
-	//					//Compute stencil coefficients
-	//					if(a >= 0)
-	//					{
-	//						if(Gk >= 0)
-	//						{
-	//							alf = -0.5*(1-c);
-	//							bet = 1-alf;
-	//							gam = 0;
-	//							del = 0;
-	//						} else {
-	//							alf = 0;
-	//							gam = 0.5*(1-c);
-	//							bet = 1-gam;
-	//							del = 0;
-	//						};
-	//					} else {
-	//						if(Gk >= 0)
-	//						{
-	//							alf = 0;
-	//							del = -0.5*(1-c);
-	//							gam = 1-del;
-	//							bet = 0;
-	//						} else {
-	//							alf = 0;
-	//							bet = 0.5*(1-c);
-	//							gam = 1-bet;
-	//							del = 0;
-	//						};
-	//					};
- //           
-	//					//Compute characteristic flux
-	//					fr[k] = Gim1[k]*alf + Gi[k]*bet + Gip1[k]*gam + Gip2[k]*del;
-	//					fr[k] *= a;
-	//				};
+					//Characteristic values
+					Gim1 = Rinv*Uim1;
+					Gi = Rinv*Ui;
+					Gip1 = Rinv*Uip1;
+					Gip2 = Rinv*Uip2;
 
-	//				//Return to the conservative variables
-	//				fr = R*fr;
-	//				
-	//				//for all inner cells
-	//				if(iz > kMin)
-	//				{
-	//					//compute new conservative values
-	//					std::vector<double> res(nVariables);
-	//					for(int k = 0; k < nVariables; k++) res[k] = Ui[k] - (fr[k] - fl[k])*dz;
-	//					ExchangeVelocityComponents(&res.front(), dir);
+					//Compute characteristic flux
+					for (int k = 0; k < nVariables; k++)
+					{
+						//Check hybridization condition
+						double dG = Gip1[k] - Gi[k];
+						double dGlr = (Gip2[k] - Gip1[k]) - (Gi[k] - Gim1[k]);
+						double a = eigenvals[k];
+						double Gk = a*dG*dGlr;		//the condition for stencil switching
+						double c = a*dz;			//local courant number
+						
+						//Compute stencil coefficients
+						if(a >= 0)
+						{
+							if(Gk >= 0)
+							{
+								alf = -0.5*(1-c);
+								bet = 1-alf;
+								gam = 0;
+								del = 0;
+							} else {
+								alf = 0;
+								gam = 0.5*(1-c);
+								bet = 1-gam;
+								del = 0;
+							};
+						} else {
+							if(Gk >= 0)
+							{
+								alf = 0;
+								del = -0.5*(1-c);
+								gam = 1-del;
+								bet = 0;
+							} else {
+								alf = 0;
+								bet = 0.5*(1-c);
+								gam = 1-bet;
+								del = 0;
+							};
+						};
+            
+						//Compute characteristic flux
+						fr[k] = Gim1[k]*alf + Gi[k]*bet + Gip1[k]*gam + Gip2[k]*del;
+						fr[k] *= a;
+					};
 
-	//					//write them
-	//					int sBegin = getSerialIndexLocal(ix, iy, iz) * nVariables;
-	//					for (int k = 0; k < nVariables; k++) values_new[sBegin + k] = res[k];
-	//				};
- //         
-	//				fl = fr;
-	//				Uim1 = Ui;
-	//				Ui = Uip1;
-	//				Uip1 = Uip2;
-	//			 };
-	//		};
-	//	};
-	//};
+					//Return to the conservative variables
+					fr = R*fr;
+					
+					//for all inner cells
+					if(iz > kMin)
+					{
+						//compute new conservative values
+						std::vector<double> res(nVariables);
+						for(int k = 0; k < nVariables; k++) res[k] = Ui[k] - (fr[k] - fl[k])*dz;
+						ExchangeVelocityComponents(&res.front(), dir);
+
+						//write them
+						int sBegin = getSerialIndexLocal(ix, iy, iz) * nVariables;
+						//for (int k = 0; k < nVariables; k++) values_new[sBegin + k] = res[k];
+					};
+          
+					fl = fr;
+					Uim1 = Ui;
+					Ui = Uip1;
+					Uip1 = Uip2;
+				 };
+			};
+		};
+	};
 
 	void ComputeTimeStep() {
 		//variables to collect maximum values
@@ -525,7 +540,9 @@ class HybridFVM : Method {
 			};
 		};
 
-		stepInfo.TimeStep = CFL/dmax;
+		double dt = CFL/dmax;
+		dt = std::min(stepInfo.NextSnapshotTime - stepInfo.Time, dt);
+		stepInfo.TimeStep = dt;
 	};
 
 	
@@ -534,21 +551,23 @@ public:
 	double CFL;
 
 	//Initizalization
-	void Init(MethodConfiguration& config) {
-		CFL = config.CFL;
+	virtual void Init(KernelConfiguration& config) override {
+		Kernel::Init(config);
+		CFL = config.methodConfiguration.CFL;
+	};
+
+	//Number of required dummy layers
+	virtual int GetDummyCellLayerSize() override {
+		return 2;
 	};
 
 	//Explicit time step
-	virtual StepInfo IterationStep() override {	
-		//Compute residual
-		ComputeResidual(values, residual, spectralRadius);
-
+	virtual void IterationStep() override {			
 		//Determine timestep
-		//ComputeTimeStep();
-		stepInfo.TimeStep = ComputeTimeStep(spectralRadius);
+		ComputeTimeStep();		
 
 		//Determine order of spacial directions
-		//Xfluxes();
+		Xfluxes();
 
 		//Compute residuals and update solution
 		stepInfo.Residual.resize(5, 0);
@@ -576,6 +595,7 @@ public:
 		
 		// Update time
 		stepInfo.Time += stepInfo.TimeStep;
+		stepInfo.Iteration++;
 	};	
 
 };
