@@ -23,7 +23,7 @@ std::vector<double> SODinitialDistribution(Vector r, double xI, ShockTubeParamet
 	double P;
 
 	//Left
-	if (r.x <= xI) {
+	if (r.y <= xI) {
 		ro = params.roL;
 		u = params.uL;
 		P = params.PL;
@@ -48,12 +48,12 @@ std::vector<double> SODinitialDistribution(Vector r, double xI, ShockTubeParamet
 void RunSODTestRoe1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 1000;
-	conf.nY = 1;
+	conf.nX = 10;
+	conf.nY = 10;
 	conf.LX = 1.0;
 	conf.LY = 1.0;	
 	conf.isPeriodicX = false;
-	conf.isPeriodicY = true;
+	conf.isPeriodicY = false;
 
 	conf.gamma = 1.4;
 	conf.nVariables = 5;
@@ -107,10 +107,10 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 void RunSODTestRoe2DX(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 2;
-	conf.nX = 20;
+	conf.nX = 100;
 	conf.nY = 100;
 	conf.LX = 1.0;
-	conf.LY = 0.5;	
+	conf.LY = 1.0;	
 	conf.isPeriodicX = true;
 	conf.isPeriodicY = false;
 
@@ -150,11 +150,20 @@ void RunSODTestRoe2DX(int argc, char *argv[]) {
 	params.gammaL = params.gammaR = 1.4;
 	params.roL = 1.0;
 	params.PL = 1.0;
-	params.uL = 0.75;
+	params.uL = 0.0;
 	params.roR = 0.125;
 	params.PR = 0.1;
 	params.uR = 0.0;
-	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
+	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
+	auto initD = [](Vector r) { 
+		std::vector<double> res(5);
+		res[0] = 1.0;
+		res[1] = 0.0;
+		res[2] = 0.0;
+		res[3] = 0.0;
+		res[4] = 1.0 / (0.4);
+		return res; 
+	};
 	kernel->SetInitialConditions(initD);
 
 	//save solution

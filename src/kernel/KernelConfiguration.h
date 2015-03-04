@@ -33,6 +33,8 @@ public:
 	//Gas model parameters
 	int nVariables;
 	double gamma;
+	double Viscosity;
+	double ThermalConductivity;
 
 	//Solution method parameters
 	enum class Method {

@@ -49,9 +49,12 @@ public:
 		coords[0] = rankCart[0] + i;
 		coords[1] = rankCart[1] + j;
 		coords[2] = rankCart[2] + k;
-		if ((coords[0] < 0) || (coords[0] >= dimsCart[0])) return rank;
-		if ((coords[1] < 0) || (coords[1] >= dimsCart[1])) return rank;
-		if ((coords[2] < 0) || (coords[2] >= dimsCart[2])) return rank;
+		if (!periodic[0] && ((coords[0] < 0) || (coords[0] >= dimsCart[0]))) return rank;
+		if (!periodic[1] && ((coords[1] < 0) || (coords[1] >= dimsCart[1]))) return rank;
+		if (!periodic[2] && ((coords[2] < 0) || (coords[2] >= dimsCart[2]))) return rank;
+		coords[0] %= dimsCart[0];
+		coords[1] %= dimsCart[1];
+		coords[2] %= dimsCart[2];
 		int MPIResult = MPI_Cart_rank(_commCart, coords, &rank);
 		if (MPIResult == MPI_PROC_NULL) rank = -1;
 		return rank;

@@ -49,6 +49,7 @@ public:
 	void ComputeResidual(const std::vector<double> values, std::vector<double>& residual, std::vector<double>& spectralRadius) {
 		//  init spectral radius storage for each cell
 		for (double& sr : spectralRadius) sr = 0; //Nullify
+		for (double& r : residual) r = 0; //Nullify residual
 
 		// array of pointers to cell values
 		std::vector<double*> U(2);
@@ -83,7 +84,7 @@ public:
 					{
 						//Fluxes difference equals residual
 						int idx = getSerialIndexLocal(i - 1, j, k);
-						for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] = - (fr[nv] - fl[nv]) * fS;
+						for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += - (fr[nv] - fl[nv]) * fS;
 
 						//Add up spectral radius estimate
 						spectralRadius[idx] += fS * result.MaxEigenvalue;
@@ -178,8 +179,8 @@ public:
 
 
 		//Right hand side
-		double mu = 0.0;
-		double sigma = 0.0;
+		double mu = viscosity;
+		double sigma = 0.0001;
 		double volume = hx * hy * hz;		
 		for (int i = iMin; i <= iMax; i++)
 		{
@@ -190,18 +191,43 @@ public:
 					int idx = getSerialIndexLocal(i, j, k);
 
 					//Cell values
-					double *v = getCellValues(i, j, k);
-					double *v01 = getCellValues(i, j+1, k);
-					double *v01 = getCellValues(i, j-1, k);
-					double *v = getCellValues(i+1, j, k);
-					double *v = getCellValues(i-1, j, k);
+					double *V = getCellValues(i, j, k);
+					double *VxL = getCellValues(i - 1, j, k);
+					double *VxR = getCellValues(i + 1, j, k);
+					double *VyL = getCellValues(i, j - 1, k);
+					double *VyR = getCellValues(i, j + 1, k);
+					//double *vzL = getCellValues(i, j, k - 1);
+					//double *vzR = getCellValues(i, j, k + 1);
+
+					
+					double u = V[1]/V[0];
+					double uxL = VxL[1] / VxL[0];
+					double uxR = VxR[1] / VxR[0];
+					double dudx = (uxR - uxL) / (2 * hx);
+					double d2udx2 = (uxR - 2*u + uxL) / (hx * hx);
+
+					double v = V[2]/V[0];
+					double vyL = VyL[1] / VyL[0];
+					double vyR = VyR[1] / VyR[0];
+					double dvdy = (vyR - vyL) / (2 * hy);
+					double d2vdy2 = (vyR - 2*v + vyL) / (hy * hy);
+
+					Vector velocity = Vector(u, v, V[3]/V[0]); //Cell velocity
+
+					//Friction forces
+
+					//Mass forces
+					double mForce = 0;
+
+					//Potential forces
+					Vector pForce = Vector(sigma, 0, 0);
 
 					//Compute total residual
 					residual[idx * nVariables];			//ro
-					residual[idx * nVariables + 1];		//rou
-					residual[idx * nVariables + 2];		//rov
-					residual[idx * nVariables + 3];		//row
-					residual[idx * nVariables + 4];		//roE
+					residual[idx * nVariables + 1] += hx * pForce.x;	//rou
+					residual[idx * nVariables + 2] += hy * pForce.y;	//rov
+					residual[idx * nVariables + 3] += hz * pForce.z;		//row
+					residual[idx * nVariables + 4] += pForce * velocity;	//roE
 				};
 			};
 		};
