@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 	//main function
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 10000;
+	conf.nX = 1000;
 	conf.nY = 1;
 	conf.LX = 1.0;
 	conf.LY = 1.0;	

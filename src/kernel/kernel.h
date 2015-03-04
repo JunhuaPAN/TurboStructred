@@ -201,10 +201,11 @@ public:
 		xMin = xMin - (dummyCellLayersX * dx) + 0.5 * dx;
 		double xMax = Lx;
 		xMax = xMax + (dummyCellLayersX * dx) - 0.5 * dx;
-		for (int i = iMin - dummyCellLayersX; i <= iMax + dummyCellLayersX; i++) {
+		for (int i = iMin - dummyCellLayersX; i < iMax + dummyCellLayersX; i++) {
 			double x = xMin + (xMax - xMin) * 1.0 * i / (nlocalXAll - 1);
 			CoordinateX[i] = x;
-		};		
+		};
+		CoordinateX[iMax + dummyCellLayersX] = xMax;
 
 		double dy = Ly / nY;
 		hy = dy;
@@ -212,20 +213,22 @@ public:
 		yMin = yMin - (dummyCellLayersY * dy) + 0.5 * dy;
 		double yMax = Ly;
 		yMax = yMax + (dummyCellLayersY * dy) - 0.5 * dy;
-		for (int j = jMin - dummyCellLayersY; j <= jMax + dummyCellLayersY; j++) {
+		for (int j = jMin - dummyCellLayersY; j < jMax + dummyCellLayersY; j++) {
 			double y = yMin + (yMax - yMin) * 1.0 * j / (nlocalYAll - 1);					
 			CoordinateY[j] = y;
 		};
+		CoordinateY[jMax + dummyCellLayersY] = yMax;
 
 		double dz = Lz / nZ;
 		double zMin = 0;
 		zMin = zMin - (dummyCellLayersZ * dz) + 0.5 * dz;
 		double zMax = Lz;
 		zMax = zMax + (dummyCellLayersZ * dz) - 0.5 * dz;
-		for (int k = kMin - dummyCellLayersZ; k <= kMax + dummyCellLayersZ; k++) {
+		for (int k = kMin - dummyCellLayersZ; k < kMax + dummyCellLayersZ; k++) {
 			double z = zMin + (zMax - zMin) * 1.0 * k / (nlocalZAll - 1);
 			CoordinateZ[k] = z;
 		};
+		CoordinateZ[kMax + dummyCellLayersZ] = zMax;
 
 		//Cell linear sizes
 		hx = hy = hz = 1.0;
