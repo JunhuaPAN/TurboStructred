@@ -194,7 +194,8 @@ public:
 		double xMax = Lx;
 		xMax = xMax + (dummyCellLayersX * dx) - 0.5 * dx;
 		for (int i = iMin - dummyCellLayersX; i <= iMax + dummyCellLayersX; i++) {
-			double x = xMin + (xMax - xMin) * 1.0 * i / nlocalX;							
+			double x = xMin + (xMax - xMin) * 1.0 * i / (nlocalXAll - 1);
+			double test = (1.0 * i / nlocalXAll);
 			CoordinateX[i] = x;
 		};		
 
@@ -205,7 +206,7 @@ public:
 		double yMax = Ly;
 		yMax = yMax + (dummyCellLayersY * dy) - 0.5 * dy;
 		for (int j = jMin - dummyCellLayersY; j <= jMax + dummyCellLayersY; j++) {
-			double y = yMin + (yMax - yMin) * 1.0 * j / nlocalY;					
+			double y = yMin + (yMax - yMin) * 1.0 * j / (nlocalYAll - 1);					
 			CoordinateY[j] = y;
 		};
 
@@ -215,7 +216,7 @@ public:
 		double zMax = Lz;
 		zMax = zMax + (dummyCellLayersZ * dz) - 0.5 * dz;
 		for (int k = kMin - dummyCellLayersZ; k <= kMax + dummyCellLayersZ; k++) {
-			double z = zMin + (zMax - zMin) * 1.0 * k / nlocalZ;
+			double z = zMin + (zMax - zMin) * 1.0 * k / (nlocalZAll - 1);
 			CoordinateZ[k] = z;
 		};
 
@@ -289,7 +290,7 @@ public:
 					// minus direction
 					i = iMin - layer; // layer index					
 					if ((rankCart[0] == 0) && (IsPeriodicX)) {
-						int iMirror = nX - layer; // mirror cell index
+						int iMirror = nX + dummyCellLayersX - layer; // mirror cell index
 						int sI = getSerialIndexLocal(i, j, k);
 						int sIMirror = getSerialIndexLocal(iMirror, j, k);
 						for (int nv = 0; nv < nVariables; nv++) {
@@ -360,7 +361,7 @@ public:
 					double u = U[1] / ro;
 					double v = U[2] / ro;
 					double w = U[3] / ro;
-					double e = U[4] - ro * (u*u+v*v+w*w) / 2.0;
+					double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
 					double P = (gamma - 1.0) * ro * e;
 
 					//Write to file
