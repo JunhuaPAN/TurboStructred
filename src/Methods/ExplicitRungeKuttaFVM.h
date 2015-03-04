@@ -50,9 +50,8 @@ public:
 		//  init spectral radius storage for each cell
 		for (double& sr : spectralRadius) sr = 0; //Nullify
 
-		// Stencil size and values references
-		int stencilSizeX = 2;
-		std::vector<double*> U(stencilSizeX);
+		// array of pointers to cell values
+		std::vector<double*> U(2);
 		
 		// Fluxes temporary storage
 		std::vector<double> fl(5,0); //left flux -1/2
@@ -68,15 +67,12 @@ public:
 				if (nDims == 2) fS = hy;
 				if (nDims == 3) fS = hy * hz;
 
-				//Initial load of values we assume symmetric stencil
-				for (int s = 0; s < stencilSizeX - 1; s++) {
-					U[s] = getCellValues(iMin - stencilSizeX / 2 + s, j, k);
-				};
+				//Initial load of values
+				U[0] = getCellValues(iMin - 1, j, k);
 
-				for (int i = iMin; i <= iMax + 1; i++)
-				{
+				for (int i = iMin; i <= iMax + 1; i++) {
 					//Update stencil values
-					U[stencilSizeX - 1] = getCellValues(i + stencilSizeX / 2 - 1, j, k);
+					U[1] = getCellValues(i, j, k);
 
 					//Compute flux
 					RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
@@ -85,7 +81,7 @@ public:
 					//Update residuals
 					if(i > iMin)
 					{
-						//Fluxes difference equals residual 
+						//Fluxes difference equals residual
 						int idx = getSerialIndexLocal(i - 1, j, k);
 						for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] = - (fr[nv] - fl[nv]) * fS;
 
@@ -95,17 +91,120 @@ public:
           
 					//Shift stencil
 					fl = fr;
-					for (int s = 1; s < stencilSizeX; s++) U[s - 1] = U[s];
+					U[0] = U[1];
 				 };
 			};
 		};
 		
-
 		// J step
-		if (nDims < 2) return;
+		if (nDims > 1)
+		{
+			fn = Vector(0.0, 1.0, 0.0); // y direction
+			for (int k = kMin; k <= kMax; k++) {
+				for (int i = iMin; i <= iMax; i++) {
+					//Compute face square
+					double fS = 0;
+					if (nDims == 2) fS = hx;
+					if (nDims == 3) fS = hx * hz;
 
+					//Initial load of values
+					U[0] = getCellValues(i, jMin - 1, k);
+
+					for (int j = jMin; j <= jMax + 1; j++) {
+						//Update stencil values
+						U[1] = getCellValues(i, j, k);
+
+						//Compute flux
+						RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
+						fr = result.Fluxes;
+	
+						//Update residuals
+						if(j > jMin)
+						{
+							//Fluxes difference equals residual
+							int idx = getSerialIndexLocal(i, j - 1, k);
+							for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += - (fr[nv] - fl[nv]) * fS;
+
+							//Add up spectral radius estimate
+							spectralRadius[idx] += fS * result.MaxEigenvalue;
+						};
+          
+						//Shift stencil
+						fl = fr;
+						U[0] = U[1];
+					};
+				};
+			};
+		};
+		
 		// K step
-		if (nDims < 3) return;
+		if (nDims > 2)
+		{
+			fn = Vector(0.0, 0.0, 1.0); // z direction
+			for (int i = iMin; i <= iMax; i++) {
+				for (int j = jMin; j <= jMax; j++) {
+					//Face square
+					double fS = hx * hy;
+
+					//Initial load of values
+					U[0] = getCellValues(i, j, kMin - 1);
+
+					for (int k = kMin; k <= kMax + 1; k++) {
+						//Update stencil values
+						U[1] = getCellValues(i, j, k);
+
+						//Compute flux
+						RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
+						fr = result.Fluxes;
+	
+						//Update residuals
+						if(k > kMin)
+						{
+							//Fluxes difference equals residual
+							int idx = getSerialIndexLocal(i, j, k - 1);
+							for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += - (fr[nv] - fl[nv]) * fS;
+
+							//Add up spectral radius estimate
+							spectralRadius[idx] += fS * result.MaxEigenvalue;
+						};
+          
+						//Shift stencil
+						fl = fr;
+						U[0] = U[1];
+					};
+				};
+			};
+		};
+
+
+		//Right hand side
+		double mu = 0.0;
+		double sigma = 0.0;
+		double volume = hx * hy * hz;		
+		for (int i = iMin; i <= iMax; i++)
+		{
+			for (int j = jMin; j <= jMax; j++)
+			{
+				for (int k = kMin; k <= kMax; k++)
+				{
+					int idx = getSerialIndexLocal(i, j, k);
+
+					//Cell values
+					double *v = getCellValues(i, j, k);
+					double *v01 = getCellValues(i, j+1, k);
+					double *v01 = getCellValues(i, j-1, k);
+					double *v = getCellValues(i+1, j, k);
+					double *v = getCellValues(i-1, j, k);
+
+					//Compute total residual
+					residual[idx * nVariables];			//ro
+					residual[idx * nVariables + 1];		//rou
+					residual[idx * nVariables + 2];		//rov
+					residual[idx * nVariables + 3];		//row
+					residual[idx * nVariables + 4];		//roE
+				};
+			};
+		};
 	};
 
 	//Compute global time step

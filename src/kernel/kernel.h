@@ -81,10 +81,16 @@ public:
 	//Gas model information
 	int nVariables; // number of conservative variables
 	double gamma;
+	double thermalConductivity;
+	double viscosity;
 
 	//Boundary conditions
 	std::unique_ptr<BCGeneral> xLeftBC;
 	std::unique_ptr<BCGeneral> xRightBC;
+	std::unique_ptr<BCGeneral> yLeftBC;
+	std::unique_ptr<BCGeneral> yRightBC;
+	std::unique_ptr<BCGeneral> zLeftBC;
+	std::unique_ptr<BCGeneral> zRightBC;
 
 	//Solution data
 	std::vector<double> values;	
@@ -261,6 +267,19 @@ public:
 			xRightBC->loadConfiguration(config.xRightBoundary);
 		};
 
+		if ((!gridInfo.IsPeriodicY) && (nDims > 1)) {
+			yLeftBC = std::unique_ptr<BCGeneral>(new BCGeneral());
+			yRightBC = std::unique_ptr<BCGeneral>(new BCGeneral());
+			yLeftBC->loadConfiguration(config.yLeftBoundary);
+			yRightBC->loadConfiguration(config.yRightBoundary);
+		};
+
+		if ((!gridInfo.IsPeriodicZ) && (nDims > 2)) {
+			zLeftBC = std::unique_ptr<BCGeneral>(new BCGeneral());
+			zRightBC = std::unique_ptr<BCGeneral>(new BCGeneral());
+			zLeftBC->loadConfiguration(config.zLeftBoundary);
+			zRightBC->loadConfiguration(config.zRightBoundary);
+		};
 	};
 
 	//Update solution
@@ -351,9 +370,7 @@ public:
 		Vector faceNormalR;
 		Vector faceCenter;
 		Vector cellCenter;
-
-		
-
+	
 		//X direction		
 		faceNormalL = Vector(-1.0, 0.0, 0.0);
 		faceNormalR = Vector(1.0, 0.0, 0.0);
@@ -399,49 +416,152 @@ public:
 					};
 				};
 			};
-		};
+		}; //X direction
+
+		if (nDims < 2) return;
+		//Y direction		
+		faceNormalL = Vector(0.0, -1.0, 0.0);
+		faceNormalR = Vector(0.0, 1.0, 0.0);
+		for (i = iMin; i <= iMax; i++) {
+			for (k = kMin; k <= kMax; k++) {				
+				//Inner cell
+				cellCenter.x = CoordinateX[i];
+				cellCenter.z = CoordinateZ[k];
+
+				//And face
+				faceCenter.x = CoordinateY[i];
+				faceCenter.z = CoordinateZ[k];
+
+				for (int layer = 1; layer <= dummyCellLayersY; layer++) {
+					if (!IsPeriodicY) {
+						//Left border
+						j = jMin - layer; // layer index
+						int jIn = jMin + layer - 1; // opposite index
+						cellCenter.y = CoordinateY[jIn];
+						faceCenter.y = (CoordinateY[jIn] + CoordinateY[j]) / 2.0;
+						int idx = getSerialIndexLocal(i, j, k);
+						int idxIn = getSerialIndexLocal(i, jIn, k);
+					
+						//Apply left boundary conditions						
+						std::vector<double> dValues = yLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
+						for (int nv = 0; nv < nVariables; nv++) {
+							values[idx * nVariables + nv] = dValues[nv];
+						};
+
+						//Right border
+						j = jMax + layer; // layer index
+						jIn = jMax - layer + 1; // opposite index
+						cellCenter.y = CoordinateY[jIn];
+						faceCenter.y = (CoordinateY[jIn] + CoordinateY[j]) / 2.0;
+						idx = getSerialIndexLocal(i, j, k);
+						idxIn = getSerialIndexLocal(i, jIn, k);
+					
+						//Apply right boundary conditions						
+						dValues = yRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
+						for (int nv = 0; nv < nVariables; nv++) {
+							values[idx * nVariables + nv] = dValues[nv];
+						};
+					};
+				};
+			};
+		}; //Y direction
+
 	};
 
 	//Save solution
 	void SaveSolution(std::string fname) {
 		std::ofstream ofs(fname);
-		//Header
-		ofs<<"VARIABLES = ";
-		ofs<<"\""<<"X"<<"\" ";
-		ofs<<"\""<<"ro"<<"\" ";
-		ofs<<"\""<<"u"<<"\" ";
-		ofs<<"\""<<"P"<<"\" ";
-		ofs<<"\""<<"e"<<"\" ";
-		ofs<<std::endl;
+		if(nDims==1)
+		{
+			//Header
+			ofs<<"VARIABLES = ";
+			ofs<<"\""<<"X"<<"\" ";
+			ofs<<"\""<<"ro"<<"\" ";
+			ofs<<"\""<<"u"<<"\" ";
+			ofs<<"\""<<"P"<<"\" ";
+			ofs<<"\""<<"e"<<"\" ";
+			ofs<<std::endl;
 
-		//Solution
-		for (int i = iMin; i <= iMax; i++) {
-			for (int j = jMin; j <= jMax; j++) {
-				for (int k = kMin; k <= kMax; k++) {
-					//Obtain cell data
-					double x = CoordinateX[i];
-					double y = CoordinateY[j];
-					double z = CoordinateZ[k];
-					double* U = getCellValues(i,j,k);
-					double ro = U[0];
-					double u = U[1] / ro;
-					double v = U[2] / ro;
-					double w = U[3] / ro;
-					double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
-					double P = (gamma - 1.0) * ro * e;
+			//Solution
+			for (int i = iMin; i <= iMax; i++) {
+				for (int j = jMin; j <= jMax; j++) {
+					for (int k = kMin; k <= kMax; k++) {
+						//Obtain cell data
+						double x = CoordinateX[i];
+						double y = CoordinateY[j];
+						double z = CoordinateZ[k];
+						double* U = getCellValues(i,j,k);
+						double ro = U[0];
+						double u = U[1] / ro;
+						double v = U[2] / ro;
+						double w = U[3] / ro;
+						double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
+						double P = (gamma - 1.0) * ro * e;
 
-					//Write to file
-					ofs<<x<<" ";
-					ofs<<ro<<" ";
-					ofs<<u<<" ";
-					ofs<<P<<" ";
-					ofs<<e<<" ";
-					ofs<<std::endl;
+						//Write to file
+						ofs<<x<<" ";
+						ofs<<ro<<" ";
+						ofs<<u<<" ";
+						ofs<<P<<" ";
+						ofs<<e<<" ";
+						ofs<<std::endl;
+					};
+				};
+			};
+			ofs.close();
+		};
+
+		//2D tecplot style
+		if(nDims>1)
+		{
+			//Header
+			ofs<<"VARIABLES = ";
+			ofs<<"\""<<"X"<<"\" ";
+			ofs<<"\""<<"Y"<<"\" ";
+			ofs<<"\""<<"Z"<<"\" ";
+			ofs<<"\""<<"ro"<<"\" ";
+			ofs<<"\""<<"u"<<"\" ";
+			ofs<<"\""<<"v"<<"\" ";
+			ofs<<"\""<<"w"<<"\" ";
+			ofs<<"\""<<"P"<<"\" ";
+			ofs<<"\""<<"e"<<"\" ";
+			ofs<<std::endl;
+			
+			ofs << "ZONE T=\"1\"\nI=" << nX <<"J=" << nY << "K=" << nZ << "F=POINT\n";
+			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
+
+			//Solution
+			for (int k = kMin; k <= kMax; k++) {
+				for (int j = jMin; j <= jMax; j++) {
+					for (int i = iMin; i <= iMax; i++) {
+						//Obtain cell data
+						double x = CoordinateX[i];
+						double y = CoordinateY[j];
+						double z = CoordinateZ[k];
+						double* U = getCellValues(i,j,k);
+						double ro = U[0];
+						double u = U[1] / ro;
+						double v = U[2] / ro;
+						double w = U[3] / ro;
+						double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
+						double P = (gamma - 1.0) * ro * e;
+
+						//Write to file
+						ofs<<x<<" ";
+						ofs<<y<<" ";
+						ofs<<z<<" ";
+						ofs<<ro<<" ";
+						ofs<<u<<" ";
+						ofs<<v<<" ";
+						ofs<<w<<" ";
+						ofs<<P<<" ";
+						ofs<<e<<" ";
+						ofs<<std::endl;
+					};
 				};
 			};
 		};
-
-		ofs.close();
+		std::cout << "Solution is written\n";	
 	};
 
 	//Run calculation
