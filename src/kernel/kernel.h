@@ -186,6 +186,10 @@ public:
 		jMax = (pManager->rankCart[1]+1) * nlocalY + dummyCellLayersY - 1;
 		kMin = pManager->rankCart[2] * nlocalZ + dummyCellLayersZ;
 		kMax = (pManager->rankCart[2]+1) * nlocalZ + dummyCellLayersZ - 1;
+		//std::cout<<rank<<" "<<iMin<<" "<<iMax<<"\n";
+		//exit(0);
+		pManager->Barrier();
+
 		double Lx = config.LX;
 		double Ly = config.LY;
 		double Lz = config.LZ;		
@@ -266,7 +270,6 @@ public:
 			xLeftBC->loadConfiguration(config.xLeftBoundary);
 			xRightBC->loadConfiguration(config.xRightBoundary);
 		};
-
 		if ((!gridInfo.IsPeriodicY) && (nDims > 1)) {
 			yLeftBC = std::unique_ptr<BCGeneral>(new BCGeneral());
 			yRightBC = std::unique_ptr<BCGeneral>(new BCGeneral());
@@ -317,43 +320,187 @@ public:
 		int j = 0;
 		int k = 0;
 
+		//Get parallel run info
+		MPI_Comm comm = pManager->getComm();		
+
 		//Buffers
-		std::vector<double> bufferToSendRight;
-		std::vector<double> bufferToSendLeft;
-		std::vector<double> bufferToRecvRight;
-		std::vector<double> bufferToRecvLeft;
+		std::vector<double> bufferToRecv;
+		std::vector<double> bufferToSend;		
 		int rankLeft; // if equals -1 no left neighbour
 		int rankRight; // if equals -1 no right neighbour
 		
-		//X direction exchange
-		for (j = jMin; j <= jMax; j++) {
-			for (k = kMin; k <= kMax; k++) {
-				for (int layer = 1; layer <= dummyCellLayersX; layer++) {
-					// minus direction
-					i = iMin - layer; // layer index					
-					if ((pManager->rankCart[0] == 0) && (IsPeriodicX)) {
-						int iMirror = nX + dummyCellLayersX - layer; // mirror cell index
-						int sI = getSerialIndexLocal(i, j, k);
-						int sIMirror = getSerialIndexLocal(iMirror, j, k);
-						for (int nv = 0; nv < nVariables; nv++) {
-							values[sI * nVariables + nv] = values[sIMirror * nVariables + nv]; //TO DO serial version for now	
-						};
-					};
+		//X direction exchange		
 
-					// plus direction		
-					i = iMax + layer; // layer index					
-					if ((pManager->rankCart[0] == pManager->dimsCart[0] - 1) && (IsPeriodicX)) {
-						int iMirror =  dummyCellLayersX + layer - 1; // mirror cell index
-						int sI = getSerialIndexLocal(i, j, k);
-						int sIMirror = getSerialIndexLocal(iMirror, j, k);
-						for (int nv = 0; nv < nVariables; nv++) {
-							values[sI * nVariables + nv] = values[sIMirror * nVariables + nv]; //TO DO serial version for now	
-						};
+		//Allocate buffers
+		int layerSize = nlocalY * nlocalZ;
+		bufferToSend.resize(layerSize * nVariables);
+		bufferToRecv.resize(layerSize * nVariables);				
+
+		//Determine neighbours' ranks
+		int rankL = pManager->GetRankByCartesianIndexShift(-1, 0, 0);
+		int rankR = pManager->GetRankByCartesianIndexShift(+1, 0, 0);
+
+		for (int layer = 1; layer <= dummyCellLayersX; layer++) {
+			// Minus direction exchange
+			int nSend = 0; //
+			int nRecv = 0; //
+			int iSend = iMin + layer - 1; // layer index to send
+			int iRecv = iMax + layer; // layer index to recv
+
+			// Prepare values to send
+			if (rankL != -1) {
+				nSend = layerSize * nVariables;
+				for (j = jMin; j <= jMax; j++) {
+					for (k = kMin; k <= kMax; k++) {
+						int idxBuffer = (j + k * nY); //Exclude x index
+						int idxValues = getSerialIndexLocal(iSend, j, k);
+						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
 					};
 				};
 			};
-		};
-	};
+
+			//Determine recive number
+			if (rankR != -1) {
+				nRecv = layerSize * nVariables;				
+			};
+
+			//Make exchange
+			pManager->SendRecvDouble(comm, rankL, rankR, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
+
+			//Write to recieving layer of dummy cells
+			for (j = jMin; j <= jMax; j++) {
+				for (k = kMin; k <= kMax; k++) {
+					int idxBuffer = (j + k * nY); //Exclude x index
+					int idxValues = getSerialIndexLocal(iRecv, j, k);
+					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
+				};
+			};
+
+			// Plus direction exchange
+			nSend = 0; //
+			nRecv = 0; //
+			iSend = iMax - layer; // layer index to send
+			iRecv = iMin - layer; // layer index to recv
+
+			// Prepare values to send
+			if (rankR != -1) {
+				nSend = layerSize * nVariables;
+				for (j = jMin; j <= jMax; j++) {
+					for (k = kMin; k <= kMax; k++) {
+						int idxBuffer = (j + k * nY); //Exclude x index
+						int idxValues = getSerialIndexLocal(iSend, j, k);
+						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
+					};
+				};
+			};
+
+			//Determine recive number
+			if (rankL != -1) {
+				nRecv = layerSize * nVariables;				
+			};
+
+			//Make exchange
+			pManager->SendRecvDouble(comm, rankR, rankL, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
+
+			//Write to recieving layer of dummy cells
+			for (j = jMin; j <= jMax; j++) {
+				for (k = kMin; k <= kMax; k++) {
+					int idxBuffer = (j + k * nY); //Exclude x index
+					int idxValues = getSerialIndexLocal(iRecv, j, k);
+					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
+				};
+			};
+
+		}; // 
+
+		//
+		if (nDims < 2) return;
+		//Y direction exchange		
+
+		//Allocate buffers
+		layerSize = nlocalX * nlocalZ;
+		bufferToSend.resize(layerSize * nVariables);
+		bufferToRecv.resize(layerSize * nVariables);				
+
+		//Determine neighbours' ranks
+		rankL = pManager->GetRankByCartesianIndexShift(0, -1, 0);
+		rankR = pManager->GetRankByCartesianIndexShift(0, +1, 0);
+
+		for (int layer = 1; layer <= dummyCellLayersY; layer++) {
+			// Minus direction exchange
+			int nSend = 0; //
+			int nRecv = 0; //
+			int jSend = jMin + layer - 1; // layer index to send
+			int jRecv = jMax + layer; // layer index to recv
+
+			// Prepare values to send
+			if (rankL != -1) {
+				nSend = layerSize * nVariables;
+				for (i = iMin; i <= iMax; i++) {
+					for (k = kMin; k <= kMax; k++) {
+						int idxBuffer = (i + k * nX); //Exclude x index
+						int idxValues = getSerialIndexLocal(i, jSend, k);
+						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
+					};
+				};
+			};
+
+			//Determine recive number
+			if (rankR != -1) {
+				nRecv = layerSize * nVariables;				
+			};
+
+			//Make exchange
+			pManager->SendRecvDouble(comm, rankL, rankR, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
+
+			//Write to recieving layer of dummy cells
+			for (i = iMin; i <= iMax; i++) {
+				for (k = kMin; k <= kMax; k++) {
+					int idxBuffer = (i + k * nX); //Exclude x index
+					int idxValues = getSerialIndexLocal(i, jRecv, k);
+					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
+				};
+			};
+
+			// Plus direction exchange
+			nSend = 0; //
+			nRecv = 0; //
+			jSend = jMax - layer; // layer index to send
+			jRecv = jMin - layer; // layer index to recv
+
+			// Prepare values to send
+			if (rankR != -1) {
+				nSend = layerSize * nVariables;
+				for (i = iMin; i <= iMax; i++) {
+					for (k = kMin; k <= kMax; k++) {
+						int idxBuffer = (i + k * nX); //Exclude x index
+						int idxValues = getSerialIndexLocal(i, jSend, k);
+						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
+					};
+				};
+			};
+
+			//Determine recive number
+			if (rankL != -1) {
+				nRecv = layerSize * nVariables;				
+			};
+
+			//Make exchange
+			pManager->SendRecvDouble(comm, rankR, rankL, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
+
+			//Write to recieving layer of dummy cells
+			for (i = iMin; i <= iMax; i++) {
+				for (k = kMin; k <= kMax; k++) {
+					int idxBuffer = (i + k * nX); //Exclude x index
+					int idxValues = getSerialIndexLocal(i, jRecv, k);
+					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
+				};
+			};
+
+		}; // 
+
+
+	}; // function
 
 	//Compute dummy cell values as result of boundary conditions and interprocessor exchange communication
 	void ComputeDummyCellValues() {
@@ -370,7 +517,7 @@ public:
 		Vector faceNormalR;
 		Vector faceCenter;
 		Vector cellCenter;
-	
+		
 		//X direction		
 		faceNormalL = Vector(-1.0, 0.0, 0.0);
 		faceNormalR = Vector(1.0, 0.0, 0.0);
@@ -468,12 +615,30 @@ public:
 
 	};
 
+	//Gather 
+	//void GatherField(std::vector<double> result, std::vector<double> local, std::function<double(double *)> func) {
+	//	if (pManager->IsMaster()) {
+	//	for (int i = iMin; i <= iMax; i++) {
+	//		for (int j = jMin; j <= jMax; j++) {
+	//			for (int k = kMin; k <= kMax; k++) {
+	//				//Obtain cell data
+	//				int indexGlobal = getSerialIndexGlobal(i, j, k);
+	//				int indexLocal = getSerialIndexLocal(i, j, k);
+	//				double* U = getCellValues(i,j,k);
+	//				double value = func(U);					
+	//			};
+	//		};
+	//	};
+	//};
+
 	//Save solution
 	void SaveSolution(std::string fname) {
-		std::ofstream ofs(fname);
-		if(nDims==1)
+		std::ofstream ofs;
+
 		{
 			//Header
+		if (pManager->IsMaster()) {
+			ofs.open(fname, std::ios_base::out);
 			ofs<<"VARIABLES = ";
 			ofs<<"\""<<"X"<<"\" ";
 			ofs<<"\""<<"ro"<<"\" ";
@@ -481,34 +646,66 @@ public:
 			ofs<<"\""<<"P"<<"\" ";
 			ofs<<"\""<<"e"<<"\" ";
 			ofs<<std::endl;
+		};
 
-			//Solution
-			for (int i = iMin; i <= iMax; i++) {
-				for (int j = jMin; j <= jMax; j++) {
-					for (int k = kMin; k <= kMax; k++) {
-						//Obtain cell data
-						double x = CoordinateX[i];
-						double y = CoordinateY[j];
-						double z = CoordinateZ[k];
-						double* U = getCellValues(i,j,k);
-						double ro = U[0];
-						double u = U[1] / ro;
-						double v = U[2] / ro;
-						double w = U[3] / ro;
-						double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
-						double P = (gamma - 1.0) * ro * e;
+		//Send solution to master
+		if (!pManager->IsMaster()) {			
+			MPI_Send(&values.front(), values.size(), MPI_LONG_DOUBLE, 0, 0, pManager->_commCart);
+		};
 
-						//Write to file
-						ofs<<x<<" ";
-						ofs<<ro<<" ";
-						ofs<<u<<" ";
-						ofs<<P<<" ";
-						ofs<<e<<" ";
-						ofs<<std::endl;
-					};
-				};
-			};
-			ofs.close();
+		//On master output each part
+		if (pManager->IsMaster()) {
+			std::vector<double> recvBuff;			
+			for (int rI = 0; rI < pManager->dimsCart[0]; rI++) {
+				for (int rJ = 0; rJ < pManager->dimsCart[1]; rJ++) {
+					for (int rK = 0; rK < pManager->dimsCart[2]; rK++) {
+						if ((rI == pManager->rankCart[0]) && (rJ == pManager->rankCart[1]) && (rK == pManager->rankCart[2])) {
+							//Do not recieve
+						} else {
+							//Recieve
+							recvBuff.resize(values.size());
+							int rank = pManager->GetRankByCartesianIndex(rI, rJ, rK);
+							MPI_Status status;
+							MPI_Recv(&recvBuff.front(), values.size(), MPI_LONG_DOUBLE, rank, 0, pManager->_commCart, &status);
+						};
+						
+						//Solution output
+						for (int i = iMin; i <= iMax; i++) {
+							for (int j = jMin; j <= jMax; j++) {
+								for (int k = kMin; k <= kMax; k++) {
+									//Obtain cell data
+									double x = CoordinateX[i];
+									double y = CoordinateY[j];
+									double z = CoordinateZ[k];
+									double* U = getCellValues(i,j,k);
+									double ro = U[0];
+									double u = U[1] / ro;
+									double v = U[2] / ro;
+									double w = U[3] / ro;
+									double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
+									double P = (gamma - 1.0) * ro * e;
+
+									//Write to file
+									ofs<<x<<" ";
+									ofs<<ro<<" ";
+									ofs<<u<<" ";
+									ofs<<P<<" ";
+									ofs<<e<<" ";
+									ofs<<std::endl;
+								};
+							};
+						}; // Solution output
+					}; // for rK
+				}; // for rJ
+			}; // for rI
+
+		};// if	
+
+		//Gather solution
+		if (pManager->IsMaster()) ofs.close();
+
+		//Sync
+		pManager->Barrier();
 		};
 
 		//2D tecplot style
