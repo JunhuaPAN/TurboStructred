@@ -89,8 +89,8 @@ int main(int argc, char *argv[])
 	params.roL = 1.0;
 	params.PL = 1.0;
 	params.uL = 0.0;
-	params.roR = 0.1;
-	params.PR = 0.125;
+	params.roR = 0.125;
+	params.PR = 0.1;
 	params.uR = 0.0;
 	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
 	kernel->SetInitialConditions(initD);
