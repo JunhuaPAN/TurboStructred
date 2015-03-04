@@ -547,6 +547,9 @@ public:
 
 	
 public:
+	//Constuctor inherited
+	HybridFVM(int* argc, char **argv[]) : Kernel(argc, argv) {};
+
 	//Method parameters
 	double CFL;
 

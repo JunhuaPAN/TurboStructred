@@ -11,10 +11,12 @@
 #include <fstream>
 
 #include "KernelConfiguration.h"
+#include "ParallelManager.h"
 #include "utility\Vector.h"
 #include "utility\Matrix.h"
 #include "utility\Timer.h"
 #include "RiemannSolvers\RoeSolverPerfectGasEOS.h"
+#include "BoundaryConditions/BCGeneral.h"
 
 //Step info
 class StepInfo {
@@ -34,9 +36,8 @@ public:
 	virtual void IterationStep() = 0; // main function
 
 	//Parallel run information
+	std::unique_ptr<ParallelManager> pManager;
 	int rank; //Rank of process
-	int rankCart[3]; //Position of process in cartesian mpi grid
-	int dimsCart[3]; //Dimensions of cartesian mpi grid
 	int iMin; 
 	int iMax;
 	int jMin;
@@ -71,6 +72,7 @@ public:
 	std::vector<double> CoordinateX; //Cell center coordinates
 	std::vector<double> CoordinateY; //Cell center coordinates
 	std::vector<double> CoordinateZ; //Cell center coordinates
+
 	//int dummyCellLayers; //number of dummy cell layers
 	int dummyCellLayersX;
 	int dummyCellLayersY;
@@ -79,6 +81,10 @@ public:
 	//Gas model information
 	int nVariables; // number of conservative variables
 	double gamma;
+
+	//Boundary conditions
+	std::unique_ptr<BCGeneral> xLeftBC;
+	std::unique_ptr<BCGeneral> xRightBC;
 
 	//Solution data
 	std::vector<double> values;	
@@ -108,8 +114,7 @@ public:
 	int SaveSolutionSnapshotIterations;
 
 	//Constructor
-	Kernel() {
-	};
+	Kernel(int* argc, char **argv[]) : pManager(new ParallelManager(argc, argv)) { };
 
 	//Set initial conditions
 	void SetInitialConditions(std::function<std::vector<double>(Vector r)> initF) {		
@@ -130,15 +135,7 @@ public:
 
 	//Initialize kernel
 	virtual void Init(KernelConfiguration& config) {
-		//Initialize MPI
-		rank = 0;
-		rankCart[0] = 0;
-		rankCart[1] = 0;
-		rankCart[2] = 0;
-		dimsCart[0] = 1;
-		dimsCart[1] = 1;
-		dimsCart[2] = 1;
-	
+		//Initialize MPI		
 		nDims = config.nDims;
 
 		//Initialize local grid
@@ -162,16 +159,27 @@ public:
 			IsPeriodicZ = config.isPeriodicZ;
 			dummyCellLayersZ = dummyCellLayers;
 		};
+
+		//Initialize cartezian topology
+		StructuredGridInfo gridInfo;
+		gridInfo.nDims = nDims;
+		gridInfo.nX = nX;
+		gridInfo.nY = nY;
+		gridInfo.nZ = nZ;
+		gridInfo.IsPeriodicX = IsPeriodicX;
+		gridInfo.IsPeriodicY = IsPeriodicY;
+		gridInfo.IsPeriodicZ = IsPeriodicZ;
+		pManager->InitCartesianTopology(gridInfo);
 		
-		nlocalX = nX / dimsCart[0];
-		nlocalY = nY / dimsCart[1];
-		nlocalZ = nZ / dimsCart[2];	
-		iMin = rankCart[0] * nlocalX + dummyCellLayersX;
-		iMax = (rankCart[0]+1) * nlocalX + dummyCellLayersX - 1;
-		jMin = rankCart[1] * nlocalY + dummyCellLayersY;
-		jMax = (rankCart[1]+1) * nlocalY + dummyCellLayersY - 1;
-		kMin = rankCart[2] * nlocalZ + dummyCellLayersZ;
-		kMax = (rankCart[2]+1) * nlocalZ + dummyCellLayersZ - 1;
+		nlocalX = nX / pManager->dimsCart[0];
+		nlocalY = nY / pManager->dimsCart[1];
+		nlocalZ = nZ / pManager->dimsCart[2];	
+		iMin = pManager->rankCart[0] * nlocalX + dummyCellLayersX;
+		iMax = (pManager->rankCart[0]+1) * nlocalX + dummyCellLayersX - 1;
+		jMin = pManager->rankCart[1] * nlocalY + dummyCellLayersY;
+		jMax = (pManager->rankCart[1]+1) * nlocalY + dummyCellLayersY - 1;
+		kMin = pManager->rankCart[2] * nlocalZ + dummyCellLayersZ;
+		kMax = (pManager->rankCart[2]+1) * nlocalZ + dummyCellLayersZ - 1;
 		double Lx = config.LX;
 		double Ly = config.LY;
 		double Lz = config.LZ;		
@@ -195,7 +203,6 @@ public:
 		xMax = xMax + (dummyCellLayersX * dx) - 0.5 * dx;
 		for (int i = iMin - dummyCellLayersX; i <= iMax + dummyCellLayersX; i++) {
 			double x = xMin + (xMax - xMin) * 1.0 * i / (nlocalXAll - 1);
-			double test = (1.0 * i / nlocalXAll);
 			CoordinateX[i] = x;
 		};		
 
@@ -244,7 +251,12 @@ public:
 		stepInfo.NextSnapshotTime = stepInfo.Time;
 
 		//Initialize boundary conditions
-		//TO DO
+		if (!gridInfo.IsPeriodicX) {
+			xLeftBC = std::unique_ptr<BCGeneral>(new BCGeneral());
+			xRightBC = std::unique_ptr<BCGeneral>(new BCGeneral());
+			xLeftBC->loadConfiguration(config.xLeftBoundary);
+			xRightBC->loadConfiguration(config.xRightBoundary);
+		};
 
 	};
 
@@ -282,6 +294,14 @@ public:
 		int i = 0;
 		int j = 0;
 		int k = 0;
+
+		//Buffers
+		std::vector<double> bufferToSendRight;
+		std::vector<double> bufferToSendLeft;
+		std::vector<double> bufferToRecvRight;
+		std::vector<double> bufferToRecvLeft;
+		int rankLeft; // if equals -1 no left neighbour
+		int rankRight; // if equals -1 no right neighbour
 		
 		//X direction exchange
 		for (j = jMin; j <= jMax; j++) {
@@ -289,7 +309,7 @@ public:
 				for (int layer = 1; layer <= dummyCellLayersX; layer++) {
 					// minus direction
 					i = iMin - layer; // layer index					
-					if ((rankCart[0] == 0) && (IsPeriodicX)) {
+					if ((pManager->rankCart[0] == 0) && (IsPeriodicX)) {
 						int iMirror = nX + dummyCellLayersX - layer; // mirror cell index
 						int sI = getSerialIndexLocal(i, j, k);
 						int sIMirror = getSerialIndexLocal(iMirror, j, k);
@@ -300,7 +320,7 @@ public:
 
 					// plus direction		
 					i = iMax + layer; // layer index					
-					if ((rankCart[0] == dimsCart[0] - 1) && (IsPeriodicX)) {
+					if ((pManager->rankCart[0] == pManager->dimsCart[0] - 1) && (IsPeriodicX)) {
 						int iMirror =  dummyCellLayersX + layer - 1; // mirror cell index
 						int sI = getSerialIndexLocal(i, j, k);
 						int sIMirror = getSerialIndexLocal(iMirror, j, k);
@@ -323,13 +343,56 @@ public:
 		//Interprocessor exchange
 		ExchangeValues();
 
+		//Current face and cell information
+		Vector faceNormalL;
+		Vector faceNormalR;
+		Vector faceCenter;
+		Vector cellCenter;
+
+		
+
 		//X direction		
+		faceNormalL = Vector(-1.0, 0.0, 0.0);
+		faceNormalR = Vector(1.0, 0.0, 0.0);
 		for (j = jMin; j <= jMax; j++) {
-			for (k = kMin; k <= kMax; k++) {
+			for (k = kMin; k <= kMax; k++) {				
+				//Inner cell
+				cellCenter.y = CoordinateY[j];
+				cellCenter.z = CoordinateZ[k];
+
+				//And face
+				faceCenter.y = CoordinateY[j];
+				faceCenter.z = CoordinateZ[k];
+
 				for (int layer = 1; layer <= dummyCellLayersX; layer++) {
-					i = iMin - layer; // layer index
 					if (!IsPeriodicX) {
-						//Apply boundary conditions
+						//Left border
+						i = iMin - layer; // layer index
+						int iIn = iMin + layer - 1; // opposite index
+						cellCenter.x = CoordinateX[iIn];
+						faceCenter.x = (CoordinateX[iIn] + CoordinateX[i]) / 2.0;
+						int idx = getSerialIndexLocal(i, j, k);
+						int idxIn = getSerialIndexLocal(iIn, j, k);
+					
+						//Apply left boundary conditions						
+						std::vector<double> dValues = xLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
+						for (int nv = 0; nv < nVariables; nv++) {
+							values[idx * nVariables + nv] = dValues[nv];
+						};
+
+						//Right border
+						i = iMax + layer; // layer index
+						iIn = iMax - layer + 1; // opposite index
+						cellCenter.x = CoordinateX[iIn];
+						faceCenter.x = (CoordinateX[iIn] + CoordinateX[i]) / 2.0;
+						idx = getSerialIndexLocal(i, j, k);
+						idxIn = getSerialIndexLocal(iIn, j, k);
+					
+						//Apply right boundary conditions						
+						dValues = xRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
+						for (int nv = 0; nv < nVariables; nv++) {
+							values[idx * nVariables + nv] = dValues[nv];
+						};
 					};
 				};
 			};
@@ -391,7 +454,7 @@ public:
 		workTimer.Start();
 
 		//Calc loop		
-		if (rank == 0) {
+		if (pManager->IsMaster()) {
 			std::cout<<"Calculation started!\n";
 		};
 
@@ -403,7 +466,7 @@ public:
 			IterationStep();
 
 			//Output step information						
-			if (rank == 0) {
+			if (pManager->IsMaster()) {
 				std::cout<<"Iteration = "<<stepInfo.Iteration<<"; Total time = "<< stepInfo.Time << "; Time step = " <<stepInfo.TimeStep << "; RMSrou = "<<stepInfo.Residual[1]<<"\n";			
 			};			
 
@@ -435,24 +498,25 @@ public:
 
 			//Convergence criteria
 			if (stepInfo.Iteration == MaxIteration) {
-				if (rank == 0) {
+				if (pManager->IsMaster()) {
 					std::cout<<"Maximal number of iterations reached.\n";
 				};
 				break;
 			};
 
 			if (stepInfo.Time >= MaxTime) {
-				if (rank == 0) {
+				if (pManager->IsMaster()) {
 					std::cout<<"Maximal time reached.\n";
 				};				
 				break;
 			};
 
-			//Synchronize			
+			//Synchronize
+			pManager->Barrier();
 		};
 
 		//Synchronize
-		if (rank == 0) {
+		if (pManager->IsMaster()) {
 			std::cout<<"Calculation finished!\n";
 		};
 

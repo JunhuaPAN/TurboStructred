@@ -14,9 +14,13 @@ class ExplicitRungeKuttaFVM : public Kernel {
 	//Current riemann problem solver
 	std::unique_ptr<RiemannSolver> _riemannSolver;
 public:
+	//Inherit constructor
+	//using Kernel::Kernel;
+	ExplicitRungeKuttaFVM(int* argc, char **argv[]) : Kernel(argc, argv) {};
+
 	//Method parameters
 	int RungeKuttaOrder;
-	double CFL;
+	double CFL;	
 
 	//Additional data
 	std::vector<double> spectralRadius;		//array for storing spectral radiuses
