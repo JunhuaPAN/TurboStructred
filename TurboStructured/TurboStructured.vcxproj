@@ -22,8 +22,11 @@
     <ClCompile Include="..\src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\src\BoundaryConditions\BCGeneral.h" />
+    <ClInclude Include="..\src\BoundaryConditions\BoundaryCondition.h" />
     <ClInclude Include="..\src\kernel\kernel.h" />
     <ClInclude Include="..\src\kernel\KernelConfiguration.h" />
+    <ClInclude Include="..\src\kernel\ParallelManager.h" />
     <ClInclude Include="..\src\Methods\ExplicitRungeKuttaFVM.h" />
     <ClInclude Include="..\src\Methods\HybridFVM.h" />
     <ClInclude Include="..\src\Methods\Method.h" />
@@ -97,10 +100,12 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\src;..\src\kernel;..\src\utility;..\src\RiemannSolvers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src;..\src\kernel;..\src\utility;..\src\RiemannSolvers;..\libs\MicrosoftMPI\Inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>..\libs\MicrosoftMPI\Lib\amd64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>msmpi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -123,12 +128,14 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\src;..\src\kernel;..\src\utility;..\src\RiemannSolvers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src;..\src\kernel;..\src\utility;..\src\RiemannSolvers;..\libs\MicrosoftMPI\Inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>..\libs\MicrosoftMPI\Lib\amd64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>msmpi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

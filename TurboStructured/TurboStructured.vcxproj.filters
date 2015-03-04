@@ -22,6 +22,9 @@
     <Filter Include="Header Files\Methods">
       <UniqueIdentifier>{bff737a7-692a-41a6-8413-d08d878710e6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\BoundaryConditions">
+      <UniqueIdentifier>{8d884abd-430d-4fc3-ad48-6cbaa90c1809}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -64,6 +67,15 @@
     </ClInclude>
     <ClInclude Include="..\src\Methods\MethodConfiguration.h">
       <Filter>Header Files\Methods</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\BoundaryConditions\BoundaryCondition.h">
+      <Filter>Header Files\BoundaryConditions</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\kernel\ParallelManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\BoundaryConditions\BCGeneral.h">
+      <Filter>Header Files\BoundaryConditions</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

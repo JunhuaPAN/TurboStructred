@@ -11,7 +11,8 @@ enum class BoundaryConditionType {
 
 class BoundaryConditionConfiguration {
 public:
-	BoundaryConditionType BCType;	
+	BoundaryConditionType BCType;
+	double Gamma;
 };
 
 //Class that manages all configurable parameters

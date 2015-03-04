@@ -49,28 +49,38 @@ int main(int argc, char *argv[])
 	//main function
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 2;
+	conf.nX = 1000;
 	conf.nY = 1;
-	conf.LX = 2.0;
-	conf.LY = 1.0;
-	conf.isPeriodicX = true;
+	conf.LX = 1.0;
+	conf.LY = 1.0;	
+	conf.isPeriodicX = false;
 	conf.isPeriodicY = true;
 
 	conf.gamma = 1.4;
 	conf.nVariables = 5;
+
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xLeftBoundary.Gamma = 1.4;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xRightBoundary.Gamma = 1.4;
 
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 
 	conf.MaxTime = 0.2;
-	conf.MaxIteration = 100;
+	conf.MaxIteration = 1000000;
 	conf.SaveSolutionSnapshotTime = 0.1;
-	conf.SaveSolutionSnapshotIterations = 1;
+	conf.SaveSolutionSnapshotIterations = 0;
 
 	//init kernel
-	//std::unique_ptr<Kernel> kernel(new ExplicitRungeKuttaFVM());
-	std::unique_ptr<Kernel> kernel(new HybridFVM());
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
+		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
+	};	
 	kernel->Init(conf);
 
 	// initial conditions
@@ -82,7 +92,7 @@ int main(int argc, char *argv[])
 	params.roR = 0.1;
 	params.PR = 0.125;
 	params.uR = 0.0;
-	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 1.0, params);
+	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
 	kernel->SetInitialConditions(initD);
 
 	//save solution
