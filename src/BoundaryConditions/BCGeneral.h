@@ -83,17 +83,17 @@ public:
 		double u = values[1]/values[0];
 		double v = values[2]/values[0];
 		double w = values[3]/values[0];
-		double E = values[4]/values[0]; 
+		double E = values[4]/values[0];
 		double roe = ro*E - ro*(u*u + v*v + w*w)/2.0;
 
 		//Get pressure and interpolate internal energy and other variables
 		double P = (gamma - 1.0) * roe;
-		double PDummy = boundaryConditions[BoundaryVariableType::Pressure].GetDummyValue(P, faceNormal, faceCenter, cellCenter); 
+		double PDummy = boundaryConditions[BoundaryVariableType::Pressure].GetDummyValue(P, faceNormal, faceCenter, cellCenter);
 		double roDummy = boundaryConditions[BoundaryVariableType::Density].GetDummyValue(ro, faceNormal, faceCenter, cellCenter); 
-		double uDummy = boundaryConditions[BoundaryVariableType::VelocityX].GetDummyValue(u, faceNormal, faceCenter, cellCenter); 
-		double vDummy = boundaryConditions[BoundaryVariableType::VelocityY].GetDummyValue(v, faceNormal, faceCenter, cellCenter); 
-		double wDummy = boundaryConditions[BoundaryVariableType::VelocityZ].GetDummyValue(w, faceNormal, faceCenter, cellCenter); 
-		double roeDummy = PDummy / (gamma - 1); 
+		double uDummy = boundaryConditions[BoundaryVariableType::VelocityX].GetDummyValue(u, faceNormal, faceCenter, cellCenter);
+		double vDummy = boundaryConditions[BoundaryVariableType::VelocityY].GetDummyValue(v, faceNormal, faceCenter, cellCenter);
+		double wDummy = boundaryConditions[BoundaryVariableType::VelocityZ].GetDummyValue(w, faceNormal, faceCenter, cellCenter);
+		double roeDummy = PDummy / (gamma - 1);
 
 		std::vector<double> res(5);	
 		res[0] = roDummy;

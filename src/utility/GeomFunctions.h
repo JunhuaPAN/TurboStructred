@@ -62,7 +62,7 @@ Vector ComputeGradientByPoints(int ndims, Vector point, double value, const std:
 	//Solve problem
 	dgelsy(&m, &n, &nrhs, &a[0], &lda, &b[0], &ldb, &jpvt[0], &rcond, &rank, &work[0], &lwork, &_info);
 	if (_info != 0) throw std::exception("Could not solve for gradient");
-	if (rank != ndims) throw std::exception("Could not solve for gradient due to rank deficiency");
+	if (rank < ndims) throw std::exception("Could not solve for gradient due to rank deficiency");
 	grad = Vector(b[0], 0, 0);
 	if (ndims > 1) grad.y = b[1];
 	if (ndims > 2) grad.z = b[2];

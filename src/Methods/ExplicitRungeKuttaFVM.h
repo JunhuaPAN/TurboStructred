@@ -48,7 +48,12 @@ public:
 		RungeKuttaOrder = config.RungeKuttaOrder;
 		
 		//Allocate memory for values and residual
-		spectralRadius.resize(nCellsLocal);		
+		spectralRadius.resize(nCellsLocal);	
+
+		std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";
+		std::cout.flush();
+		//Sync
+		pManager->Barrier();
 	};
 
 	//Compute gradient of given function in given cell
@@ -59,6 +64,8 @@ public:
 		double value = func(getCellValues(i, j, k));
 
 		//Add neighbours
+		points.clear();
+		pointValues.clear();
 		points.push_back( Vector(CoordinateX[i-1], CoordinateY[j], CoordinateZ[k]) );
 		pointValues.push_back( func(getCellValues(i-1, j, k)) );
 		points.push_back( Vector(CoordinateX[i+1], CoordinateY[j], CoordinateZ[k]) );
@@ -75,7 +82,15 @@ public:
 			points.push_back( Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k+1]) );
 			pointValues.push_back( func(getCellValues(i, j, k+1)) );
 		};
-		Vector grad = ComputeGradientByPoints(nDims, center, value, points, pointValues);
+
+		Vector grad = Vector(0,0,0);
+		try {
+			grad = ComputeGradientByPoints(nDims, center, value, points, pointValues);
+		}
+		catch (std::exception exc) {
+			std::cout<<exc.what()<<"\n";
+			std::cout.flush();
+		};
 		return grad;
 	};
 
@@ -106,12 +121,26 @@ public:
 			};
 		};
 
+		std::cout<<"rank = "<<pManager->getRank()<<", Gradients calculated inside domain\n";
+		std::cout.flush();
+		//Sync
+		pManager->Barrier();
 		
 		//Interprocessor exchange
 		ExchangeGradients();
 
+		std::cout<<"rank = "<<pManager->getRank()<<", Gradients exchange executed\n";
+		std::cout.flush();
+		//Sync
+		pManager->Barrier();
+
 		//Boundaries
 		ComputeDummyCellGradients();
+
+		std::cout<<"rank = "<<pManager->getRank()<<", Gradients calculated in dummy cells\n";
+		std::cout.flush();
+		//Sync
+		pManager->Barrier();
 	};
 
 	//Exchange gradient values between processors
@@ -124,8 +153,7 @@ public:
 		//Index variables
 		int i = 0;
 		int j = 0;
-		int k = 0;
-		
+		int k = 0;		
 
 		//Current face and cell information
 		Vector faceNormalL;
@@ -138,7 +166,7 @@ public:
 		auto getv = [](double *U) { return U[2]/U[0]; };
 		auto getw = [](double *U) { return U[3]/U[0]; };
 		
-		//X direction		
+		//X direction
 		faceNormalL = Vector(-1.0, 0.0, 0.0);
 		faceNormalR = Vector(1.0, 0.0, 0.0);
 		if (!IsPeriodicX) {
@@ -197,6 +225,11 @@ public:
 			};
 		}; //X direction
 
+		std::cout<<"rank = "<<pManager->getRank()<<", Gradients dummy cells X-direction calculated\n";
+		std::cout.flush();
+		//Sync
+		pManager->Barrier();
+
 		if (nDims < 2) return;
 		//Y direction		
 		faceNormalL = Vector(0.0, -1.0, 0.0);
@@ -233,7 +266,7 @@ public:
 							gradientVelocityZ[idx] = dGrad;
 						};
 
-						if (pManager->rankCart[1] == pManager->dimsCart[1]-1) {
+						if (pManager->rankCart[1] == pManager->dimsCart[1] - 1.0) {
 							//Right border
 							j = jMax + layer; // layer index
 							int jIn = jMax - layer + 1; // opposite index
@@ -256,6 +289,11 @@ public:
 				};
 			};
 		}; //Y direction
+
+		std::cout<<"rank = "<<pManager->getRank()<<", Gradients dummy cells Y-direction calculated\n";
+		std::cout.flush();
+		//Sync
+		pManager->Barrier();
 	};
 
 	std::vector<double> ComputeViscousFlux(int sL, int sR, double *UL, double *UR, Vector fn) {
@@ -310,7 +348,7 @@ public:
 	//Compute residual
 	void ComputeResidual(const std::vector<double> values, std::vector<double>& residual, std::vector<double>& spectralRadius) {
 		//Compute gradients
-		ComputeGradients();
+		//ComputeGradients();
 
 		//  init spectral radius storage for each cell
 		for (double& sr : spectralRadius) sr = 0; //Nullify
@@ -553,6 +591,7 @@ public:
 		}
 
 		dt = std::min(stepInfo.NextSnapshotTime - stepInfo.Time, dt);
+		dt = pManager->Min(dt);
 
 		return dt;
 	};
@@ -586,19 +625,37 @@ public:
 	};
 
 	//Explicit time step
-	virtual void IterationStep() override {			
+	virtual void IterationStep() override {	
+		std::cout<<"rank = "<<pManager->getRank()<<", Iteration started\n";
+		std::cout.flush();
+		//Sync
+		pManager->Barrier();
+
 		//Compute residual
 		ComputeResidual(values, residual, spectralRadius);
 
+		std::cout<<"rank = "<<pManager->getRank()<<", Residual calculated\n";
+		std::cout.flush();
+		//Sync
+		pManager->Barrier();
+
 		//Determine timestep
 		stepInfo.TimeStep = ComputeTimeStep(spectralRadius);
+		
+		std::cout<<"rank = "<<pManager->getRank()<<", Timestep calculated\n";
+		std::cout.flush();
+		//Sync
+		pManager->Barrier();
 
 		//Compute residuals and update solution
 		UpdateSolution(stepInfo.TimeStep);
-		
+				
 		// Update time
 		stepInfo.Time += stepInfo.TimeStep;
 		stepInfo.Iteration++;
+
+		//Sync
+		pManager->Barrier();
 	};	
 
 };

@@ -62,13 +62,12 @@ public:
 
 	void InitCartesianTopology(StructuredGridInfo info) {
 		//Simple one dimensional topology for now
-		_nDims = info.nDims;
-		rankCart[0] = _rank;
-		rankCart[1] = 0;
-		rankCart[2] = 0;
-		dimsCart[0] = 0;
+		_nDims = info.nDims;				
+		dimsCart[0] = _nProcessors; //0;
 		dimsCart[1] = 1;
+		if (_nDims > 1) dimsCart[1] = 0;		
 		dimsCart[2] = 1;
+		if (_nDims > 2) dimsCart[2] = 0;		
 		periodic[0] = info.IsPeriodicX;
 		periodic[1] = info.IsPeriodicY;
 		periodic[2] = info.IsPeriodicZ;	
@@ -88,6 +87,13 @@ public:
 
 		//Determine catezian coordinates
 		MPI_Cart_coords(_commCart, _rankCart, _nDims, rankCart);
+
+		//Debug info
+		std::cout<<"rankX = "<<rankCart[0]<<" "
+		<<"rankY = "<<rankCart[1]<<" "
+		<<"rankZ = "<<rankCart[2]<<"\n";
+		//Sync
+		Barrier();
 	};
 
 	//Wrappers for MPI functions
@@ -138,9 +144,21 @@ public:
 		return _idleDuration;
 	};
 
+	template <class PeriodType> 
+	inline double getIdleTime() {
+		//using durationType = std::chrono::duration<double, PeriodType>;
+		//return std::chrono::duration_cast<durationType>(_idleDuration).count();
+		return std::chrono::duration_cast<std::chrono::duration<double, PeriodType>>(_idleDuration).count();
+	};
+
 	//Is master node
 	inline bool IsMaster() {
 		return _rank == 0;
+	};
+
+	//Is master node in cartesian topology
+	inline bool IsMasterCart() {
+		return _rankCart == 0;
 	};
 
 	//Constructor
@@ -157,10 +175,16 @@ public:
 		MPI_Comm_rank(_comm, &_rank);
 		isInitilized = true;
 		_idleDuration = std::chrono::high_resolution_clock::duration(0);
+
+		std::cout<<"rank = "<<_rank<<", Process started.\n";
+		//Sync
+		Barrier();
 	};	
 
 	//Finilize MPI programm
 	void Finalize() {
+		std::cout<<"rank = "<<_rank<<", Process finished\n";
+		Barrier();
 		MPI_Finalize();
 		isInitilized = false;
 	};	
@@ -179,6 +203,16 @@ public:
 		int tag = 0;
 		int rank = -1;		
 		MPI_Sendrecv(sendbuf, nSend, MPI_LONG_DOUBLE, destRank, tag, recvbuf, nRecv, MPI_LONG_DOUBLE, sourceRank, tag, comm, &status); 
+	};
+
+	//Gather one integer from each process
+	void GatherCounts(int N, std::vector<int>& result) {		
+		if (IsMaster()) {			
+			result.resize(_nProcessors);
+			MPI_Gather(&N, 1, MPI_INT, &result[0], 1, MPI_INT, 0, _comm);
+		} else {
+			MPI_Gather(&N, 1, MPI_INT, NULL, 1, MPI_INT, 0, _comm);
+		};		
 	};
 };
 

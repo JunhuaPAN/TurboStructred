@@ -133,7 +133,7 @@ void RunSODTestRoe2DX(int argc, char *argv[]) {
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 
 	conf.MaxTime = 0.2;
-	conf.MaxIteration = 1000000;
+	conf.MaxIteration = 10000000;
 	conf.SaveSolutionSnapshotTime = 0.1;
 	conf.SaveSolutionSnapshotIterations = 0;
 
@@ -148,7 +148,7 @@ void RunSODTestRoe2DX(int argc, char *argv[]) {
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
 	};	
-	kernel->Init(conf);
+	kernel->Init(conf);	
 
 	// initial conditions
 	ShockTubeParameters params;
@@ -172,7 +172,7 @@ void RunSODTestRoe2DX(int argc, char *argv[]) {
 		res[4] = 1.0 / (0.4) + res[1] * res[1] / 2.0;
 		return res; 
 	};
-	kernel->SetInitialConditions(initD);
+	kernel->SetInitialConditions(initD);	
 
 	//save solution
 	kernel->SaveSolution("init.dat");

@@ -140,6 +140,11 @@ public:
 				};
 			};
 		};
+
+		std::cout<<"rank = "<<pManager->getRank()<<", Initial conditions written.\n";
+		std::cout.flush();
+		//Sync
+		pManager->Barrier();
 	};
 
 	//Initialize kernel
@@ -185,12 +190,18 @@ public:
 		nlocalZ = nZ / pManager->dimsCart[2];	
 		iMin = pManager->rankCart[0] * nlocalX + dummyCellLayersX;
 		iMax = (pManager->rankCart[0]+1) * nlocalX + dummyCellLayersX - 1;
+		std::cout<<"rank = "<<pManager->_rankCart<<", iMin = "<<iMin<<", iMax = "<<iMax<<"\n";
+		std::cout.flush();
 		jMin = pManager->rankCart[1] * nlocalY + dummyCellLayersY;
 		jMax = (pManager->rankCart[1]+1) * nlocalY + dummyCellLayersY - 1;
+		std::cout<<"rank = "<<pManager->_rankCart<<", jMin = "<<jMin<<", jMax = "<<jMax<<"\n";
+		std::cout.flush();
 		kMin = pManager->rankCart[2] * nlocalZ + dummyCellLayersZ;
-		kMax = (pManager->rankCart[2]+1) * nlocalZ + dummyCellLayersZ - 1;
-		//std::cout<<rank<<" "<<iMin<<" "<<iMax<<"\n";
-		//exit(0);
+		kMax = (pManager->rankCart[2]+1) * nlocalZ + dummyCellLayersZ - 1;		
+		std::cout<<"rank = "<<pManager->_rankCart<<", kMin = "<<kMin<<", kMax = "<<kMax<<"\n";
+		std::cout.flush();		
+
+		//Sync
 		pManager->Barrier();
 
 		double Lx = config.LX;
@@ -216,8 +227,9 @@ public:
 		xMin = xMin - (dummyCellLayersX * dx) + 0.5 * dx;
 		double xMax = Lx;
 		xMax = xMax + (dummyCellLayersX * dx) - 0.5 * dx;
-		for (int i = iMin - dummyCellLayersX; i < iMax + dummyCellLayersX; i++) {
-			double x = xMin + (xMax - xMin) * 1.0 * i / (nlocalXAll - 1);
+		//for (int i = iMin - dummyCellLayersX; i < iMax + dummyCellLayersX; i++) {
+		for (int i = 0; i < nXAll; i++) {
+			double x = xMin + (xMax - xMin) * 1.0 * i / (nXAll - 1);
 			CoordinateX[i] = x;
 		};
 		CoordinateX[iMax + dummyCellLayersX] = xMax;
@@ -228,8 +240,9 @@ public:
 		yMin = yMin - (dummyCellLayersY * dy) + 0.5 * dy;
 		double yMax = Ly;
 		yMax = yMax + (dummyCellLayersY * dy) - 0.5 * dy;
-		for (int j = jMin - dummyCellLayersY; j < jMax + dummyCellLayersY; j++) {
-			double y = yMin + (yMax - yMin) * 1.0 * j / (nlocalYAll - 1);					
+		//for (int j = jMin - dummyCellLayersY; j < jMax + dummyCellLayersY; j++) {
+		for (int j = 0; j < nY + dummyCellLayersY; j++) {
+			double y = yMin + (yMax - yMin) * 1.0 * j / (nYAll - 1);					
 			CoordinateY[j] = y;
 		};
 		CoordinateY[jMax + dummyCellLayersY] = yMax;
@@ -292,6 +305,10 @@ public:
 
 		//External forces
 		Sigma = Vector(config.Sigma, 0, 0);
+		
+		//std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";
+		//Sync
+		pManager->Barrier();
 	};
 
 	//Update solution
@@ -422,6 +439,10 @@ public:
 
 		}; // 
 
+		std::cout<<"rank = "<<pManager->getRank()<<", Exchange values X-direction executed\n";
+		//Sync
+		pManager->Barrier();
+
 		if (nDims < 2) return;
 		//Y direction exchange		
 
@@ -506,6 +527,11 @@ public:
 			};
 		};
 
+		std::cout<<"rank = "<<pManager->getRank()<<", Exchange values Y-direction executed\n";
+		std::cout.flush();
+		//Sync
+		pManager->Barrier();
+
 	}; // function
 
 	//Compute dummy cell values as result of boundary conditions and interprocessor exchange communication
@@ -575,6 +601,11 @@ public:
 			};
 		}; //X direction
 
+		std::cout<<"rank = "<<pManager->getRank()<<", Dummy values X-direction computed\n";
+		std::cout.flush();
+		//Sync
+		pManager->Barrier();
+
 		if (nDims < 2) return;
 		//Y direction		
 		faceNormalL = Vector(0.0, -1.0, 0.0);
@@ -591,7 +622,7 @@ public:
 
 				for (int layer = 1; layer <= dummyCellLayersY; layer++) {
 					if (!IsPeriodicY) {
-						if (pManager->rankCart[0] == pManager->dimsCart[0]-1) {
+						if (pManager->rankCart[1] == pManager->dimsCart[1]-1) {
 							//Left border
 							j = jMin - layer; // layer index
 							int jIn = jMin + layer - 1; // opposite index
@@ -607,7 +638,7 @@ public:
 							};
 						};
 
-						if (pManager->rankCart[0] == pManager->dimsCart[0]-1) {
+						if (pManager->rankCart[1] == pManager->dimsCart[1]-1) {
 							//Right border
 							j = jMax + layer; // layer index
 							int jIn = jMax - layer + 1; // opposite index
@@ -627,106 +658,186 @@ public:
 			};
 		}; //Y direction
 
+		std::cout<<"rank = "<<pManager->getRank()<<", Dummy values Y-direction computed\n";
+		std::cout.flush();
+		//Sync
+		pManager->Barrier();
 	};
 
-	//Gather 
-	//void GatherField(std::vector<double> result, std::vector<double> local, std::function<double(double *)> func) {
-	//	if (pManager->IsMaster()) {
-	//	for (int i = iMin; i <= iMax; i++) {
-	//		for (int j = jMin; j <= jMax; j++) {
-	//			for (int k = kMin; k <= kMax; k++) {
-	//				//Obtain cell data
-	//				int indexGlobal = getSerialIndexGlobal(i, j, k);
-	//				int indexLocal = getSerialIndexLocal(i, j, k);
-	//				double* U = getCellValues(i,j,k);
-	//				double value = func(U);					
-	//			};
-	//		};
-	//	};
-	//};
+	//Save solution parallel CGNS
+	void SaveSolutionPCGNS(std::string fname) {
+		return;
+	};
 
 	//Save solution
 	void SaveSolution(std::string fname) {
+		//Tecpol version
 		std::ofstream ofs;
 
-		if (nDims == 1)	{
-			//Header
-			if (pManager->IsMaster()) {
-				ofs.open(fname, std::ios_base::out);
-				ofs<<"VARIABLES = ";
-				ofs<<"\""<<"X"<<"\" ";
-				ofs<<"\""<<"ro"<<"\" ";
-				ofs<<"\""<<"u"<<"\" ";
-				ofs<<"\""<<"P"<<"\" ";
-				ofs<<"\""<<"e"<<"\" ";
-				ofs<<std::endl;
-			};
+		std::cout<<"rank = "<<pManager->_rankCart<<", Solution save begin\n";
+		std::cout.flush();
+		pManager->Barrier();
+		
+		//Header
+		if (pManager->IsMasterCart()) {
+			ofs.open(fname, std::ios_base::out);
+			ofs<<"VARIABLES = ";
+			ofs<<"\""<<"X"<<"\" ";
+			if (nDims > 1) ofs<<"\""<<"Y"<<"\" ";
+			if (nDims > 2) ofs<<"\""<<"Z"<<"\" ";
+			ofs<<"\""<<"ro"<<"\" ";
+			ofs<<"\""<<"u"<<"\" ";
+			if (nDims > 1) ofs<<"\""<<"v"<<"\" ";
+			if (nDims > 2) ofs<<"\""<<"w"<<"\" ";
+			ofs<<"\""<<"P"<<"\" ";
+			ofs<<"\""<<"e"<<"\" ";
+			ofs<<std::endl;
 
-			//Send solution to master
-			if (!pManager->IsMaster()) {			
-				MPI_Send(&values.front(), values.size(), MPI_LONG_DOUBLE, 0, 0, pManager->_commCart);
-			};
+			std::string zoneTitle = "Time = ";
+			ofs<<"ZONE T = \""<<zoneTitle<<stepInfo.Time<<"\", ";
 
-			//On master output each part
-			if (pManager->IsMaster()) {
-				std::vector<double> recvBuff;			
-				for (int rI = 0; rI < pManager->dimsCart[0]; rI++) {
-					for (int rJ = 0; rJ < pManager->dimsCart[1]; rJ++) {
-						for (int rK = 0; rK < pManager->dimsCart[2]; rK++) {
-							if ((rI == pManager->rankCart[0]) && (rJ == pManager->rankCart[1]) && (rK == pManager->rankCart[2])) {
-								//Do not recieve
-							} else {
-								//Recieve
-								recvBuff.resize(values.size());
-								int rank = pManager->GetRankByCartesianIndex(rI, rJ, rK);
-								MPI_Status status;
-								MPI_Recv(&recvBuff.front(), values.size(), MPI_LONG_DOUBLE, rank, 0, pManager->_commCart, &status);
-							};
-						
-							//Solution output
-							for (int i = iMin; i <= iMax; i++) {
-								for (int j = jMin; j <= jMax; j++) {
-									for (int k = kMin; k <= kMax; k++) {
-										//Obtain cell data
-										double x = CoordinateX[i];
-										double y = CoordinateY[j];
-										double z = CoordinateZ[k];
-										double* U = getCellValues(i,j,k);
-										double ro = U[0];
-										double u = U[1] / ro;
-										double v = U[2] / ro;
-										double w = U[3] / ro;
-										double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
-										double P = (gamma - 1.0) * ro * e;
-
-										//Write to file
-										ofs<<x<<" ";
-										ofs<<ro<<" ";
-										ofs<<u<<" ";
-										ofs<<P<<" ";
-										ofs<<e<<" ";
-										ofs<<std::endl;
-									};
-								};
-							}; // Solution output
-						}; // for rK
-					}; // for rJ
-				}; // for rI
-
-			};// if	
-
-			//Gather solution
-			if (pManager->IsMaster()) ofs.close();
-
-			//Sync
-			pManager->Barrier();			
+			ofs<<"I = "<<nX<<", ";
+			if (nDims > 1) ofs<<"J = "<<nY<<", ";
+			if (nDims > 2) ofs<<"K = "<<nZ<<", ";
+			ofs<<"DATAPACKING=POINT"<<std::endl;
 		};
+
+		//Obtain indexes for each process
+		std::vector<int> iMinAll(pManager->getProcessorNumber());
+		pManager->GatherCounts(iMin, iMinAll);
+		std::vector<int> iMaxAll(pManager->getProcessorNumber());
+		pManager->GatherCounts(iMax, iMaxAll);
+		std::vector<int> jMinAll(pManager->getProcessorNumber(), 0);
+		std::vector<int> jMaxAll(pManager->getProcessorNumber(), 0);
+		if (nDims > 1) {
+			pManager->GatherCounts(jMin, jMinAll);
+			pManager->GatherCounts(jMax, jMaxAll);
+		};
+		std::vector<int> kMinAll(pManager->getProcessorNumber(), 0);		
+		std::vector<int> kMaxAll(pManager->getProcessorNumber(), 0);		
+		if (nDims > 2) {
+			pManager->GatherCounts(kMin, kMinAll);
+			pManager->GatherCounts(kMax, kMaxAll);
+		};
+
+		//Send solution to master from slave nodes
+		int masterRank = 0;
+		if (!pManager->IsMasterCart()) {	
+			MPI_Send(&values.front(), values.size(), MPI_LONG_DOUBLE, masterRank, 0, pManager->_commCart);
+		};		
+	
+
+		//On master output each part
+		if (pManager->IsMasterCart()) {
+			std::cout<<"rank = "<<pManager->_rankCart<<", Solution writing begin\n";
+			std::cout.flush();			
+
+			//Output solution
+			int masterRank = 0;
+			std::vector<double> recvBuff;			
+			for (int rI = 0; rI < pManager->dimsCart[0]; rI++) {
+				for (int rJ = 0; rJ < pManager->dimsCart[1]; rJ++) {
+					for (int rK = 0; rK < pManager->dimsCart[2]; rK++) {
+						int rank = pManager->GetRankByCartesianIndex(rI, rJ, rK);
+						std::cout<<"rank = "<<rank<<", Part of solution writing begin\n";
+						std::cout.flush();
+
+						//Change view to current process
+						iMin = iMinAll[rank];
+						iMax = iMaxAll[rank];
+						if (nDims > 1) {
+							jMin = jMinAll[rank];
+							jMax = jMaxAll[rank];
+						};
+						if (nDims > 2) {
+							kMin = kMinAll[rank];
+							kMax = kMaxAll[rank];
+						};
+
+						//Determine size of buffer
+						int size = (iMax - iMin + 2 * dummyCellLayersX + 1);
+						if (nDims > 1) size *= (jMax - jMin + 2 * dummyCellLayersY + 1);
+						if (nDims > 2) size *= (kMax - kMin + 2 * dummyCellLayersZ + 1);
+
+						//Get values into buffer
+						if (rank == masterRank) {
+							//Do not recieve
+							recvBuff = std::vector<double>(values.begin(), values.end());								
+						} else {
+							//Recieve
+							recvBuff.resize(size * nVariables);								
+							MPI_Status status;
+							MPI_Recv(&recvBuff.front(), recvBuff.size(), MPI_LONG_DOUBLE, rank, 0, pManager->_commCart, &status);
+						};
+						
+						//Solution output
+						for (int i = iMin; i <= iMax; i++) {
+							for (int j = jMin; j <= jMax; j++) {
+								for (int k = kMin; k <= kMax; k++) {
+									//Obtain cell data
+									double x = CoordinateX[i];
+									double y = CoordinateY[j];
+									double z = CoordinateZ[k];
+									int sidx = getSerialIndexLocal(i, j, k) * nVariables;
+									double* U = &recvBuff[sidx];
+									double ro = U[0];
+									double u = U[1] / ro;
+									double v = U[2] / ro;
+									double w = U[3] / ro;
+									double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
+									double P = (gamma - 1.0) * ro * e;
+
+									//Write to file
+									ofs<<x<<" ";
+									if (nDims > 1) ofs<<y<<" ";
+									if (nDims > 2) ofs<<z<<" ";
+									ofs<<ro<<" ";
+									ofs<<u<<" ";
+									if (nDims > 1) ofs<<v<<" ";
+									if (nDims > 2) ofs<<w<<" ";
+									ofs<<P<<" ";
+									ofs<<e<<" ";
+									ofs<<std::endl;
+								};
+							};
+						}; // Solution output
+
+						std::cout<<"rank = "<<rank<<", Part of solution written\n";
+						std::cout.flush();
+
+					}; // for rK
+				}; // for rJ
+			}; // for rI
+
+			//Restore indexes
+			iMin = iMinAll[masterRank];
+			iMax = iMaxAll[masterRank];
+			if (nDims > 1) {
+				jMin = jMinAll[masterRank];
+				jMax = jMaxAll[masterRank];
+			};
+			if (nDims > 2) {			
+				kMin = kMinAll[masterRank];
+				kMax = kMaxAll[masterRank];
+			};
+
+		};// if	
+
+		//Close file
+		if (pManager->IsMasterCart()) ofs.close();
+
+		std::cout<<"rank = "<<pManager->getRank()<<", Solution written\n";
+		std::cout.flush();
+		//Sync
+		pManager->Barrier();					
+
+		return;
 
 		//2D tecplot style
 		if(nDims > 1) {			
 			if (pManager->IsMaster()) {
 				ofs.open(fname, std::ios_base::out);
-				//Header
+				//Header				
 				ofs<<"VARIABLES = ";
 				ofs<<"\""<<"X"<<"\" ";
 				ofs<<"\""<<"Y"<<"\" ";
@@ -743,41 +854,44 @@ public:
 				ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
 			};
 
-			//Solution
-			for (int k = kMin; k <= kMax; k++) {
-				for (int j = jMin; j <= jMax; j++) {
-					for (int i = iMin; i <= iMax; i++) {
-						//Obtain cell data
-						double x = CoordinateX[i];
-						double y = CoordinateY[j];
-						double z = CoordinateZ[k];
-						double* U = getCellValues(i,j,k);
-						double ro = U[0];
-						double u = U[1] / ro;
-						double v = U[2] / ro;
-						double w = U[3] / ro;
-						double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
-						double P = (gamma - 1.0) * ro * e;
+			////Solution
+			//for (int k = kMin; k <= kMax; k++) {
+			//	for (int j = jMin; j <= jMax; j++) {
+			//		for (int i = iMin; i <= iMax; i++) {
+			//			//Obtain cell data
+			//			double x = CoordinateX[i];
+			//			double y = CoordinateY[j];
+			//			double z = CoordinateZ[k];
+			//			double* U = getCellValues(i,j,k);
+			//			double ro = U[0];
+			//			double u = U[1] / ro;
+			//			double v = U[2] / ro;
+			//			double w = U[3] / ro;
+			//			double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
+			//			double P = (gamma - 1.0) * ro * e;
 
-						//Write to file
-						ofs<<x<<" ";
-						ofs<<y<<" ";
-						ofs<<z<<" ";
-						ofs<<ro<<" ";
-						ofs<<u<<" ";
-						ofs<<v<<" ";
-						ofs<<w<<" ";
-						ofs<<P<<" ";
-						ofs<<e<<" ";
-						ofs<<std::endl;
-					};
-				};
-			};
+			//			//Write to file
+			//			ofs<<x<<" ";
+			//			ofs<<y<<" ";
+			//			ofs<<z<<" ";
+			//			ofs<<ro<<" ";
+			//			ofs<<u<<" ";
+			//			ofs<<v<<" ";
+			//			ofs<<w<<" ";
+			//			ofs<<P<<" ";
+			//			ofs<<e<<" ";
+			//			ofs<<std::endl;
+			//		};
+			//	};
+			//};
 		};
 
 		if (pManager->IsMaster()) ofs.close();
-
-		std::cout << "Solution is written\n";	
+		
+		std::cout<<"rank = "<<pManager->getRank()<<", Solution written\n";
+		std::cout.flush();
+		//Sync
+		pManager->Barrier();
 	};
 
 	//Run calculation
@@ -791,6 +905,7 @@ public:
 		//Start timer
 		Timer workTimer;
 		workTimer.Start();
+		workTimer.Resume();
 
 		//Calc loop		
 		if (pManager->IsMaster()) {
@@ -854,21 +969,31 @@ public:
 			pManager->Barrier();
 		};
 
-		//Synchronize
-		if (pManager->IsMaster()) {
-			std::cout<<"Calculation finished!\n";
-		};
+		//Synchronize		
+		pManager->Barrier();
 
-		//Stop timer
-		workTimer.Stop();
-		std::cout<<"Total work time = " << workTimer.ElapsedTimeMilliseconds() / 1e3 << " seconds.\n";			
+		//Calculate max idle time
+		double idleTime = pManager->getIdleTime<std::milli>(); //ms
+		std::cout<<"rank = "<<pManager->getRank()<<", local idle time = " << idleTime / 1e3 << " seconds.\n";
+		std::cout.flush();
+		
+		double maxIdleTime = pManager->Max(idleTime);
+
+		if (pManager->IsMaster()) {
+			std::cout<<"Calculation finished!\n";			
+			//Stop timer
+			workTimer.Stop();
+			std::cout<<"Total work time = " << workTimer.ElapsedTimeMilliseconds() / 1e3 << " seconds.\n";			
+			std::cout<<"Maximum idle time = " << maxIdleTime / 1e3 << " seconds.\n";			
+		};
+		
 	};
 
 	//Finalize kernel
 	void Finilaze() {
 		//Finalize MPI
+		pManager->Finalize();
 	};
-
 };
 
 #endif
