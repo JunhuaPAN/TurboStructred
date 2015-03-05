@@ -71,6 +71,7 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionSnapshotTime = 0.1;
 	conf.SaveSolutionSnapshotIterations = 0;
+	conf.ResidualOutputIterations = 10;
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -116,8 +117,6 @@ void RunSODTestRoe2DX(int argc, char *argv[]) {
 
 	conf.gamma = 1.4;
 	conf.nVariables = 5;
-	conf.Viscosity = 1.0;
-	conf.ThermalConductivity = 0.0;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
 	conf.xLeftBoundary.Gamma = 1.4;
@@ -129,16 +128,14 @@ void RunSODTestRoe2DX(int argc, char *argv[]) {
 	conf.yRightBoundary.Gamma = 1.4;
 
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-	conf.methodConfiguration.CFL = 0.1;
+	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 
 	conf.MaxTime = 0.2;
 	conf.MaxIteration = 10000000;
 	conf.SaveSolutionSnapshotTime = 0.1;
 	conf.SaveSolutionSnapshotIterations = 0;
-
-	//External potential forces
-	conf.Sigma = 0.0001;	
+	conf.ResidualOutputIterations = 10;
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -159,17 +156,167 @@ void RunSODTestRoe2DX(int argc, char *argv[]) {
 	params.roR = 0.125;
 	params.PR = 0.1;
 	params.uR = 0.0;
-	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);	
-	double sigma = conf.Sigma;
-	double mu = conf.Viscosity;
-	double Ly = conf.LY;
-	auto initD = [sigma, mu, Ly](Vector r) { 
+	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
+	auto initD = [](Vector r) { 
 		std::vector<double> res(5);
 		res[0] = 1.0;
-		res[1] = (sigma / (2*mu)) * (Ly - r.y) * r.y;
+		res[1] = 0.0;
 		res[2] = 0.0;
 		res[3] = 0.0;
-		res[4] = 1.0 / (0.4) + res[1] * res[1] / 2.0;
+		res[4] = 1.0 / (0.4);
+		return res; 
+	};
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolution("init.dat");
+	
+	//run computation
+	kernel->Run();		
+
+	//finalize kernel
+	kernel->Finilaze();
+};
+
+void RunPoiseuille2D(int argc, char *argv[]) {
+	double viscosity = 1.73e-5;	//Air
+	double sigma = 0.14;		// dPdx
+	double ro_init = 1.225;		//Air
+	double Pave = 1.0e5;		//average pressure			
+
+	KernelConfiguration conf;
+	conf.nDims = 2;
+	conf.nX = 10;
+	conf.nY = 40;
+	conf.LX = 0.2;
+	conf.LY = 0.1;	
+	conf.isPeriodicX = true;
+	conf.isPeriodicY = false;
+
+	conf.gamma = 1.4;
+	conf.nVariables = 5;
+
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xLeftBoundary.Gamma = 1.4;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xRightBoundary.Gamma = 1.4;
+	conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::Wall;
+	conf.yRightBoundary.Gamma = 1.4;
+
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+
+	conf.MaxTime = 0.2;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 0.01;
+	conf.SaveSolutionSnapshotIterations = 10000;
+	conf.ResidualOutputIterations = 10;
+
+	conf.Viscosity = viscosity;
+	conf.Sigma = sigma;
+
+	//init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
+		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
+	};	
+	kernel->Init(conf);
+
+	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
+	auto initD = [ro_init, Pave, &conf](Vector r) {
+		double u = 0.5*conf.Sigma*r.y*(conf.LY - r.y)/conf.Viscosity;
+		u = 0;
+		double roe = Pave/(conf.gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = res[0]*u;
+		res[2] = 0.0;
+		res[3] = 0.0;
+		res[4] =  roe + 0.5*res[0]*u*u;
+		return res; 
+	};
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolution("init.dat");
+	
+	//run computation
+	kernel->Run();		
+
+	//finalize kernel
+	kernel->Finilaze();
+};
+
+void RunPoiseuille3D(int argc, char *argv[]) {
+	double viscosity = 1.73e-5;	//Air
+	double sigma = 0.14;		// dPdx
+	double ro_init = 1.225;		//Air
+	double Pave = 1.0e5;		//average pressure
+
+	KernelConfiguration conf;
+	conf.nDims = 3;
+	conf.nX = 10;
+	conf.nY = 40;
+	conf.nZ = 6;
+	conf.LX = 0.2;
+	conf.LY = 0.1;
+	conf.LZ = 0.1;
+	conf.isPeriodicX = true;
+	conf.isPeriodicY = false;
+	conf.isPeriodicZ = true;
+
+	conf.gamma = 1.4;
+	conf.nVariables = 5;
+
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xLeftBoundary.Gamma = 1.4;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xRightBoundary.Gamma = 1.4;
+	conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::Wall;
+	conf.yRightBoundary.Gamma = 1.4;
+
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+
+	conf.MaxTime = 0.5;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 0.01;
+	conf.SaveSolutionSnapshotIterations = 1000;
+	conf.ResidualOutputIterations = 1;
+
+	conf.Viscosity = viscosity;
+	conf.Sigma = sigma;
+
+	//init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
+		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
+	};	
+	kernel->Init(conf);
+
+	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
+	auto initD = [ro_init, Pave, &conf](Vector r) {
+		double u = 0.5*conf.Sigma*r.y*(conf.LY - r.y)/conf.Viscosity;
+		u = 0;
+		double roe = Pave/(conf.gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = res[0]*u;
+		res[2] = 0.0;
+		res[3] = 0.0;
+		res[4] =  roe + 0.5*res[0]*u*u;
 		return res; 
 	};
 	kernel->SetInitialConditions(initD);	
@@ -188,7 +335,8 @@ int main(int argc, char *argv[])
 {
 	//main function
 	//RunSODTestRoe1D(argc, argv);
-	RunSODTestRoe2DX(argc, argv);
-
+	//RunSODTestRoe2DX(argc, argv);
+	//RunPoiseuille2D(argc, argv);
+	RunPoiseuille3D(argc, argv);
 	return 0;
 };

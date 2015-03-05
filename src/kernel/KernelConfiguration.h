@@ -49,6 +49,7 @@ public:
 	double MaxIteration;
 	double SaveSolutionSnapshotTime;	
 	int SaveSolutionSnapshotIterations;
+	int ResidualOutputIterations;
 	
 	//Boundary conditions configuration
 	BoundaryConditionConfiguration xLeftBoundary;

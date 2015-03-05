@@ -84,6 +84,10 @@ public:
 	double thermalConductivity;
 	double viscosity;
 
+	//External forces
+	Vector Sigma; //Potential force	
+
+
 	//Boundary conditions
 	std::unique_ptr<BCGeneral> xLeftBC;
 	std::unique_ptr<BCGeneral> xRightBC;
@@ -95,9 +99,6 @@ public:
 	//Solution data
 	std::vector<double> values;	
 	std::vector<double> residual;
-
-	//External forces
-	Vector Sigma; //Potential force	
 
 	//Get serial index for cell
 	inline int getSerialIndexGlobal(int i, int j, int k) {
@@ -121,6 +122,7 @@ public:
 	double MaxTime;
 	double SaveSolutionSnapshotTime;
 	int SaveSolutionSnapshotIterations;
+	int ResidualOutputIterations;
 
 	//Constructor
 	Kernel(int* argc, char **argv[]) : pManager(new ParallelManager(argc, argv)) { };
@@ -279,6 +281,7 @@ public:
 		MaxIteration = config.MaxIteration;
 		SaveSolutionSnapshotTime = config.SaveSolutionSnapshotTime;	
 		SaveSolutionSnapshotIterations = config.SaveSolutionSnapshotIterations;
+		ResidualOutputIterations = config.ResidualOutputIterations;
 		stepInfo.Time = 0;
 		stepInfo.Iteration = 0;
 		stepInfo.NextSnapshotTime = stepInfo.Time;
@@ -526,6 +529,90 @@ public:
 				};
 			};
 		};
+		//Z direction exchange		
+
+		//Allocate buffers
+		layerSize = nlocalX * nlocalY;
+		bufferToSend.resize(layerSize * nVariables);
+		bufferToRecv.resize(layerSize * nVariables);				
+
+		//Determine neighbours' ranks
+		rankL = pManager->GetRankByCartesianIndexShift(0, 0, -1);
+		rankR = pManager->GetRankByCartesianIndexShift(0, 0, +1);
+
+		for (int layer = 1; layer <= dummyCellLayersZ; layer++) {
+			// Minus direction exchange
+			int nSend = 0; //
+			int nRecv = 0; //
+			int kSend = kMin + layer - 1; // layer index to send
+			int kRecv = kMax + layer; // layer index to recv
+
+			// Prepare values to send
+			if (rankL != -1) {
+				nSend = layerSize * nVariables;
+				for (i = iMin; i <= iMax; i++) {
+					for (j = jMin; j <= jMax; j++) {
+						int idxBuffer = (i - iMin) + (j - jMin) * nX; //Exclude z index
+						int idxValues = getSerialIndexLocal(i, j, kSend);
+						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
+					};
+				};
+			};
+
+			//Determine recive number
+			if (rankR != -1) {
+				nRecv = layerSize * nVariables;				
+			};
+
+			//Make exchange
+			pManager->SendRecvDouble(comm, rankL, rankR, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
+
+			//Write to recieving layer of dummy cells
+			for (i = iMin; i <= iMax; i++) {
+				for (j = jMin; j <= jMax; j++) {
+					int idxBuffer = (i - iMin) + (j - jMin) * nX; //Exclude z index
+					int idxValues = getSerialIndexLocal(i, j, kRecv);
+					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
+				};
+			};
+
+			// Plus direction exchange
+			nSend = 0; //
+			nRecv = 0; //
+			kSend = kMax - layer + 1; // layer index to send
+			kRecv = kMin - layer; // layer index to recv
+
+			// Prepare values to send
+			if (rankR != -1) {
+				nSend = layerSize * nVariables;
+				for (i = iMin; i <= iMax; i++) {
+					for (j = jMin; j <= jMax; j++) {
+						int idxBuffer = (i - iMin) + (j - jMin) * nX; //Exclude z index
+						int idxValues = getSerialIndexLocal(i, j, kSend);
+						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
+					};
+				};
+			};
+
+			//Determine recive number
+			if (rankL != -1) {
+				nRecv = layerSize * nVariables;				
+			};
+
+			//Make exchange
+			pManager->SendRecvDouble(comm, rankR, rankL, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
+
+			//Write to recieving layer of dummy cells
+			for (i = iMin; i <= iMax; i++) {
+				for (j = jMin; j <= jMax; j++) {
+					int idxBuffer = (i - iMin) + (j - jMin) * nX; //Exclude z index
+					int idxValues = getSerialIndexLocal(i, j, kRecv);
+					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
+				};
+			};
+
+		}; // 
+
 
 		std::cout<<"rank = "<<pManager->getRank()<<", Exchange values Y-direction executed\n";
 		std::cout.flush();
@@ -920,7 +1007,7 @@ public:
 			IterationStep();
 
 			//Output step information						
-			if (pManager->IsMaster()) {
+			if (pManager->IsMaster() && (ResidualOutputIterations != 0) && (stepInfo.Iteration % ResidualOutputIterations) == 0) {
 				std::cout<<"Iteration = "<<stepInfo.Iteration<<"; Total time = "<< stepInfo.Time << "; Time step = " <<stepInfo.TimeStep << "; RMSrou = "<<stepInfo.Residual[1]<<"\n";			
 			};			
 
@@ -930,7 +1017,7 @@ public:
 				//Save snapshot
 				std::stringstream snapshotFileName;
 				snapshotFileName.str(std::string());
-				snapshotFileName<<"dataI"<<stepInfo.Iteration<<".cgns";						
+				snapshotFileName<<"dataI"<<stepInfo.Iteration<<".dat";						
 				SaveSolution(snapshotFileName.str());
 			};
 
@@ -941,7 +1028,7 @@ public:
 				snapshotFileName.str(std::string());
 				snapshotFileName<<std::fixed;
 				snapshotFileName.precision(snapshotTimePrecision);								
-				snapshotFileName<<"dataT"<<stepInfo.Time<<".cgns";							
+				snapshotFileName<<"dataT"<<stepInfo.Time<<".dat";							
 				SaveSolution(snapshotFileName.str());
 
 				//Adjust next snapshot time
