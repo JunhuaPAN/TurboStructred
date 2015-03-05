@@ -51,6 +51,20 @@ public:
 		double value = a + b;
 		return value;
 	};
+
+	//Interpolate
+	Vector GetDummyGradient(const double inV, const Vector inGrad, const Vector& faceNormal, const Vector& faceCenter, const Vector& cellCenter) {
+		double dn = -(cellCenter - faceCenter) * faceNormal;
+		double a = (Value - CValue * inV) / (CValue + CGradient / dn);
+		double b = inV + a;
+		double value = a + b;
+
+		Vector outGrad = inGrad;
+		double dudnIn = inGrad * faceNormal;
+		outGrad = (2.0 * (inV - Value) / dn - dudnIn) * faceNormal * CValue + CGradient * inGrad;
+
+		return outGrad;
+	};
 };
 
 class BCGeneral : public BoundaryCondition {

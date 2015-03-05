@@ -57,6 +57,12 @@ public:
 	BoundaryConditionConfiguration yRightBoundary;
 	BoundaryConditionConfiguration zLeftBoundary;
 	BoundaryConditionConfiguration zRightBoundary;
+
+	//Default values
+	KernelConfiguration() {
+		Viscosity = 0;
+		ThermalConductivity = 0;
+	};
 };
 
 #endif

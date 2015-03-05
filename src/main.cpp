@@ -116,6 +116,8 @@ void RunSODTestRoe2DX(int argc, char *argv[]) {
 
 	conf.gamma = 1.4;
 	conf.nVariables = 5;
+	conf.Viscosity = 1.0;
+	conf.ThermalConductivity = 0.0;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
 	conf.xLeftBoundary.Gamma = 1.4;
@@ -154,14 +156,17 @@ void RunSODTestRoe2DX(int argc, char *argv[]) {
 	params.roR = 0.125;
 	params.PR = 0.1;
 	params.uR = 0.0;
-	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
-	auto initD = [](Vector r) { 
+	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);	
+	double sigma = 0.001;
+	double mu = conf.Viscosity;
+	double Ly = conf.LY;
+	auto initD = [sigma, mu, Ly](Vector r) { 
 		std::vector<double> res(5);
 		res[0] = 1.0;
-		res[1] = 0.0;
+		res[1] = (sigma / (2*mu)) * (Ly - r.y) * r.y;
 		res[2] = 0.0;
 		res[3] = 0.0;
-		res[4] = 1.0 / (0.4);
+		res[4] = 1.0 / (0.4) + res[1] * res[1] / 2.0;
 		return res; 
 	};
 	kernel->SetInitialConditions(initD);

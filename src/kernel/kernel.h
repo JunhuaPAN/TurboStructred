@@ -192,7 +192,9 @@ public:
 
 		double Lx = config.LX;
 		double Ly = config.LY;
-		double Lz = config.LZ;		
+		double Lz = config.LZ;	
+		if (nDims < 3) Lz = 0;
+		if (nDims < 2) Ly = 0;
 
 		//Generate cells (uniform grid)
 		nXAll = nX + 2 * dummyCellLayersX;
@@ -254,7 +256,7 @@ public:
 
 		//Allocate data structures
 		values.resize(nVariables * nlocalXAll * nlocalYAll * nlocalZAll);	
-		residual.resize(nVariables * nlocalXAll * nlocalYAll * nlocalZAll);	
+		residual.resize(nVariables * nlocalXAll * nlocalYAll * nlocalZAll);
 
 		//Initialize calculation parameters
 		MaxTime = config.MaxTime;
@@ -278,7 +280,6 @@ public:
 			yLeftBC->loadConfiguration(config.yLeftBoundary);
 			yRightBC->loadConfiguration(config.yRightBoundary);
 		};
-
 		if ((!gridInfo.IsPeriodicZ) && (nDims > 2)) {
 			zLeftBC = std::unique_ptr<BCGeneral>(new BCGeneral());
 			zRightBC = std::unique_ptr<BCGeneral>(new BCGeneral());
@@ -415,7 +416,6 @@ public:
 
 		}; // 
 
-		//
 		if (nDims < 2) return;
 		//Y direction exchange		
 
@@ -498,9 +498,7 @@ public:
 					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
 				};
 			};
-
-		}; // 
-
+		};
 
 	}; // function
 
@@ -534,34 +532,38 @@ public:
 					faceCenter.y = CoordinateY[j];
 					faceCenter.z = CoordinateZ[k];
 
-					for (int layer = 1; layer <= dummyCellLayersX; layer++) {					
-						//Left border
-						i = iMin - layer; // layer index
-						int iIn = iMin + layer - 1; // opposite index
-						cellCenter.x = CoordinateX[iIn];
-						faceCenter.x = (CoordinateX[iIn] + CoordinateX[i]) / 2.0;
-						int idx = getSerialIndexLocal(i, j, k);
-						int idxIn = getSerialIndexLocal(iIn, j, k);
+					for (int layer = 1; layer <= dummyCellLayersX; layer++) {		
+						if (pManager->rankCart[0] == 0) {
+							//Left border
+							i = iMin - layer; // layer index
+							int iIn = iMin + layer - 1; // opposite index
+							cellCenter.x = CoordinateX[iIn];
+							faceCenter.x = (CoordinateX[iIn] + CoordinateX[i]) / 2.0;
+							int idx = getSerialIndexLocal(i, j, k);
+							int idxIn = getSerialIndexLocal(iIn, j, k);
 					
-						//Apply left boundary conditions						
-						std::vector<double> dValues = xLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
-						for (int nv = 0; nv < nVariables; nv++) {
-							values[idx * nVariables + nv] = dValues[nv];
+							//Apply left boundary conditions						
+							std::vector<double> dValues = xLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
+							for (int nv = 0; nv < nVariables; nv++) {
+								values[idx * nVariables + nv] = dValues[nv];
+							};
 						};
 
-						//Right border
-						i = iMax + layer; // layer index
-						iIn = iMax - layer + 1; // opposite index
-						cellCenter.x = CoordinateX[iIn];
-						faceCenter.x = (CoordinateX[iIn] + CoordinateX[i]) / 2.0;
-						idx = getSerialIndexLocal(i, j, k);
-						idxIn = getSerialIndexLocal(iIn, j, k);
+						if (pManager->rankCart[0] == pManager->dimsCart[0]-1) {
+							//Right border
+							i = iMax + layer; // layer index
+							int iIn = iMax - layer + 1; // opposite index
+							cellCenter.x = CoordinateX[iIn];
+							faceCenter.x = (CoordinateX[iIn] + CoordinateX[i]) / 2.0;
+							int idx = getSerialIndexLocal(i, j, k);
+							int idxIn = getSerialIndexLocal(iIn, j, k);
 					
-						//Apply right boundary conditions						
-						dValues = xRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
-						for (int nv = 0; nv < nVariables; nv++) {
-							values[idx * nVariables + nv] = dValues[nv];
-						};				
+							//Apply right boundary conditions						
+							std::vector<double> dValues = xRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
+							for (int nv = 0; nv < nVariables; nv++) {
+								values[idx * nVariables + nv] = dValues[nv];
+							};		
+						};
 					};
 				};
 			};
@@ -583,32 +585,36 @@ public:
 
 				for (int layer = 1; layer <= dummyCellLayersY; layer++) {
 					if (!IsPeriodicY) {
-						//Left border
-						j = jMin - layer; // layer index
-						int jIn = jMin + layer - 1; // opposite index
-						cellCenter.y = CoordinateY[jIn];
-						faceCenter.y = (CoordinateY[jIn] + CoordinateY[j]) / 2.0;
-						int idx = getSerialIndexLocal(i, j, k);
-						int idxIn = getSerialIndexLocal(i, jIn, k);
+						if (pManager->rankCart[0] == pManager->dimsCart[0]-1) {
+							//Left border
+							j = jMin - layer; // layer index
+							int jIn = jMin + layer - 1; // opposite index
+							cellCenter.y = CoordinateY[jIn];
+							faceCenter.y = (CoordinateY[jIn] + CoordinateY[j]) / 2.0;
+							int idx = getSerialIndexLocal(i, j, k);
+							int idxIn = getSerialIndexLocal(i, jIn, k);
 					
-						//Apply left boundary conditions						
-						std::vector<double> dValues = yLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
-						for (int nv = 0; nv < nVariables; nv++) {
-							values[idx * nVariables + nv] = dValues[nv];
+							//Apply left boundary conditions						
+							std::vector<double> dValues = yLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
+							for (int nv = 0; nv < nVariables; nv++) {
+								values[idx * nVariables + nv] = dValues[nv];
+							};
 						};
 
-						//Right border
-						j = jMax + layer; // layer index
-						jIn = jMax - layer + 1; // opposite index
-						cellCenter.y = CoordinateY[jIn];
-						faceCenter.y = (CoordinateY[jIn] + CoordinateY[j]) / 2.0;
-						idx = getSerialIndexLocal(i, j, k);
-						idxIn = getSerialIndexLocal(i, jIn, k);
+						if (pManager->rankCart[0] == pManager->dimsCart[0]-1) {
+							//Right border
+							j = jMax + layer; // layer index
+							int jIn = jMax - layer + 1; // opposite index
+							cellCenter.y = CoordinateY[jIn];
+							faceCenter.y = (CoordinateY[jIn] + CoordinateY[j]) / 2.0;
+							int idx = getSerialIndexLocal(i, j, k);
+							int idxIn = getSerialIndexLocal(i, jIn, k);
 					
-						//Apply right boundary conditions						
-						dValues = yRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
-						for (int nv = 0; nv < nVariables; nv++) {
-							values[idx * nVariables + nv] = dValues[nv];
+							//Apply right boundary conditions						
+							std::vector<double> dValues = yRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
+							for (int nv = 0; nv < nVariables; nv++) {
+								values[idx * nVariables + nv] = dValues[nv];
+							};
 						};
 					};
 				};
