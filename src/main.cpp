@@ -129,13 +129,16 @@ void RunSODTestRoe2DX(int argc, char *argv[]) {
 	conf.yRightBoundary.Gamma = 1.4;
 
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.CFL = 0.1;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 
 	conf.MaxTime = 0.2;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionSnapshotTime = 0.1;
 	conf.SaveSolutionSnapshotIterations = 0;
+
+	//External potential forces
+	conf.Sigma = 0.0001;	
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -157,7 +160,7 @@ void RunSODTestRoe2DX(int argc, char *argv[]) {
 	params.PR = 0.1;
 	params.uR = 0.0;
 	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);	
-	double sigma = 0.001;
+	double sigma = conf.Sigma;
 	double mu = conf.Viscosity;
 	double Ly = conf.LY;
 	auto initD = [sigma, mu, Ly](Vector r) { 

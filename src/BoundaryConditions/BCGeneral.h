@@ -61,7 +61,8 @@ public:
 
 		Vector outGrad = inGrad;
 		double dudnIn = inGrad * faceNormal;
-		outGrad = (2.0 * (inV - Value) / dn - dudnIn) * faceNormal * CValue + CGradient * inGrad;
+		double dudnOut = (2.0 * (inV - Value) / dn - dudnIn) * CValue + Value * CGradient;
+		outGrad = inGrad + (dudnOut - dudnIn) * faceNormal;
 
 		return outGrad;
 	};

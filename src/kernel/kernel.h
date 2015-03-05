@@ -96,6 +96,9 @@ public:
 	std::vector<double> values;	
 	std::vector<double> residual;
 
+	//External forces
+	Vector Sigma; //Potential force	
+
 	//Get serial index for cell
 	inline int getSerialIndexGlobal(int i, int j, int k) {
 		int sI = (k * nXAll * nYAll + j * nXAll + i);
@@ -286,6 +289,9 @@ public:
 			zLeftBC->loadConfiguration(config.zLeftBoundary);
 			zRightBC->loadConfiguration(config.zRightBoundary);
 		};
+
+		//External forces
+		Sigma = Vector(config.Sigma, 0, 0);
 	};
 
 	//Update solution

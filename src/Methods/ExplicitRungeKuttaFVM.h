@@ -348,8 +348,8 @@ public:
 					//Compute viscous flux
 					int sL = getSerialIndexLocal(i - 1, j, k);
 					int sR = getSerialIndexLocal(i, j, k);
-					fvisc = ComputeViscousFlux(sL, sR, U[0], U[1], fn);
-					for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
+					//fvisc = ComputeViscousFlux(sL, sR, U[0], U[1], fn);
+					//for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
 	
 					//Update residuals
 					if(i > iMin)
@@ -394,8 +394,8 @@ public:
 						//Compute viscous flux
 						int sL = getSerialIndexLocal(i, j - 1, k);
 						int sR = getSerialIndexLocal(i, j, k);
-						fvisc = ComputeViscousFlux(sL, sR, U[0], U[1], fn);
-						for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
+						//fvisc = ComputeViscousFlux(sL, sR, U[0], U[1], fn);
+						//for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
 	
 						//Update residuals
 						if(j > jMin)
@@ -458,7 +458,7 @@ public:
 
 		//Right hand side
 		double mu = viscosity;
-		double sigma = 0.0001;
+		double sigma = Sigma.x;
 		double volume = hx * hy * hz;		
 		for (int i = iMin; i <= iMax; i++)
 		{
@@ -525,7 +525,7 @@ public:
 					residual[idx * nVariables + 4] += ro * mForce * velocity * volume ;	//roE
 
 					//Potential forces
-					Vector pForce = Vector(sigma, 0, 0);
+					Vector pForce = Sigma;
 
 					//Compute total residual
 					residual[idx * nVariables];			//ro

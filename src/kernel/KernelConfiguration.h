@@ -58,10 +58,14 @@ public:
 	BoundaryConditionConfiguration zLeftBoundary;
 	BoundaryConditionConfiguration zRightBoundary;
 
+	//External potential forces
+	double Sigma;
+
 	//Default values
 	KernelConfiguration() {
 		Viscosity = 0;
 		ThermalConductivity = 0;
+		Sigma = 0.0;
 	};
 };
 
