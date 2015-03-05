@@ -83,6 +83,7 @@ public:
 	double gamma;
 	double thermalConductivity;
 	double viscosity;
+	double dPdx;		//constant pressure gradient
 
 	//Boundary conditions
 	std::unique_ptr<BCGeneral> xLeftBC;
@@ -505,6 +506,90 @@ public:
 				};
 			};
 		};
+		//Z direction exchange		
+
+		//Allocate buffers
+		layerSize = nlocalX * nlocalY;
+		bufferToSend.resize(layerSize * nVariables);
+		bufferToRecv.resize(layerSize * nVariables);				
+
+		//Determine neighbours' ranks
+		rankL = pManager->GetRankByCartesianIndexShift(0, 0, -1);
+		rankR = pManager->GetRankByCartesianIndexShift(0, 0, +1);
+
+		for (int layer = 1; layer <= dummyCellLayersZ; layer++) {
+			// Minus direction exchange
+			int nSend = 0; //
+			int nRecv = 0; //
+			int kSend = kMin + layer - 1; // layer index to send
+			int kRecv = kMax + layer; // layer index to recv
+
+			// Prepare values to send
+			if (rankL != -1) {
+				nSend = layerSize * nVariables;
+				for (i = iMin; i <= iMax; i++) {
+					for (j = jMin; j <= jMax; j++) {
+						int idxBuffer = (i - iMin) + (j-jMin) * nX; //Exclude z index
+						int idxValues = getSerialIndexLocal(i, j, kSend);
+						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
+					};
+				};
+			};
+
+			//Determine recive number
+			if (rankR != -1) {
+				nRecv = layerSize * nVariables;				
+			};
+
+			//Make exchange
+			pManager->SendRecvDouble(comm, rankL, rankR, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
+
+			//Write to recieving layer of dummy cells
+			for (i = iMin; i <= iMax; i++) {
+				for (j = jMin; j <= jMax; j++) {
+					int idxBuffer = (i - iMin) + (j-jMin) * nX; //Exclude z index
+					int idxValues = getSerialIndexLocal(i, j, kRecv);
+					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
+				};
+			};
+
+			// Plus direction exchange
+			nSend = 0; //
+			nRecv = 0; //
+			kSend = kMax - layer + 1; // layer index to send
+			kRecv = kMin - layer; // layer index to recv
+
+			// Prepare values to send
+			if (rankR != -1) {
+				nSend = layerSize * nVariables;
+				for (i = iMin; i <= iMax; i++) {
+					for (j = jMin; j <= jMax; j++) {
+						int idxBuffer = (i - iMin) + (j-jMin) * nX; //Exclude z index
+						int idxValues = getSerialIndexLocal(i, j, kSend);
+						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
+					};
+				};
+			};
+
+			//Determine recive number
+			if (rankL != -1) {
+				nRecv = layerSize * nVariables;				
+			};
+
+			//Make exchange
+			pManager->SendRecvDouble(comm, rankR, rankL, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
+
+			//Write to recieving layer of dummy cells
+			for (i = iMin; i <= iMax; i++) {
+				for (k = kMin; k <= kMax; k++) {
+					int idxBuffer = (i - iMin) + (k-kMin) * nX; //Exclude z index
+					int idxValues = getSerialIndexLocal(i, j, kRecv);
+					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
+				};
+			};
+
+		}; // 
+
 
 	}; // function
 
@@ -815,7 +900,7 @@ public:
 				//Save snapshot
 				std::stringstream snapshotFileName;
 				snapshotFileName.str(std::string());
-				snapshotFileName<<"dataI"<<stepInfo.Iteration<<".cgns";						
+				snapshotFileName<<"dataI"<<stepInfo.Iteration<<".dat";						
 				SaveSolution(snapshotFileName.str());
 			};
 
@@ -826,7 +911,7 @@ public:
 				snapshotFileName.str(std::string());
 				snapshotFileName<<std::fixed;
 				snapshotFileName.precision(snapshotTimePrecision);								
-				snapshotFileName<<"dataT"<<stepInfo.Time<<".cgns";							
+				snapshotFileName<<"dataT"<<stepInfo.Time<<".dat";							
 				SaveSolution(snapshotFileName.str());
 
 				//Adjust next snapshot time

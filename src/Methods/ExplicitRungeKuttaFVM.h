@@ -459,6 +459,7 @@ public:
 		//Right hand side
 		double mu = viscosity;
 		double sigma = Sigma.x;
+		double lyambda = (-2.0/3.0)*mu;
 		double volume = hx * hy * hz;		
 		for (int i = iMin; i <= iMax; i++)
 		{
@@ -477,45 +478,73 @@ public:
 					//double *vzL = getCellValues(i, j, k - 1);
 					//double *vzR = getCellValues(i, j, k + 1);
 
-					double ro = V[0];
+					//first derivatives of u component
 					
 					double u = V[1]/V[0];
 					double uxL = VxL[1] / VxL[0];
 					double uxR = VxR[1] / VxR[0];
-					double vxL = VxL[2] / VxL[0];
-					double vxR = VxR[2] / VxR[0];
 					double dudx = (uxR - uxL) / (2 * hx);
-					double dvdx = (vxR - vxL) / (2 * hx);
-					double d2udx2 = (uxR - 2*u + uxL) / (hx * hx);
 
-					double v = V[2]/V[0];
-					double uyL = VyL[1] / VyL[0];
 					double uyR = VyR[1] / VyR[0];
+					double uyL = VyL[1] / VyL[0];
+					double dudy = (uyR - uyL) / (2*hy);
+
+					//first derivatives of v component
+					double v = V[2]/V[0];
 					double vyL = VyL[2] / VyL[0];
 					double vyR = VyR[2] / VyR[0];
-					double dudy = (uyR - uyL) / (2 * hy);
 					double dvdy = (vyR - vyL) / (2 * hy);
-					double d2vdy2 = (vyR - 2*v + vyL) / (hy * hy);
+					//double d2vdy2 = (vyR - 2*v + vyL) / (hy * hy);
+					double vxR = VxR[2] / VxR[0];
+					double vxL = VxL[2] / VxL[0];
+					double dvdx = (vxR - vxL) / (2*hx);
 
-					double w = V[3]/V[0];
-					double dwdz = 0;
+					//second derivatives of u component
+					double dudxx = (uxR + uxL - 2*u) / (hx * hx);
+					double dudyy = (uyR + uyL - 2*u) / (hy*hy);
+					double dudxy = 0;//(sqrt(uxR) - sqrt(uxL))*(sqrt(uyR) - sqrt(uyL))/(hx*hy);
 
-					double div = dudx + dvdy + dwdz;
+					//second derivatives of v component
+					double dvdyy = (vyR + vyL - 2*v) / (hy * hy);
+					double dvdxx = (vxR + vxL - 2*v) / (hx * hx);
+					double dvdxy = 0;//(sqrt(vxR) - sqrt(vxL))*(sqrt(vyR) - sqrt(vyL))/(hx*hy);
 
-					Vector velocity = Vector(u, v, w); //Cell velocity
-					Matrix Tau(3, 3);
-					Tau[0][0] = 2*mu*(dudx - div / 3.0); //xx
-					Tau[1][1] = 2*mu*(dvdy - div / 3.0); //yy
-					Tau[2][2] = 2*mu*(dwdz - div / 3.0); //yy
-					Tau[0][1] = Tau[1][0] = mu*(dudy - dvdx); //xy yx
-					Tau[0][2] = Tau[2][0] = 0; //mu*(dudz - dwdx); //xz zx
-					Tau[1][2] = Tau[2][1] = 0; //mu*(dvdz - dwdy); //yz zy
+					//stress tensor
+					double divV = dudx + dvdy;
+					double tauxx = lyambda*divV + 2*mu*dudx;
+					double tauyy = lyambda*divV + 2*mu*dvdy;
+					double tauxy = mu*(dudy + dvdx);
+
+					//derivatives of stress tensor elements
+					double DtauxxDx = lyambda*(dvdxy - 2*dudxx);
+					double DtauxyDx = mu*(dudxy + dvdxx);
+
+					double DtauxyDy = mu*(dudyy + dvdxy);
+					double DtauyyDy = lyambda*(dudxy - 2*dvdyy);
+
+					//compute impulse of viscous forces
+					double nablaU = dudxx + dudyy;
+					double nablaV = dvdxx + dvdyy;
+					double roudiff = mu * nablaU + (1.0/3.0) * mu * (dudxx + dvdxy);
+					double rovdiff = mu * nablaV + (1.0/3.0) * mu * (dudxy + dvdyy);
+					double rowdiff = 0;
 					
-					//Friction forces
-					residual[idx * nVariables + 1] += 0 * d2udx2;	//rou
-					residual[idx * nVariables + 2] += 0 * d2vdy2;	//rov
-					residual[idx * nVariables + 3] += 0;		//row
-					residual[idx * nVariables + 4] += 0 * velocity.x;	//roE
+					//compute the work of viscous stresses
+					double DtettaxDx = dudx * tauxx + u * DtauxxDx;
+					DtettaxDx += dvdx * tauxy + v * DtauxyDx;
+
+					double DtettayDy = dudy * tauxy + u * DtauxyDy;
+					DtettayDy += dvdy * tauyy + v * DtauyyDy;
+
+					double viscousWork = DtettaxDx + DtettayDy;
+					
+					//add viscous flux to residuals
+					residual[idx * nVariables + 1] += volume*roudiff;		//rou
+					residual[idx * nVariables + 2] += volume*rovdiff;		//rov
+					residual[idx * nVariables + 3] += volume*rowdiff;		//row
+					residual[idx * nVariables + 4] += volume*viscousWork;	//roE
+
+					Vector velocity = Vector(u, v, V[3]/V[0]); //Cell velocity
 
 					//Mass forces represents body accelerations (per unit mass)
 					Vector mForce = Vector(0, 0, 0);

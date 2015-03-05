@@ -184,11 +184,157 @@ void RunSODTestRoe2DX(int argc, char *argv[]) {
 	kernel->Finilaze();
 };
 
+void RunPoiseuille2D(int argc, char *argv[]) {
+	double viscosity = 1.73e-5;
+	double sigma = 0.14;
+	double ro_air = 1.225;
+
+	KernelConfiguration conf;
+	conf.nDims = 2;
+	conf.nX = 40;
+	conf.nY = 80;
+	conf.LX = 0.2;
+	conf.LY = 0.1;	
+	conf.isPeriodicX = true;
+	conf.isPeriodicY = false;
+
+	conf.gamma = 1.4;
+	conf.nVariables = 5;
+
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xLeftBoundary.Gamma = 1.4;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xRightBoundary.Gamma = 1.4;
+	conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::Wall;
+	conf.yRightBoundary.Gamma = 1.4;
+
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+
+	conf.MaxTime = 0.2;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 0.01;
+	conf.SaveSolutionSnapshotIterations = 1000;
+
+	//init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
+		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
+	};	
+	kernel->Init(conf);
+	kernel->viscosity = viscosity;
+	kernel->dPdx = sigma;
+
+	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
+	auto initD = [](Vector r) { 
+		std::vector<double> res(5);
+		res[0] = 1.225;
+		double u = 0.5*0.14*r.y*(0.1 - r.y)/1.78e-5;
+		res[1] = res[0]*u;
+		res[2] = 0.0;
+		res[3] = 0.0;
+		double roe = 1.0e5/0.4;
+		res[4] =  roe + 0.5*res[1]*res[1]/res[0];
+		return res; 
+	};
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolution("init.dat");
+	
+	//run computation
+	kernel->Run();		
+
+	//finalize kernel
+	kernel->Finilaze();
+};
+
+void RunPoiseuille3D(int argc, char *argv[]) {
+	double viscosity = 1.73e-5;
+	double sigma = 0.14;
+	double ro_air = 1.225;
+
+	KernelConfiguration conf;
+	conf.nDims = 3;
+	conf.nX = 2;
+	conf.nY = 2;
+	conf.nZ = 2;
+	conf.LX = 0.2;
+	conf.LY = 0.1;
+	conf.LZ = 0.1;
+	conf.isPeriodicX = true;
+	conf.isPeriodicY = false;
+	conf.isPeriodicZ = true;
+
+	conf.gamma = 1.4;
+	conf.nVariables = 5;
+
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xLeftBoundary.Gamma = 1.4;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xRightBoundary.Gamma = 1.4;
+	conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::Wall;
+	conf.yRightBoundary.Gamma = 1.4;
+
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+
+	conf.MaxTime = 0.2;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 0.01;
+	conf.SaveSolutionSnapshotIterations = 1000;
+
+	//init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
+		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
+	};	
+	kernel->Init(conf);
+	kernel->viscosity = viscosity;
+	kernel->dPdx = sigma;
+
+	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
+	auto initD = [](Vector r) { 
+		std::vector<double> res(5);
+		res[0] = 1.225;
+		double u = 0.5*0.14*r.y*(0.1 - r.y)/1.78e-5;
+		res[1] = res[0]*u;
+		res[2] = 0.0;
+		res[3] = 0.0;
+		double roe = 1.0e5/0.4;
+		res[4] =  roe + 0.5*res[1]*res[1]/res[0];
+		return res; 
+	};
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolution("init.dat");
+	
+	//run computation
+	kernel->Run();		
+
+	//finalize kernel
+	kernel->Finilaze();
+};
+
 int main(int argc, char *argv[])
 {
 	//main function
 	//RunSODTestRoe1D(argc, argv);
-	RunSODTestRoe2DX(argc, argv);
-
+	//RunSODTestRoe2DX(argc, argv);
+	//RunPoiseuille2D(argc, argv);
+	RunPoiseuille3D(argc, argv);
 	return 0;
 };
