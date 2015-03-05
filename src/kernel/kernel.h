@@ -83,7 +83,10 @@ public:
 	double gamma;
 	double thermalConductivity;
 	double viscosity;
-	double dPdx;		//constant pressure gradient
+
+	//External forces
+	Vector Sigma; //Potential force	
+
 
 	//Boundary conditions
 	std::unique_ptr<BCGeneral> xLeftBC;
@@ -96,9 +99,6 @@ public:
 	//Solution data
 	std::vector<double> values;	
 	std::vector<double> residual;
-
-	//External forces
-	Vector Sigma; //Potential force	
 
 	//Get serial index for cell
 	inline int getSerialIndexGlobal(int i, int j, int k) {
@@ -122,6 +122,7 @@ public:
 	double MaxTime;
 	double SaveSolutionSnapshotTime;
 	int SaveSolutionSnapshotIterations;
+	int ResidualOutputIterations;
 
 	//Constructor
 	Kernel(int* argc, char **argv[]) : pManager(new ParallelManager(argc, argv)) { };
@@ -267,6 +268,7 @@ public:
 		MaxIteration = config.MaxIteration;
 		SaveSolutionSnapshotTime = config.SaveSolutionSnapshotTime;	
 		SaveSolutionSnapshotIterations = config.SaveSolutionSnapshotIterations;
+		ResidualOutputIterations = config.ResidualOutputIterations;
 		stepInfo.Time = 0;
 		stepInfo.Iteration = 0;
 		stepInfo.NextSnapshotTime = stepInfo.Time;
@@ -529,7 +531,7 @@ public:
 				nSend = layerSize * nVariables;
 				for (i = iMin; i <= iMax; i++) {
 					for (j = jMin; j <= jMax; j++) {
-						int idxBuffer = (i - iMin) + (j-jMin) * nX; //Exclude z index
+						int idxBuffer = (i - iMin) + (j - jMin) * nX; //Exclude z index
 						int idxValues = getSerialIndexLocal(i, j, kSend);
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
 					};
@@ -547,7 +549,7 @@ public:
 			//Write to recieving layer of dummy cells
 			for (i = iMin; i <= iMax; i++) {
 				for (j = jMin; j <= jMax; j++) {
-					int idxBuffer = (i - iMin) + (j-jMin) * nX; //Exclude z index
+					int idxBuffer = (i - iMin) + (j - jMin) * nX; //Exclude z index
 					int idxValues = getSerialIndexLocal(i, j, kRecv);
 					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
 				};
@@ -564,7 +566,7 @@ public:
 				nSend = layerSize * nVariables;
 				for (i = iMin; i <= iMax; i++) {
 					for (j = jMin; j <= jMax; j++) {
-						int idxBuffer = (i - iMin) + (j-jMin) * nX; //Exclude z index
+						int idxBuffer = (i - iMin) + (j - jMin) * nX; //Exclude z index
 						int idxValues = getSerialIndexLocal(i, j, kSend);
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
 					};
@@ -581,8 +583,8 @@ public:
 
 			//Write to recieving layer of dummy cells
 			for (i = iMin; i <= iMax; i++) {
-				for (k = kMin; k <= kMax; k++) {
-					int idxBuffer = (i - iMin) + (k-kMin) * nX; //Exclude z index
+				for (j = jMin; j <= jMax; j++) {
+					int idxBuffer = (i - iMin) + (j - jMin) * nX; //Exclude z index
 					int idxValues = getSerialIndexLocal(i, j, kRecv);
 					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
 				};
@@ -890,7 +892,7 @@ public:
 			IterationStep();
 
 			//Output step information						
-			if (pManager->IsMaster()) {
+			if (pManager->IsMaster() && (ResidualOutputIterations != 0) && (stepInfo.Iteration % ResidualOutputIterations) == 0) {
 				std::cout<<"Iteration = "<<stepInfo.Iteration<<"; Total time = "<< stepInfo.Time << "; Time step = " <<stepInfo.TimeStep << "; RMSrou = "<<stepInfo.Residual[1]<<"\n";			
 			};			
 

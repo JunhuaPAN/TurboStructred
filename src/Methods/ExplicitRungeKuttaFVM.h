@@ -548,6 +548,7 @@ public:
 
 					//Mass forces represents body accelerations (per unit mass)
 					Vector mForce = Vector(0, 0, 0);
+					double ro = V[0];
 					residual[idx * nVariables + 1] += ro * volume * mForce.x;	//rou
 					residual[idx * nVariables + 2] += ro * volume * mForce.y;	//rov
 					residual[idx * nVariables + 3] += ro * volume * mForce.z;		//row
