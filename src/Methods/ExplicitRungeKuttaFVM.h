@@ -460,7 +460,7 @@ public:
 		double mu = viscosity;
 		double sigma = Sigma.x;
 		double lyambda = (-2.0/3.0)*mu;
-		double volume = hx * hy * hz;		
+		double volume = hx * hy * hz;
 		for (int i = iMin; i <= iMax; i++)
 		{
 			for (int j = jMin; j <= jMax; j++)
@@ -501,7 +501,7 @@ public:
 
 					//second derivatives of u component
 					double dudxx = (uxR + uxL - 2*u) / (hx * hx);
-					double dudyy = (uyR + uyL - 2*u) / (hy*hy);
+					double dudyy = (uyR + uyL - 2*u) / (hy * hy);
 					double dudxy = 0;//(sqrt(uxR) - sqrt(uxL))*(sqrt(uyR) - sqrt(uyL))/(hx*hy);
 
 					//second derivatives of v component
@@ -558,10 +558,10 @@ public:
 					Vector pForce = Sigma;
 
 					//Compute total residual
-					residual[idx * nVariables];			//ro
-					residual[idx * nVariables + 1] += volume * pForce.x;	//rou
-					residual[idx * nVariables + 2] += volume * pForce.y;	//rov
-					residual[idx * nVariables + 3] += volume * pForce.z;		//row
+					residual[idx * nVariables];										//ro
+					residual[idx * nVariables + 1] += volume * pForce.x;			//rou
+					residual[idx * nVariables + 2] += volume * pForce.y;			//rov
+					residual[idx * nVariables + 3] += volume * pForce.z;			//row
 					residual[idx * nVariables + 4] += pForce * velocity * volume;	//roE
 				};
 			};

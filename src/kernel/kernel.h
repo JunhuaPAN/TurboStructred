@@ -271,7 +271,7 @@ public:
 		ResidualOutputIterations = config.ResidualOutputIterations;
 		stepInfo.Time = 0;
 		stepInfo.Iteration = 0;
-		stepInfo.NextSnapshotTime = stepInfo.Time;
+		stepInfo.NextSnapshotTime = stepInfo.Time + SaveSolutionSnapshotTime;
 
 		//Initialize boundary conditions
 		if (!gridInfo.IsPeriodicX) {
