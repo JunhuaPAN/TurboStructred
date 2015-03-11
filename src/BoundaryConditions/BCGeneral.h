@@ -55,14 +55,20 @@ public:
 	//Interpolate
 	Vector GetDummyGradient(const double inV, const Vector inGrad, const Vector& faceNormal, const Vector& faceCenter, const Vector& cellCenter) {
 		double dn = -(cellCenter - faceCenter) * faceNormal;
-		double a = (Value - CValue * inV) / (CValue + CGradient / dn);
+		double a = (Value - CValue * inV) / (CValue + CGradient / dn);		
 		double b = inV + a;
 		double value = a + b;
 
-		Vector outGrad = inGrad;
-		double dudnIn = inGrad * faceNormal;
-		double dudnOut = (2.0 * (inV - Value) / dn - dudnIn) * CValue + Value * CGradient;
-		outGrad = inGrad + (dudnOut - dudnIn) * faceNormal;
+		//Vector outGrad = inGrad;
+		//double dudnIn = inGrad * faceNormal;
+		//double dudnOut = ((inV - value) / (dn) - dudnIn) * CValue + Value * CGradient;
+		//outGrad = inGrad + (dudnOut - dudnIn) * faceNormal;
+
+		Vector n = faceNormal;
+		n.x = std::abs(n.x);
+		n.y = std::abs(n.y);
+		n.z = std::abs(n.z);
+		Vector outGrad = 2 * (inGrad * n) * n - inGrad;
 
 		return outGrad;
 	};
@@ -103,7 +109,7 @@ public:
 		res[4] = roeDummy + roDummy*(uDummy*uDummy + vDummy*vDummy + wDummy*wDummy)/2.0;
 		return res;
 	};
-
+ 
 	void loadConfiguration(BoundaryConditionConfiguration& bcConfig) {
 		if (bcConfig.BCType == BoundaryConditionType::Symmetry) {				
 			boundaryConditions[BoundaryVariableType::Density] = CompositeBoundaryConditionInfo();

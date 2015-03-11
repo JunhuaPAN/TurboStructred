@@ -83,6 +83,8 @@ public:
 	double gamma;
 	double thermalConductivity;
 	double viscosity;
+	bool isViscousFlow;
+	bool isGradientRequired;
 
 	//External forces
 	Vector Sigma; //Potential force	
@@ -258,6 +260,13 @@ public:
 		nVariables = config.nVariables;	
 		viscosity = config.Viscosity;
 		thermalConductivity = config.ThermalConductivity;
+		if(config.isViscousFlow == true) {
+			isViscousFlow = true;
+			isGradientRequired = true;
+		} else {
+			isViscousFlow = false;
+			isGradientRequired = false;
+		};
 
 		//Allocate data structures
 		values.resize(nVariables * nlocalXAll * nlocalYAll * nlocalZAll);	

@@ -289,7 +289,7 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
 	auto initD = [ro_init, Pave, &conf](Vector r) {
 		double u = 0.5*conf.Sigma*r.y*(conf.LY - r.y)/conf.Viscosity;
-		u = 0;
+		//u = 0;
 		double roe = Pave/(conf.gamma - 1);
 		std::vector<double> res(5);
 		res[0] = ro_init;
@@ -394,8 +394,8 @@ int main(int argc, char *argv[])
 	//main function
 	//RunSODTestRoe1D(argc, argv);
 	//RunSODTestRoe2DX(argc, argv);
-	//RunPoiseuille2D(argc, argv);
+	RunPoiseuille2D(argc, argv);
 	//RunSODTestHybrid1D(argc, argv);
-	RunPoiseuille3D(argc, argv);
+	//RunPoiseuille3D(argc, argv);
 	return 0;
 };
