@@ -48,7 +48,7 @@ public:
 		RungeKuttaOrder = config.RungeKuttaOrder;
 		
 		//Allocate memory for values and residual
-		spectralRadius.resize(nCellsLocal);	
+		spectralRadius.resize(nCellsLocalAll);	
 
 		std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";
 		std::cout.flush();
@@ -100,9 +100,9 @@ public:
 		auto getu = [](double *U) { return U[1]/U[0]; };
 		auto getv = [](double *U) { return U[2]/U[0]; };
 		auto getw = [](double *U) { return U[3]/U[0]; };
-		if (gradientVelocityX.size() != nCellsLocal) gradientVelocityX.resize(nCellsLocal);
-		if (gradientVelocityY.size() != nCellsLocal) gradientVelocityY.resize(nCellsLocal);
-		if (gradientVelocityZ.size() != nCellsLocal) gradientVelocityZ.resize(nCellsLocal);
+		if (gradientVelocityX.size() != nCellsLocalAll) gradientVelocityX.resize(nCellsLocalAll);
+		if (gradientVelocityY.size() != nCellsLocalAll) gradientVelocityY.resize(nCellsLocalAll);
+		if (gradientVelocityZ.size() != nCellsLocalAll) gradientVelocityZ.resize(nCellsLocalAll);
 
 		//Inside domain
 		for (int i = iMin; i <= iMax; i++) {
@@ -193,11 +193,11 @@ public:
 							//Apply left boundary conditions						
 							double *V = getCellValues(iIn,j,k);
 							Vector dGrad;
-							dGrad = xLeftBC->boundaryConditions[BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
+							dGrad = xLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityX[idx] = dGrad;
-							dGrad = xLeftBC->boundaryConditions[BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
+							dGrad = xLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityY[idx] = dGrad;
-							dGrad = xLeftBC->boundaryConditions[BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
+							dGrad = xLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityZ[idx] = dGrad;
 						};
 
@@ -213,11 +213,11 @@ public:
 							//Apply right boundary conditions						
 							double *V = getCellValues(iIn,j,k);
 							Vector dGrad;
-							dGrad = xRightBC->boundaryConditions[BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
+							dGrad = xRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityX[idx] = dGrad;
-							dGrad = xRightBC->boundaryConditions[BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
+							dGrad = xRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityY[idx] = dGrad;
-							dGrad = xRightBC->boundaryConditions[BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
+							dGrad = xRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityZ[idx] = dGrad;	
 						};
 					};
@@ -258,11 +258,11 @@ public:
 							//Apply left boundary conditions						
 							double *V = getCellValues(i,jIn,k);
 							Vector dGrad;
-							dGrad = yLeftBC->boundaryConditions[BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
+							dGrad = yLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityX[idx] = dGrad;
-							dGrad = yLeftBC->boundaryConditions[BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
+							dGrad = yLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityY[idx] = dGrad;
-							dGrad = yLeftBC->boundaryConditions[BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
+							dGrad = yLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityZ[idx] = dGrad;
 						};
 
@@ -278,11 +278,11 @@ public:
 							//Apply right boundary conditions						
 							double *V = getCellValues(i,jIn,k);
 							Vector dGrad;
-							dGrad = yRightBC->boundaryConditions[BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
+							dGrad = yRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityX[idx] = dGrad;
-							dGrad = yRightBC->boundaryConditions[BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
+							dGrad = yRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityY[idx] = dGrad;
-							dGrad = yRightBC->boundaryConditions[BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
+							dGrad = yRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
 						};
 
 					};
@@ -505,6 +505,8 @@ public:
 			{
 				for (int k = kMin; k <= kMax; k++)
 				{
+					continue;
+
 					int idx = getSerialIndexLocal(i, j, k);
 
 					//Cell values
@@ -594,6 +596,7 @@ public:
 
 					//Potential forces
 					Vector pForce = Sigma;
+					pForce = Vector(0,0,0);
 
 					//Compute total residual
 					residual[idx * nVariables];			//ro
@@ -611,7 +614,7 @@ public:
 		//Compute cell volume
 		double volume = hx * hy * hz;
 		double dt = std::numeric_limits<double>::max();
-		for (int cellIndex = 0; cellIndex< nCellsLocal; cellIndex++)
+		for (int cellIndex = 0; cellIndex< nCellsLocalAll; cellIndex++)
 		{		
 			double sR = spectralRadius[cellIndex];
 			double localdt = CFL * volume / sR; //Blazek f. 6.20

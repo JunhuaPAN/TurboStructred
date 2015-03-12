@@ -101,12 +101,12 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\src;..\src\kernel;..\src\utility;..\src\RiemannSolvers;..\libs\MicrosoftMPI\Inc;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\libs\MicrosoftMPI\Inc;..\libs\cgnslib_3.1.4\src;..\src;..\src\kernel;..\src\utility;..\src\BoundaryConditions;..\src\RiemannSolvers;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\libs\MicrosoftMPI\Lib\amd64;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\lib\intel64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>msmpi.lib;mkl_core.lib;mkl_sequential.lib;mkl_intel_lp64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\libs\cgnslib_3.1.4\build\src\Release;..\libs\MicrosoftMPI\Lib\amd64;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\lib\intel64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>cgns.lib;msmpi.lib;mkl_core.lib;mkl_sequential.lib;mkl_intel_lp64.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -129,14 +129,14 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\src;..\src\kernel;..\src\utility;..\src\RiemannSolvers;..\libs\MicrosoftMPI\Inc;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\libs\MicrosoftMPI\Inc;..\libs\cgnslib_3.1.4\src;..\src;..\src\kernel;..\src\utility;..\src\BoundaryConditions;..\src\RiemannSolvers;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>..\libs\MicrosoftMPI\Lib\amd64;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\lib\intel64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>msmpi.lib;mkl_core.lib;mkl_sequential.lib;mkl_intel_lp64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\libs\cgnslib_3.1.4\build\src\Release;..\libs\MicrosoftMPI\Lib\amd64;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\lib\intel64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>cgns.lib;msmpi.lib;mkl_core.lib;mkl_sequential.lib;mkl_intel_lp64.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

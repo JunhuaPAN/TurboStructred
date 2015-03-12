@@ -16,7 +16,9 @@
 #include "utility\Matrix.h"
 #include "utility\Timer.h"
 #include "RiemannSolvers\RoeSolverPerfectGasEOS.h"
-#include "BoundaryConditions/BCGeneral.h"
+#include "BoundaryConditions\BCGeneral.h"
+
+#include "cgnslib.h"
 
 //Step info
 class StepInfo {
@@ -50,7 +52,8 @@ public:
 
 	//Grid information	
 	int nDims; //Number of dimensions
-	int nCellsLocal; //Total number of local cells including dummy
+	int nCellsLocalAll; //Total number of local cells including dummy
+	int nCellsLocal;
 	int nX; //Number of cells in x dimension
 	int nY; //Number of cells in y dimension
 	int nZ; //Number of cells in z dimension
@@ -89,12 +92,12 @@ public:
 
 
 	//Boundary conditions
-	std::unique_ptr<BCGeneral> xLeftBC;
-	std::unique_ptr<BCGeneral> xRightBC;
-	std::unique_ptr<BCGeneral> yLeftBC;
-	std::unique_ptr<BCGeneral> yRightBC;
-	std::unique_ptr<BCGeneral> zLeftBC;
-	std::unique_ptr<BCGeneral> zRightBC;
+	std::unique_ptr<BoundaryConditions::BCGeneral> xLeftBC;
+	std::unique_ptr<BoundaryConditions::BCGeneral> xRightBC;
+	std::unique_ptr<BoundaryConditions::BCGeneral> yLeftBC;
+	std::unique_ptr<BoundaryConditions::BCGeneral> yRightBC;
+	std::unique_ptr<BoundaryConditions::BCGeneral> zLeftBC;
+	std::unique_ptr<BoundaryConditions::BCGeneral> zRightBC;
 
 	//Solution data
 	std::vector<double> values;	
@@ -219,7 +222,8 @@ public:
 		nlocalXAll = nlocalX + 2 * dummyCellLayersX;
 		nlocalYAll = nlocalY + 2 * dummyCellLayersY;
 		nlocalZAll = nlocalZ + 2 * dummyCellLayersZ;
-		nCellsLocal = nlocalXAll * nlocalYAll * nlocalZAll;
+		nCellsLocal = nlocalX * nlocalY * nlocalZ;
+		nCellsLocalAll = nlocalXAll * nlocalYAll * nlocalZAll;
 		CoordinateX.resize(nXAll);
 		CoordinateY.resize(nYAll);
 		CoordinateZ.resize(nZAll);
@@ -254,8 +258,9 @@ public:
 		zMin = zMin - (dummyCellLayersZ * dz) + 0.5 * dz;
 		double zMax = Lz;
 		zMax = zMax + (dummyCellLayersZ * dz) - 0.5 * dz;
-		for (int k = kMin - dummyCellLayersZ; k < kMax + dummyCellLayersZ; k++) {
-			double z = zMin + (zMax - zMin) * 1.0 * k / (nlocalZAll - 1);
+		//for (int k = kMin - dummyCellLayersZ; k < kMax + dummyCellLayersZ; k++) {
+		for (int k = 0; k < kMax + dummyCellLayersZ; k++) {
+			double z = zMin + (zMax - zMin) * 1.0 * k / (nZAll - 1);
 			CoordinateZ[k] = z;
 		};
 		CoordinateZ[kMax + dummyCellLayersZ] = zMax;
@@ -288,20 +293,20 @@ public:
 
 		//Initialize boundary conditions
 		if (!gridInfo.IsPeriodicX) {
-			xLeftBC = std::unique_ptr<BCGeneral>(new BCGeneral());
-			xRightBC = std::unique_ptr<BCGeneral>(new BCGeneral());
+			xLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
+			xRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
 			xLeftBC->loadConfiguration(config.xLeftBoundary);
 			xRightBC->loadConfiguration(config.xRightBoundary);
 		};
 		if ((!gridInfo.IsPeriodicY) && (nDims > 1)) {
-			yLeftBC = std::unique_ptr<BCGeneral>(new BCGeneral());
-			yRightBC = std::unique_ptr<BCGeneral>(new BCGeneral());
+			yLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
+			yRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
 			yLeftBC->loadConfiguration(config.yLeftBoundary);
 			yRightBC->loadConfiguration(config.yRightBoundary);
 		};
 		if ((!gridInfo.IsPeriodicZ) && (nDims > 2)) {
-			zLeftBC = std::unique_ptr<BCGeneral>(new BCGeneral());
-			zRightBC = std::unique_ptr<BCGeneral>(new BCGeneral());
+			zLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
+			zRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
 			zLeftBC->loadConfiguration(config.zLeftBoundary);
 			zRightBC->loadConfiguration(config.zRightBoundary);
 		};
@@ -340,6 +345,13 @@ public:
 				};
 			};
 		};
+
+		//Aggregate
+		stepInfo.Residual[0] = pManager->Sum(stepInfo.Residual[0]);
+		stepInfo.Residual[1] = pManager->Sum(stepInfo.Residual[1]);
+		stepInfo.Residual[2] = pManager->Sum(stepInfo.Residual[2]);
+		stepInfo.Residual[3] = pManager->Sum(stepInfo.Residual[3]);
+		stepInfo.Residual[4] = pManager->Sum(stepInfo.Residual[4]);
 	};
 
 	//Exchange values between processormos
@@ -529,6 +541,13 @@ public:
 				};
 			};
 		};
+
+		std::cout<<"rank = "<<pManager->getRank()<<", Exchange values Y-direction executed\n";
+		std::cout.flush();
+		//Sync
+		pManager->Barrier();
+
+		if (nDims < 3) return;
 		//Z direction exchange		
 
 		//Allocate buffers
@@ -613,8 +632,7 @@ public:
 
 		}; // 
 
-
-		std::cout<<"rank = "<<pManager->getRank()<<", Exchange values Y-direction executed\n";
+		std::cout<<"rank = "<<pManager->getRank()<<", Exchange values Z-direction executed\n";
 		std::cout.flush();
 		//Sync
 		pManager->Barrier();
@@ -751,8 +769,447 @@ public:
 		pManager->Barrier();
 	};
 
-	//Save solution parallel CGNS
+	//Save solution CGNS
 	void SaveSolutionPCGNS(std::string fname) {
+		//int comm_size, comm_rank;
+		//int tot_nnodes, tot_nelems, nnodes, nelems;
+		//int F, B, Z, E, S, Fs, A, Cx, Cy, Cz;
+		//int i, j, k, n, nn, ne;
+		//float *x, *y, *z, *d;
+		//cgsize_t sizes[3], *e, start, end, ncells;
+ 
+		///* open the file and create base and zone */
+		//sizes[0] = tot_nnodes;
+		//sizes[1] = tot_nelems;
+		//sizes[2] = 0;
+
+		///* the default here is to use MPI_COMM_WORLD,
+		//   but this allows assigning of another communicator
+		//cgp_mpi_comm(MPI_COMM_WORLD); */
+
+		//if (cg_open(fname.c_str(), CG_MODE_WRITE, &F) ||
+		//	cg_base_write(F, "Base", nDims, nDims, &B) ||
+		//	cg_zone_write(F, B, "Zone", sizes, Unstructured, &Z))
+		//	cg_error_exit();
+
+		///* print info */
+		//if (comm_rank == 0) {
+		//	printf("writing %d coordinates and %d hex elements to %s\n",
+		//		tot_nnodes, tot_nelems, outfile);
+		//}
+
+		///* create data nodes for coordinates */
+		//if (cgp_coord_write(F, B, Z, RealSingle, "CoordinateX", &Cx) ||
+		//	cgp_coord_write(F, B, Z, RealSingle, "CoordinateY", &Cy) ||
+		//	cgp_coord_write(F, B, Z, RealSingle, "CoordinateZ", &Cz))
+		//	cgp_error_exit();
+ 
+		///* number of nodes and range this process will write */
+		//nnodes = (tot_nnodes + comm_size - 1) / comm_size;
+		//start  = nnodes * comm_rank + 1;
+		//end    = nnodes * (comm_rank + 1);
+		//if (end > tot_nnodes) end = tot_nnodes;
+  //  
+		///* create the coordinate data for this process */
+		//x = (float *)malloc(nnodes * sizeof(float));
+		//y = (float *)malloc(nnodes * sizeof(float));
+		//z = (float *)malloc(nnodes * sizeof(float));
+		//nn = 0;
+		//for (n = 1, k = 0; k < NODES_PER_SIDE; k++) {
+		//	for (j = 0; j < NODES_PER_SIDE; j++) {
+		//		for (i = 0; i < NODES_PER_SIDE; i++, n++) {
+		//			if (n >= start && n <= end) {
+		//				x[nn] = (float)i;
+		//				y[nn] = (float)j;
+		//				z[nn] = (float)k;
+		//				nn++;
+		//			}
+		//		}
+		//	}
+		//}
+
+		///* write the coordinate data in parallel to the queue */
+		//if (cgp_queue_set(1) ||
+		//	cgp_coord_write_data(F, B, Z, Cx, &start, &end, x) ||
+		//	cgp_coord_write_data(F, B, Z, Cy, &start, &end, y) ||
+		//	cgp_coord_write_data(F, B, Z, Cz, &start, &end, z))
+		//	cgp_error_exit();
+  //  
+		///* write out the queued coordinate data */
+		//if (cgp_queue_flush()) cgp_error_exit();
+		//cgp_queue_set(0);
+
+		///* create data node for elements */
+		//if (cgp_section_write(F, B, Z, "Hex", HEXA_8, 1, tot_nelems, 0, &E))
+		//	cgp_error_exit();
+ 
+		///* number of elements and range this process will write */
+		//nelems = (tot_nelems + comm_size - 1) / comm_size;
+		//start  = nelems * comm_rank + 1;
+		//end    = nelems * (comm_rank + 1);
+		//if (end > tot_nelems) end = tot_nelems;
+  //  
+		///* create the hex element data for this process */
+		//e = (cgsize_t *)malloc(8 * nelems * sizeof(cgsize_t));
+		//nn = 0;
+		//for (n = 1, k = 1; k < NODES_PER_SIDE; k++) {
+		//	for (j = 1; j < NODES_PER_SIDE; j++) {
+		//		for (i = 1; i < NODES_PER_SIDE; i++, n++) {
+		//			if (n >= start && n <= end) {
+		//				ne = i + NODES_PER_SIDE*((j-1)+NODES_PER_SIDE*(k-1));
+		//				e[nn++] = ne;
+		//				e[nn++] = ne + 1;
+		//				e[nn++] = ne + 1 + NODES_PER_SIDE;
+		//				e[nn++] = ne + NODES_PER_SIDE;
+		//				ne += NODES_PER_SIDE * NODES_PER_SIDE;
+		//				e[nn++] = ne;
+		//				e[nn++] = ne + 1;
+		//				e[nn++] = ne + 1 + NODES_PER_SIDE;
+		//				e[nn++] = ne + NODES_PER_SIDE;
+		//			}
+		//		}
+		//	}
+		//}
+
+		///* write the element connectivity in parallel */
+		//if (cgp_elements_write_data(F, B, Z, E, start, end, e))
+		//	cgp_error_exit();
+
+		///* create a centered solution */
+		//if (cg_sol_write(F, B, Z, "Solution", CellCenter, &S) ||
+		//	cgp_field_write(F, B, Z, S, RealSingle, "CellIndex", &Fs))
+		//	cgp_error_exit();
+
+		///* create the field data for this process */
+		//d = (float *)malloc(nelems * sizeof(float));
+		//nn = 0;
+		//for (n = 1; n <= tot_nelems; n++) {
+		//	if (n >= start && n <= end) {
+		//		d[nn] = (float)n;
+		//		nn++;
+		//	}
+		//}
+
+		///* write the solution field data in parallel */
+		//if (cgp_field_write_data(F, B, Z, S, Fs, &start, &end, d))
+		//	cgp_error_exit();
+
+		///* create user data under the zone and duplicate solution data */
+		//ncells = tot_nelems;
+		//if (cg_goto(F, B, "Zone_t", 1, NULL) ||
+		//	cg_user_data_write("User Data") ||
+		//	cg_gorel(F, "User Data", 0, NULL) ||
+		//	cg_array_write("CellIndex", RealSingle, 1, &ncells, &A))
+		//	cg_error_exit();
+
+		///* write the array data in parallel */
+		//if (cg_array_write_data(A, &start, &end, d))
+		//	cg_error_exit();
+
+		///* close the file and terminate MPI */
+		//cg_close(F);   
+		//return;
+
+	};
+
+	void SaveSolutionStructuredCGNS(std::string fname) {
+		int flag = 0;
+		int rank = pManager->getRank();
+		int np = pManager->getProcessorNumber();
+		MPI_Status status;
+
+		//Function to determine value position in buffer
+		std::vector<int> index(3, 0);
+		std::vector<double> outBuffer(nCellsLocal);
+		auto getIndex = [] (std::vector<int> index, int nDims, int dims[]) {
+			int ind = index[0];
+			if (nDims > 1) ind += (dims[0]) * index[1];
+			if (nDims > 2) ind += (dims[1]) * (dims[0]) * index[2];
+		/*	int ind = index[0];
+			if (nDims > 1) ind = ind * dims[1] + index[1];
+			if (nDims > 2) ind = ind * dims[2] + index[2];*/
+			return ind;
+		};
+
+		//Indexes inside CGNS database
+		int F, B, Z, S, C, Fs;
+ 
+		//Create file
+		if (pManager->IsMasterCart()) {
+			//Delete file if exists
+			if (remove(fname.c_str()))
+				std::cout << "Failed to delete '" << fname << "': " << strerror(errno) << '\n';
+			//else
+				//std::cout << '\'' << fname << "' successfully deleted.\n";
+
+			/* Open the file and create base and zone */
+			std::vector<cgsize_t> sizes;
+
+			//Number of vertexes in each direction
+			int nVertexes = 1;
+			nVertexes *= nX + 1;
+			sizes.push_back(nX + 1);
+			if (nDims > 1) {
+				nVertexes *= nY + 1;
+				sizes.push_back(nY + 1);
+			};
+			if (nDims > 2) {
+				nVertexes *= nZ + 1;
+				sizes.push_back(nZ + 1);
+			};
+
+			//Number of cells in each direction
+			sizes.push_back(nX);
+			if (nDims > 1) sizes.push_back(nY);
+			if (nDims > 2) sizes.push_back(nZ);
+
+
+			int cellDim = nDims;
+			int physDim = nDims;
+			if (cg_open(fname.c_str(), CG_MODE_WRITE, &F) ||
+				cg_base_write(F, "Base", cellDim, physDim, &B) ||
+				cg_zone_write(F, B, "Zone", &sizes.front(), Structured, &Z))
+				cg_error_exit();
+
+			//Write solution node
+			if (cg_sol_write(F, B, Z, "Solution", CellCenter, &S))
+				cg_error_exit();
+
+			//Close file
+			cg_close(F);
+		};
+
+		//Wait for file structure to be written before writing parts of solution on each process
+		pManager->Barrier();
+
+		std::cout<<"rank = "<<rank<<", file has been created.\n";
+		std::cout.flush();		
+
+		if (!pManager->IsMaster()) {
+			//And have to go to same zone node
+			B = 1;
+			Z = 1;
+			S = 1;
+		};
+
+		/* create data nodes for coordinates */
+
+		
+
+		int dimsC[3];
+		dimsC[0] = nlocalX;
+		dimsC[1] = nlocalY;
+		dimsC[2] = nlocalZ;
+		auto getCellIndex = std::bind(getIndex, std::placeholders::_1, nDims, dimsC);
+
+		//Open file
+		if (cg_open(fname.c_str(), CG_MODE_MODIFY, &F)) 
+			cg_error_exit();
+
+
+		/*} catch (std::exception exc) {
+			std::cout<<"rank = "<<rank<<", exception msg : "<<exc.what()<<"\n";
+			std::cout.flush();
+		};*/
+		//};
+
+		
+		std::cout<<"rank = "<<rank<<", np = "<<np<<"\n";
+		std::cout.flush();		
+
+		int currentRank = 0;
+		for (currentRank = 0; currentRank < 1; currentRank++) {
+
+			if (currentRank != rank) {
+		
+	//			pManager->Barrier();
+		//		continue;
+			};
+
+			//Begin of critical section
+			//Create vertex coordinate arrays
+			std::vector<cgsize_t> startIndex(0);
+			startIndex.push_back(iMin - dummyCellLayersX + 1);
+			startIndex.push_back((nDims > 1) ? jMin - dummyCellLayersY + 1 : 1);
+			startIndex.push_back((nDims > 2) ? kMin - dummyCellLayersZ + 1 : 1);
+			std::vector<cgsize_t> endIndex(0);
+			endIndex.push_back(iMax - dummyCellLayersX + 1);
+			endIndex.push_back((nDims > 1) ? jMax - dummyCellLayersY + 1 : 1);
+			endIndex.push_back((nDims > 2) ? kMax - dummyCellLayersZ + 1 : 1);
+			int nVertexesLocal = 1;
+			int dimsV[3];
+			for (int dn = 0; dn < nDims; dn++) {
+				if (pManager->rankCart[dn] == pManager->dimsCart[dn] - 1) endIndex[dn]++;
+				dimsV[dn] = endIndex[dn] - startIndex[dn] + 1;
+				nVertexesLocal *= dimsV[dn];
+			};
+
+			auto getVertexIndex = std::bind(getIndex, std::placeholders::_1, nDims, dimsV);
+
+			std::cout<<"rank = "<<rank<<", buffer size = "<<outBuffer.size()<<"\n";
+			std::cout<<"iMin = "<<startIndex[0]<<", iMax = "<<endIndex[0]<<"\n";
+			std::cout<<"jMin = "<<startIndex[1]<<", jMax = "<<endIndex[1]<<"\n";
+			std::cout<<"kMin = "<<startIndex[2]<<", kMax = "<<endIndex[2]<<"\n";
+			std::cout.flush();
+
+			//Write x-coords
+			std::vector<double> outBufferX;
+			outBufferX.resize(nVertexesLocal);
+			for (index[0] = 0; index[0] <= (endIndex[0] - startIndex[0]); index[0]++) {
+				for (index[1] = 0; index[1] <= (endIndex[1] - startIndex[1]); index[1]++) {
+					for (index[2] = 0; index[2] <= (endIndex[2] - startIndex[2]); index[2]++) {
+						int i = index[0] + iMin;
+						int ind = getVertexIndex(index);
+						outBufferX[ind] = (CoordinateX[i - 1] + CoordinateX[i]) / 2.0;
+					};
+				};
+			};
+			if (cg_coord_partial_write(F, B, Z, RealDouble, "CoordinateX", &startIndex.front(), &endIndex.front(), &outBufferX.front(), &C))
+				cg_error_exit();
+
+			pManager->Barrier();
+
+			if (nDims > 1) {
+				std::vector<double> outBufferY;
+				outBufferY.resize(nVertexesLocal);
+
+				//Write y-coords
+				for (index[0] = 0; index[0] <= (endIndex[0] - startIndex[0]); index[0]++) {
+					for (index[1] = 0; index[1] <= (endIndex[1] - startIndex[1]); index[1]++) {
+						for (index[2] = 0; index[2] <= (endIndex[2] - startIndex[2]); index[2]++) {
+							int j = index[1] + jMin;
+							int ind = getVertexIndex(index);
+							outBufferY[ind] = (CoordinateY[j - 1] + CoordinateY[j]) / 2.0;
+						};
+					};
+				};
+				if (cg_coord_partial_write(F, B, Z, RealDouble, "CoordinateY", &startIndex.front(), &endIndex.front(), &outBufferY.front(), &C))
+					cg_error_exit();
+			};
+
+			if (nDims > 2) {
+				std::vector<double> outBufferZ;
+				outBufferZ.resize(nVertexesLocal);
+
+				//Write z-coords
+				for (index[0] = 0; index[0] <= (endIndex[0] - startIndex[0]); index[0]++) {
+					for (index[1] = 0; index[1] <= (endIndex[1] - startIndex[1]); index[1]++) {
+						for (index[2] = 0; index[2] <= (endIndex[2] - startIndex[2]); index[2]++) {
+							int k = index[2] + kMin;
+							int ind = getVertexIndex(index);
+							outBufferZ[ind] = (CoordinateZ[k - 1] + CoordinateZ[k]) / 2.0;
+						};
+					};
+				};
+				if (cg_coord_partial_write(F, B, Z, RealDouble, "CoordinateZ", &startIndex.front(), &endIndex.front(), &outBufferZ.front(), &C))
+					cg_error_exit();
+			};
+
+
+			std::cout<<"rank = "<<rank<<", coordinates written.\n";
+			std::cout.flush();	
+
+
+			std::cout<<"rank = "<<rank<<", Solution writing begin\n";
+			std::cout.flush();
+
+			//Write solution data part for each process
+			startIndex.clear();
+			startIndex.push_back(iMin - dummyCellLayersX + 1);
+			startIndex.push_back((nDims > 1) ? jMin - dummyCellLayersY + 1 : 1);
+			startIndex.push_back((nDims > 2) ? kMin - dummyCellLayersZ + 1 : 1);
+			endIndex.clear();
+			endIndex.push_back(iMax - dummyCellLayersX + 1);
+			endIndex.push_back((nDims > 1) ? jMax - dummyCellLayersY + 1 : 1);
+			endIndex.push_back((nDims > 2) ? kMax - dummyCellLayersZ + 1 : 1);
+
+			std::cout<<"rank = "<<rank<<", buffer size = "<<outBuffer.size()<<"\n";
+			std::cout<<"iMin = "<<startIndex[0]<<", iMax = "<<endIndex[0]<<"\n";
+			std::cout<<"jMin = "<<startIndex[1]<<", jMax = "<<endIndex[1]<<"\n";
+			std::cout<<"kMin = "<<startIndex[2]<<", kMax = "<<endIndex[2]<<"\n";
+			std::cout.flush();
+		
+			//Function that returns density
+			auto getDensity = [] (double *U) {
+				return U[0];
+			};
+
+
+			//Writing arbitrary function applied to solution for each cell into out buffer
+			//auto fillBufferWith = [startIndex, endIndex, getIndex] (std::vector<double> outBuffer) {
+			for (index[0] = 0; index[0] <= (endIndex[0] - startIndex[0]); index[0]++) {
+				for (index[1] = 0; index[1] <= (endIndex[1] - startIndex[1]); index[1]++) {
+					for (index[2] = 0; index[2] <= (endIndex[2] - startIndex[2]); index[2]++) {
+						int bIndex = getCellIndex(index);
+						int i = index[0] + iMin;
+						int j = index[1] + jMin;
+						int k = index[2] + kMin;
+						double *U = getCellValues(i, j, k);
+						double val = getDensity(U);
+						//std::cout<<"rank = "<<rank<<", bIndex : "<<bIndex<<"\n";
+						//std::cout.flush();
+						outBuffer[bIndex] = val;
+					};
+				};
+			};
+
+			//Density
+			if (cg_field_partial_write(F, B, Z, S, RealDouble, "Density", &startIndex.front(), &endIndex.front(), &outBuffer.front(), &Fs))
+				cg_error_exit(); 
+		
+			std::cout<<"rank = "<<rank<<", Density field written\n";
+			std::cout.flush();
+
+			/* close the file */
+			cg_close(F); 
+
+			//End of critical section
+			pManager->Barrier();
+		};
+
+
+		//Final sync
+		pManager->Barrier();
+
+		//Read coordinates
+		/*if (rank == 0) {
+			if (cg_open(fname.c_str(), CG_MODE_READ, &F)) 
+				cg_error_exit();
+
+			std::vector<cgsize_t> startIndex(0);
+			startIndex.push_back(iMin - dummyCellLayersX + 1);
+			startIndex.push_back((nDims > 1) ? jMin - dummyCellLayersY + 1 : 1);
+			startIndex.push_back((nDims > 2) ? kMin - dummyCellLayersZ + 1 : 1);
+			std::vector<cgsize_t> endIndex(0);
+			endIndex.push_back(iMax - dummyCellLayersX + 1);
+			endIndex.push_back((nDims > 1) ? jMax - dummyCellLayersY + 1 : 1);
+			endIndex.push_back((nDims > 2) ? kMax - dummyCellLayersZ + 1 : 1);
+			int nVertexesLocal = 1;
+			int dimsV[3];
+			for (int dn = 0; dn < nDims; dn++) {
+				if (pManager->rankCart[dn] == pManager->dimsCart[dn] - 1) endIndex[dn]++;
+				dimsV[dn] = endIndex[dn] - startIndex[dn] + 1;
+				nVertexesLocal *= dimsV[dn];
+			};
+			outBuffer.resize(nVertexesLocal);
+
+			cg_coord_read(F, B, Z, "CoordinateX", RealDouble, &startIndex.front(), &endIndex.front(), &outBuffer.front());
+
+			std::ofstream ofs("CoordX.txt");
+			for (int i = 0; i<outBuffer.size(); i++) ofs<<outBuffer[i]<<std::endl;
+			ofs.close();
+
+
+			cg_coord_read(F, B, Z, "CoordinateY", RealDouble, &startIndex.front(), &endIndex.front(), &outBuffer.front());
+
+			std::ofstream ofs2("CoordY.txt");
+			for (int i = 0; i<outBuffer.size(); i++) ofs2<<outBuffer[i]<<std::endl;
+			ofs2.close();
+
+			cg_close(F);
+			exit(0);
+		};*/
+
 		return;
 	};
 
@@ -989,6 +1446,22 @@ public:
 			snapshotTimePrecision = 1 - std::floor(std::log10(SaveSolutionSnapshotTime));
 		};
 
+		//Open history file
+		std::ofstream ofs;
+		if (pManager->IsMaster()) {
+			ofs.open("history.dat", std::ios_base::out);
+			//Header
+			ofs<<"VARIABLES = ";
+			ofs<<"\""<<"time"<<"\" ";			
+			ofs<<"\""<<"roR"<<"\" ";
+			ofs<<"\""<<"rouR"<<"\" ";
+			if (nDims > 1) ofs<<"\""<<"rovR"<<"\" ";
+			if (nDims > 2) ofs<<"\""<<"rowR"<<"\" ";			
+			ofs<<"\""<<"roeR"<<"\" ";
+			ofs<<"\""<<"uMax"<<"\" ";
+			ofs<<std::endl;			
+		};
+
 		//Start timer
 		Timer workTimer;
 		workTimer.Start();
@@ -1035,7 +1508,37 @@ public:
 				stepInfo.NextSnapshotTime += SaveSolutionSnapshotTime;
 			};
 
-			//Save history			
+			//Find maximum x velocity	
+			double uMax = 0;
+			for (int i = iMin; i <= iMax; i++) {
+				for (int j = jMin; j <= jMax; j++) {
+					for (int k = kMin; k <= kMax; k++) {
+						double *U = getCellValues(i, j, k);
+						double u = U[1] / U[0];
+						if (std::abs(u) > std::abs(uMax)) uMax = u;
+					};
+				};
+			};
+
+			double uMaxAbs = std::abs(uMax);
+			uMaxAbs = pManager->Max(uMaxAbs);
+			if (uMax > 0) {
+				uMax = uMaxAbs;
+			} else {
+				uMax = -uMaxAbs;
+			};
+			
+			//Save convergence history		
+			if (pManager->IsMaster() && (stepInfo.Iteration % ResidualOutputIterations)) {
+				ofs<<stepInfo.Time<<" ";			
+				ofs<<stepInfo.Residual[0]<<" ";							
+				ofs<<stepInfo.Residual[1]<<" ";			
+				if (nDims > 1) ofs<<stepInfo.Residual[2]<<" ";			
+				if (nDims > 2) ofs<<stepInfo.Residual[3]<<" ";			
+				ofs<<stepInfo.Residual[4]<<" ";				
+				ofs<<uMax<<" ";			
+				ofs<<std::endl;	
+			};
 
 			//Convergence criteria
 			if (stepInfo.Iteration == MaxIteration) {
@@ -1067,6 +1570,10 @@ public:
 		double maxIdleTime = pManager->Max(idleTime);
 
 		if (pManager->IsMaster()) {
+			//Close history file
+			ofs.flush();
+			ofs.close();
+
 			std::cout<<"Calculation finished!\n";			
 			//Stop timer
 			workTimer.Stop();
@@ -1081,6 +1588,7 @@ public:
 		//Finalize MPI
 		pManager->Finalize();
 	};
+
 };
 
 #endif

@@ -63,11 +63,18 @@ public:
 	void InitCartesianTopology(StructuredGridInfo info) {
 		//Simple one dimensional topology for now
 		_nDims = info.nDims;				
-		dimsCart[0] = _nProcessors; //0;
+		dimsCart[0] = _nProcessors;//0;
 		dimsCart[1] = 1;
 		if (_nDims > 1) dimsCart[1] = 0;		
 		dimsCart[2] = 1;
-		if (_nDims > 2) dimsCart[2] = 0;		
+		if (_nDims > 2) dimsCart[2] = 0;
+
+		rankCart[0] = 0;
+		rankCart[1] = 0;
+		rankCart[2] = 0;
+		//if (_nDims == 2) dimsCart[1] = _nProcessors;
+		//if (_nDims == 3) dimsCart[2] = _nProcessors;
+
 		periodic[0] = info.IsPeriodicX;
 		periodic[1] = info.IsPeriodicY;
 		periodic[2] = info.IsPeriodicZ;	

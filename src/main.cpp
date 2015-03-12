@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+
 #include "kernel\kernel.h";
 #include "Methods\ExplicitRungeKuttaFVM.h"
 #include "Methods\HybridFVM.h"
@@ -16,14 +17,14 @@ struct ShockTubeParameters {
 };
 
 std::vector<double> SODinitialDistribution(Vector r, double xI, ShockTubeParameters params) {
-	std::vector<double> U(5);	
+	std::vector<double> U(5);
 	double ro;
 	double u;
 	double gamma;
 	double P;
 
 	//Left
-	if (r.y <= xI) {
+	if (r.x <= xI) {
 		ro = params.roL;
 		u = params.uL;
 		P = params.PL;
@@ -48,7 +49,7 @@ std::vector<double> SODinitialDistribution(Vector r, double xI, ShockTubeParamet
 void RunSODTestRoe1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 10;
+	conf.nX = 1000;
 	conf.nY = 10;
 	conf.LX = 1.0;
 	conf.LY = 1.0;	
@@ -88,15 +89,16 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	params.gammaL = params.gammaR = 1.4;
 	params.roL = 1.0;
 	params.PL = 1.0;
-	params.uL = 0.75;
+	params.uL = 0.0;
 	params.roR = 0.125;
 	params.PR = 0.1;
 	params.uR = 0.0;
-	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.3, params);
+	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
 	kernel->SetInitialConditions(initD);
 
 	//save solution
 	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionStructuredCGNS("init.cgns");
 	
 	//run computation
 	kernel->Run();		
@@ -186,8 +188,8 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 
 	KernelConfiguration conf;
 	conf.nDims = 2;
-	conf.nX = 10;
-	conf.nY = 40;
+	conf.nX = 20;
+	conf.nY = 20;
 	conf.LX = 0.2;
 	conf.LY = 0.1;	
 	conf.isPeriodicX = true;
@@ -209,10 +211,10 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 
-	conf.MaxTime = 0.2;
-	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0.01;
-	conf.SaveSolutionSnapshotIterations = 10000;
+	conf.MaxTime = 1.0;
+	conf.MaxIteration = 10000000;
+	conf.SaveSolutionSnapshotTime = 0.1;
+	conf.SaveSolutionSnapshotIterations = 0;
 	conf.ResidualOutputIterations = 10;
 
 	conf.Viscosity = viscosity;
@@ -230,21 +232,22 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 
 	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
 	auto initD = [ro_init, Pave, &conf](Vector r) {
-		double u = 0.5*conf.Sigma*r.y*(conf.LY - r.y)/conf.Viscosity;
-		u = 0;
+		double u = 0.01 * 0.5 * conf.Sigma * r.y * (conf.LY - r.y) / conf.Viscosity;
+		//u = 0;
 		double roe = Pave/(conf.gamma - 1);
 		std::vector<double> res(5);
 		res[0] = ro_init;
 		res[1] = res[0]*u;
 		res[2] = 0.0;
 		res[3] = 0.0;
-		res[4] =  roe + 0.5*res[0]*u*u;
+		res[4] = roe + 0.5*res[0]*u*u;
 		return res; 
 	};
 	kernel->SetInitialConditions(initD);
 
 	//save solution
 	kernel->SaveSolution("init.dat");
+	//kernel->SaveSolutionStructuredCGNS("init.cgns");
 	
 	//run computation
 	kernel->Run();		
@@ -261,8 +264,8 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 
 	KernelConfiguration conf;
 	conf.nDims = 3;
-	conf.nX = 10;
-	conf.nY = 40;
+	conf.nX = 100;
+	conf.nY = 100;
 	conf.nZ = 6;
 	conf.LX = 0.2;
 	conf.LY = 0.1;
@@ -336,7 +339,7 @@ int main(int argc, char *argv[])
 	//main function
 	//RunSODTestRoe1D(argc, argv);
 	//RunSODTestRoe2DX(argc, argv);
-	//RunPoiseuille2D(argc, argv);
-	RunPoiseuille3D(argc, argv);
+	RunPoiseuille2D(argc, argv);
+	//RunPoiseuille3D(argc, argv);
 	return 0;
 };

@@ -6,6 +6,8 @@
 #include <vector>
 #include "utility/Vector.h"
 
+namespace BoundaryConditions {
+
 enum class BoundaryVariableType {
 	Pressure,
 	Density,
@@ -61,7 +63,7 @@ public:
 
 		Vector outGrad = inGrad;
 		double dudnIn = inGrad * faceNormal;
-		double dudnOut = (2.0 * (inV - Value) / dn - dudnIn) * CValue + Value * CGradient;
+		double dudnOut = a/dn;
 		outGrad = inGrad + (dudnOut - dudnIn) * faceNormal;
 
 		return outGrad;
@@ -141,6 +143,8 @@ public:
 
 		throw 1;
 	}; 
+
+};
 
 };
 
