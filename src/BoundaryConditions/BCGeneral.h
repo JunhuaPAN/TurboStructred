@@ -141,6 +141,23 @@ public:
 			return;
 		};
 
+		if (bcConfig.BCType == BoundaryConditionType::MovingWall) {				
+			boundaryConditions[BoundaryVariableType::Density] = CompositeBoundaryConditionInfo();
+			boundaryConditions[BoundaryVariableType::VelocityX] = CompositeBoundaryConditionInfo();
+			boundaryConditions[BoundaryVariableType::VelocityY] = CompositeBoundaryConditionInfo();
+			boundaryConditions[BoundaryVariableType::VelocityZ] = CompositeBoundaryConditionInfo();
+			boundaryConditions[BoundaryVariableType::Pressure] = CompositeBoundaryConditionInfo();
+
+			boundaryConditions[BoundaryVariableType::Density].SetNeumanBoundary(0);
+			boundaryConditions[BoundaryVariableType::VelocityX].SetDirichletBoundary(bcConfig.Velocity.x);
+			boundaryConditions[BoundaryVariableType::VelocityY].SetDirichletBoundary(bcConfig.Velocity.y);
+			boundaryConditions[BoundaryVariableType::VelocityZ].SetDirichletBoundary(bcConfig.Velocity.z);
+			boundaryConditions[BoundaryVariableType::Pressure].SetNeumanBoundary(0);
+
+			gamma = bcConfig.Gamma;
+			return;
+		};
+
 		throw 1;
 	}; 
 

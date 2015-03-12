@@ -2,16 +2,19 @@
 #define TurboStructured_kernel_KernelConfiguration
 
 #include "Methods\MethodConfiguration.h"
+#include "Vector.h"
 
 enum class BoundaryConditionType {
 	Wall,
 	Symmetry,
+	MovingWall,
 	General
 };
 
 class BoundaryConditionConfiguration {
 public:
 	BoundaryConditionType BCType;
+	Vector Velocity;
 	double Gamma;
 };
 
@@ -32,12 +35,12 @@ public:
 
 	//Gas model parameters
 	int nVariables;
-	double gamma;
+	double Gamma;
 	double Viscosity;
 	double ThermalConductivity;
 
 	//model configuration
-	bool isViscousFlow;
+	bool IsViscousFlow;
 
 	//Solution method parameters
 	enum class Method {
@@ -53,6 +56,7 @@ public:
 	double SaveSolutionSnapshotTime;	
 	int SaveSolutionSnapshotIterations;
 	int ResidualOutputIterations;
+	bool DebugOutputEnabled;
 	
 	//Boundary conditions configuration
 	BoundaryConditionConfiguration xLeftBoundary;
@@ -70,7 +74,8 @@ public:
 		Viscosity = 0;
 		ThermalConductivity = 0;
 		Sigma = 0.0;
-		isViscousFlow = false;
+		IsViscousFlow = false;
+		DebugOutputEnabled = false;
 	};
 };
 

@@ -55,7 +55,7 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	conf.isPeriodicX = false;
 	conf.isPeriodicY = false;
 
-	conf.gamma = 1.4;
+	conf.Gamma = 1.4;
 	conf.nVariables = 5;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
@@ -112,7 +112,7 @@ void RunSODTestHybrid1D(int argc, char *argv[]) {
 	conf.LX = 1.0;
 	conf.isPeriodicX = false;
 
-	conf.gamma = 1.4;
+	conf.Gamma = 1.4;
 	conf.nVariables = 5;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
@@ -173,7 +173,7 @@ void RunSODTestRoe2DX(int argc, char *argv[]) {
 	conf.isPeriodicX = true;
 	conf.isPeriodicY = false;
 
-	conf.gamma = 1.4;
+	conf.Gamma = 1.4;
 	conf.nVariables = 5;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
@@ -249,7 +249,7 @@ void RunFluxesTest2D(int argc, char *argv[]) {
 	conf.isPeriodicX = false;
 	conf.isPeriodicY = false;
 
-	conf.gamma = 1.4;
+	conf.Gamma = 1.4;
 	conf.nVariables = 5;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
@@ -327,8 +327,9 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	conf.isPeriodicX = true;
 	conf.isPeriodicY = false;
 
-	conf.gamma = 1.4;
+	conf.Gamma = 1.4;
 	conf.nVariables = 5;
+	conf.IsViscousFlow = true;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
 	conf.xLeftBoundary.Gamma = 1.4;
@@ -338,6 +339,11 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	conf.yLeftBoundary.Gamma = 1.4;
 	conf.yRightBoundary.BCType = BoundaryConditionType::Wall;
 	conf.yRightBoundary.Gamma = 1.4;
+
+	//Example of moving wall BC
+	//conf.yLeftBoundary.BCType = BoundaryConditionType::MovingWall;
+	//conf.yLeftBoundary.Gamma = 1.4;
+	//conf.yLeftBoundary.Velocity = Vector(5, 0, 0);
 
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 	conf.methodConfiguration.CFL = 0.5;
@@ -366,7 +372,7 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	auto initD = [ro_init, Pave, &conf](Vector r) {
 		double u = 0.5*conf.Sigma*r.y*(conf.LY - r.y)/conf.Viscosity;
 		//u = 0;
-		double roe = Pave/(conf.gamma - 1);
+		double roe = Pave/(conf.Gamma - 1);
 		std::vector<double> res(5);
 		res[0] = ro_init;
 		res[1] = res[0]*u;
@@ -405,7 +411,7 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	conf.isPeriodicY = false;
 	conf.isPeriodicZ = true;
 
-	conf.gamma = 1.4;
+	conf.Gamma = 1.4;
 	conf.nVariables = 5;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
@@ -444,7 +450,7 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	auto initD = [ro_init, Pave, &conf](Vector r) {
 		double u = 0.5*conf.Sigma*r.y*(conf.LY - r.y)/conf.Viscosity;
 		u = 0;
-		double roe = Pave/(conf.gamma - 1);
+		double roe = Pave/(conf.Gamma - 1);
 		std::vector<double> res(5);
 		res[0] = ro_init;
 		res[1] = res[0]*u;

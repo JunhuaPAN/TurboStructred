@@ -129,6 +129,8 @@ public:
 	int SaveSolutionSnapshotIterations;
 	int ResidualOutputIterations;
 
+	bool DebugOutputEnabled; //
+
 	//Constructor
 	Kernel(int* argc, char **argv[]) : pManager(new ParallelManager(argc, argv)) { };
 
@@ -148,8 +150,10 @@ public:
 			};
 		};
 
-		std::cout<<"rank = "<<pManager->getRank()<<", Initial conditions written.\n";
-		std::cout.flush();
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Initial conditions written.\n";
+			std::cout.flush();
+		};
 		//Sync
 		pManager->Barrier();
 	};
@@ -197,16 +201,15 @@ public:
 		nlocalZ = nZ / pManager->dimsCart[2];	
 		iMin = pManager->rankCart[0] * nlocalX + dummyCellLayersX;
 		iMax = (pManager->rankCart[0]+1) * nlocalX + dummyCellLayersX - 1;
-		std::cout<<"rank = "<<pManager->_rankCart<<", iMin = "<<iMin<<", iMax = "<<iMax<<"\n";
-		std::cout.flush();
 		jMin = pManager->rankCart[1] * nlocalY + dummyCellLayersY;
 		jMax = (pManager->rankCart[1]+1) * nlocalY + dummyCellLayersY - 1;
-		std::cout<<"rank = "<<pManager->_rankCart<<", jMin = "<<jMin<<", jMax = "<<jMax<<"\n";
-		std::cout.flush();
 		kMin = pManager->rankCart[2] * nlocalZ + dummyCellLayersZ;
 		kMax = (pManager->rankCart[2]+1) * nlocalZ + dummyCellLayersZ - 1;		
-		std::cout<<"rank = "<<pManager->_rankCart<<", kMin = "<<kMin<<", kMax = "<<kMax<<"\n";
-		std::cout.flush();		
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->_rankCart<<", iMin = "<<iMin<<", iMax = "<<iMax<<"\n";
+			std::cout<<"rank = "<<pManager->_rankCart<<", jMin = "<<jMin<<", jMax = "<<jMax<<"\n";
+			std::cout<<"rank = "<<pManager->_rankCart<<", kMin = "<<kMin<<", kMax = "<<kMax<<"\n";
+		};
 
 		//Sync
 		pManager->Barrier();
@@ -274,11 +277,11 @@ public:
 		if (nDims > 2) hz = dz;
 
 		//Initialize gas model parameters and riemann solver
-		gamma = config.gamma;
+		gamma = config.Gamma;
 		nVariables = config.nVariables;	
 		viscosity = config.Viscosity;
 		thermalConductivity = config.ThermalConductivity;
-		if(config.isViscousFlow == true) {
+		if(config.IsViscousFlow == true) {
 			isViscousFlow = true;
 			isGradientRequired = true;
 		} else {
@@ -320,10 +323,18 @@ public:
 			zRightBC->loadConfiguration(config.zRightBoundary);
 		};
 
+		//
+
 		//External forces
 		Sigma = Vector(config.Sigma, 0, 0);
+
+		//Output settings
+		DebugOutputEnabled = config.DebugOutputEnabled;
 		
-		//std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";
+			std::cout.flush();
+		};
 		//Sync
 		pManager->Barrier();
 	};
@@ -332,7 +343,9 @@ public:
 	void UpdateSolution(double dt) {
 		//Compute cell volume
 		double volume = hx * hy * hz;
-		stepInfo.Residual.resize(5, 0);
+		stepInfo.Residual.resize(nVariables);
+		for (int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = 0;
+
 
 		for (int i = iMin; i <= iMax; i++)
 		{
@@ -462,8 +475,9 @@ public:
 			};
 
 		}; // 
-
-		std::cout<<"rank = "<<pManager->getRank()<<", Exchange values X-direction executed\n";
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Exchange values X-direction executed\n";
+		};
 		//Sync
 		pManager->Barrier();
 
@@ -551,8 +565,10 @@ public:
 			};
 		};
 
-		std::cout<<"rank = "<<pManager->getRank()<<", Exchange values Y-direction executed\n";
-		std::cout.flush();
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Exchange values Y-direction executed\n";
+			std::cout.flush();
+		};
 		//Sync
 		pManager->Barrier();
 
@@ -641,8 +657,10 @@ public:
 
 		}; // 
 
-		std::cout<<"rank = "<<pManager->getRank()<<", Exchange values Z-direction executed\n";
-		std::cout.flush();
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Exchange values Z-direction executed\n";
+			std::cout.flush();
+		};
 		//Sync
 		pManager->Barrier();
 
@@ -715,8 +733,10 @@ public:
 			};
 		}; //X direction
 
-		std::cout<<"rank = "<<pManager->getRank()<<", Dummy values X-direction computed\n";
-		std::cout.flush();
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Dummy values X-direction computed\n";
+			std::cout.flush();
+		};
 		//Sync
 		pManager->Barrier();
 
@@ -772,8 +792,10 @@ public:
 			};
 		}; //Y direction
 
-		std::cout<<"rank = "<<pManager->getRank()<<", Dummy values Y-direction computed\n";
-		std::cout.flush();
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Dummy values Y-direction computed\n";
+			std::cout.flush();
+		};
 		//Sync
 		pManager->Barrier();
 	};
@@ -1227,8 +1249,10 @@ public:
 		//Tecpol version
 		std::ofstream ofs;
 
-		std::cout<<"rank = "<<pManager->_rankCart<<", Solution save begin\n";
-		std::cout.flush();
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->_rankCart<<", Solution save begin\n";
+			std::cout.flush();
+		};
 		pManager->Barrier();
 		
 		//Header
@@ -1573,8 +1597,10 @@ public:
 
 		//Calculate max idle time
 		double idleTime = pManager->getIdleTime<std::milli>(); //ms
-		std::cout<<"rank = "<<pManager->getRank()<<", local idle time = " << idleTime / 1e3 << " seconds.\n";
-		std::cout.flush();
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", local idle time = " << idleTime / 1e3 << " seconds.\n";
+			std::cout.flush();
+		};
 		
 		double maxIdleTime = pManager->Max(idleTime);
 

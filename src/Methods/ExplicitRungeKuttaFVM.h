@@ -43,15 +43,17 @@ public:
 
 		//Method specific part
 		MethodConfiguration config = kernelConfig.methodConfiguration;
-		_riemannSolver = (std::unique_ptr<RiemannSolver>)std::move(new RoeSolverPerfectGasEOS(kernelConfig.gamma, 0.05, 0.0));
+		_riemannSolver = (std::unique_ptr<RiemannSolver>)std::move(new RoeSolverPerfectGasEOS(kernelConfig.Gamma, 0.05, 0.0));
 		CFL = config.CFL;
 		RungeKuttaOrder = config.RungeKuttaOrder;
 		
 		//Allocate memory for values and residual
 		spectralRadius.resize(nCellsLocalAll);	
 
-		std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";
-		std::cout.flush();
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";
+			std::cout.flush();
+		};
 		//Sync
 		pManager->Barrier();
 	};
@@ -114,24 +116,30 @@ public:
 			};
 		};
 
-		std::cout<<"rank = "<<pManager->getRank()<<", Gradients calculated inside domain\n";
-		std::cout.flush();
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Gradients calculated inside domain\n";
+			std::cout.flush();
+		};
 		//Sync
 		pManager->Barrier();
 		
 		//Interprocessor exchange
 		ExchangeGradients();
 
-		std::cout<<"rank = "<<pManager->getRank()<<", Gradients exchange executed\n";
-		std::cout.flush();
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Gradients exchange executed\n";
+			std::cout.flush();
+		};
 		//Sync
 		pManager->Barrier();
 
 		//Boundaries
 		ComputeDummyCellGradients();
 
-		std::cout<<"rank = "<<pManager->getRank()<<", Gradients calculated in dummy cells\n";
-		std::cout.flush();
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Gradients calculated in dummy cells\n";
+			std::cout.flush();
+		};
 		//Sync
 		pManager->Barrier();
 	};
@@ -218,8 +226,10 @@ public:
 			};
 		}; //X direction
 
-		std::cout<<"rank = "<<pManager->getRank()<<", Gradients dummy cells X-direction calculated\n";
-		std::cout.flush();
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Gradients dummy cells X-direction calculated\n";
+			std::cout.flush();
+		};
 		//Sync
 		pManager->Barrier();
 
@@ -283,8 +293,10 @@ public:
 			};
 		}; //Y direction
 
-		std::cout<<"rank = "<<pManager->getRank()<<", Gradients dummy cells Y-direction calculated\n";
-		std::cout.flush();
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Gradients dummy cells Y-direction calculated\n";
+			std::cout.flush();
+		};
 		//Sync
 		pManager->Barrier();
 	};
@@ -800,24 +812,30 @@ public:
 
 	//Explicit time step
 	virtual void IterationStep() override {	
-		std::cout<<"rank = "<<pManager->getRank()<<", Iteration started\n";
-		std::cout.flush();
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Iteration started\n";
+			std::cout.flush();
+		};
 		//Sync
 		pManager->Barrier();
 
 		//Compute residual
 		ComputeResidual(values, residual, spectralRadius);
 
-		std::cout<<"rank = "<<pManager->getRank()<<", Residual calculated\n";
-		std::cout.flush();
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Residual calculated\n";
+			std::cout.flush();
+		};
 		//Sync
 		pManager->Barrier();
 
 		//Determine timestep
 		stepInfo.TimeStep = ComputeTimeStep(spectralRadius);
 		
-		std::cout<<"rank = "<<pManager->getRank()<<", Timestep calculated\n";
-		std::cout.flush();
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Timestep calculated\n";
+			std::cout.flush();
+		};
 		//Sync
 		pManager->Barrier();
 
