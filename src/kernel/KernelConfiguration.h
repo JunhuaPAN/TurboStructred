@@ -36,6 +36,9 @@ public:
 	double Viscosity;
 	double ThermalConductivity;
 
+	//model configuration
+	bool isViscousFlow;
+
 	//Solution method parameters
 	enum class Method {
 		HybridFVM,
@@ -67,6 +70,7 @@ public:
 		Viscosity = 0;
 		ThermalConductivity = 0;
 		Sigma = 0.0;
+		isViscousFlow = false;
 	};
 };
 

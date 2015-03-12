@@ -105,7 +105,7 @@ public:
 		res[4] = roeDummy + roDummy*(uDummy*uDummy + vDummy*vDummy + wDummy*wDummy)/2.0;
 		return res;
 	};
-
+ 
 	void loadConfiguration(BoundaryConditionConfiguration& bcConfig) {
 		if (bcConfig.BCType == BoundaryConditionType::Symmetry) {				
 			boundaryConditions[BoundaryVariableType::Density] = CompositeBoundaryConditionInfo();

@@ -107,6 +107,64 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	kernel->Finilaze();
 };
 
+void RunSODTestHybrid1D(int argc, char *argv[]) {
+	KernelConfiguration conf;
+	conf.nDims = 1;
+	conf.nX = 500;
+	conf.LX = 1.0;
+	conf.isPeriodicX = false;
+
+	conf.gamma = 1.4;
+	conf.nVariables = 5;
+
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xLeftBoundary.Gamma = 1.4;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xRightBoundary.Gamma = 1.4;
+
+	conf.SolutionMethod = KernelConfiguration::Method::HybridFVM;
+	conf.methodConfiguration.CFL = 0.05;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+
+	conf.MaxTime = 0.2;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 0.1;
+	conf.SaveSolutionSnapshotIterations = 0;
+	conf.ResidualOutputIterations = 100;
+
+	//init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
+		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
+	};	
+	kernel->Init(conf);
+
+	// initial conditions
+	ShockTubeParameters params;
+	params.gammaL = params.gammaR = 1.4;
+	params.roL = 1.0;
+	params.PL = 1.0;
+	//params.uL = 0.75;
+	params.uL = 0;
+	params.roR = 0.125;
+	params.PR = 0.1;
+	params.uR = 0.0;
+	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolution("init.dat");
+	
+	//run computation
+	kernel->Run();		
+
+	//finalize kernel
+	kernel->Finilaze();
+};
+
 void RunSODTestRoe2DX(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 2;
@@ -340,6 +398,7 @@ int main(int argc, char *argv[])
 	//RunSODTestRoe1D(argc, argv);
 	//RunSODTestRoe2DX(argc, argv);
 	RunPoiseuille2D(argc, argv);
+	//RunSODTestHybrid1D(argc, argv);
 	//RunPoiseuille3D(argc, argv);
 	return 0;
 };

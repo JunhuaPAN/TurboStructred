@@ -103,38 +103,38 @@ public:
 
 		//write right eigenvectors
 		R.element[0][0] = 1;
-		R.element[0][1] = ua - c;
-		R.element[0][2] = va;
-		R.element[0][3] = wa;
-		R.element[0][4] = ha - c*ua;
+		R.element[1][0] = ua - c;
+		R.element[2][0] = va;
+		R.element[3][0] = wa;
+		R.element[4][0] = ha - c*ua;
 
-		R.element[1][0] = 1;
+		R.element[0][1] = 1;
 		R.element[1][1] = ua;
-		R.element[1][2] = va;
-		R.element[1][3] = wa;
-		R.element[1][4] = ha - c2/gr;
+		R.element[2][1] = va;
+		R.element[3][1] = wa;
+		R.element[4][1] = ha - c2/gr;
 		
-		R.element[2][0] = 0;
-		R.element[2][1] = 0;
+		R.element[0][2] = 0;
+		R.element[1][2] = 0;
 		R.element[2][2] = 1;
-		R.element[2][3] = 0;
-		R.element[2][4] = va;
-
-	    R.element[3][0] = 0;
-		R.element[3][1] = 0;
 		R.element[3][2] = 0;
-		R.element[3][3] = 1;
-		R.element[3][4] = wa;
-		
-		R.element[4][0] = 1;
-		R.element[4][1] = ua + c;
 		R.element[4][2] = va;
+
+	    R.element[0][3] = 0;
+		R.element[1][3] = 0;
+		R.element[2][3] = 0;
+		R.element[3][3] = 1;
 		R.element[4][3] = wa;
+		
+		R.element[0][4] = 1;
+		R.element[1][4] = ua + c;
+		R.element[2][4] = va;
+		R.element[3][4] = wa;
 		R.element[4][4] = ha + c*ua;
 		
 		double dc2 = 2*c2;
 
-		//write left eigenvectors
+		//write inverse matrix (left eigenvectors are rows)
 		Rinv.element[0][0] = (gr*q2p + ua*c)/dc2;
 		Rinv.element[0][1] = (-1.0)*(c + ua*gr)/dc2;
 		Rinv.element[0][2] = -va*gr/dc2;
@@ -164,6 +164,9 @@ public:
 		Rinv.element[4][2] = va*gr/dc2;
 		Rinv.element[4][3] = wa*gr/dc2;
 		Rinv.element[4][4] = gr/dc2;
+
+		Matrix E = R*Rinv;
+		int test;
 	};
 
 
@@ -541,7 +544,7 @@ public:
 		};
 
 		double dt = CFL/dmax;
-		dt = std::min(stepInfo.NextSnapshotTime - stepInfo.Time, dt);
+		if(stepInfo.NextSnapshotTime>0) dt = std::min(stepInfo.NextSnapshotTime - stepInfo.Time, dt);
 		stepInfo.TimeStep = dt;
 	};
 
