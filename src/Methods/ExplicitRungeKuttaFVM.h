@@ -697,6 +697,13 @@ public:
 						//Compute flux
 						RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
 						fr = result.Fluxes;
+
+						//Compute viscous flux
+						int sL = getSerialIndexLocal(i, j, k - 1);
+						int sR = getSerialIndexLocal(i, j, k);
+						//fvisc = ComputeViscousFlux(sL, sR, U[0], U[1], fn);
+						fvisc = vfluxesZ[faceInd];
+						for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
 	
 						//Update residuals
 						if(k > kMin)
@@ -782,34 +789,6 @@ public:
 		return dt;
 	};
 	
-	//Update solution
-	void UpdateSolution(double dt) {
-		//Compute cell volume
-		double volume = hx * hy * hz;
-		stepInfo.Residual.resize(5, 0);
-
-		for (int i = iMin; i <= iMax; i++)
-		{
-			for (int j = jMin; j <= jMax; j++)
-			{
-				for (int k = kMin; k <= kMax; k++)
-				{
-					int idx = getSerialIndexLocal(i, j, k);
-
-					//Update cell values
-					for(int nv = 0; nv < nVariables; nv++) values[idx * nVariables + nv] += residual[idx * nVariables + nv] * dt / volume;
-
-					//Compute total residual
-					stepInfo.Residual[0] += abs(residual[idx * nVariables]);			//ro
-					stepInfo.Residual[1] += abs(residual[idx * nVariables + 1]);		//rou
-					stepInfo.Residual[2] += abs(residual[idx * nVariables + 2]);		//rov
-					stepInfo.Residual[3] += abs(residual[idx * nVariables + 3]);		//row
-					stepInfo.Residual[4] += abs(residual[idx * nVariables + 4]);		//roE
-				};
-			};
-		};
-	};
-
 	//Explicit time step
 	virtual void IterationStep() override {	
 		if (DebugOutputEnabled) {

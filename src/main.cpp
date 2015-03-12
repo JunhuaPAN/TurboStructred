@@ -314,7 +314,7 @@ void RunFluxesTest2D(int argc, char *argv[]) {
 
 void RunPoiseuille2D(int argc, char *argv[]) {
 	double viscosity = 1.73e-5;	//Air
-	double sigma = 0.14;		// dPdx
+	double sigma = 0.14;		// -dPdx
 	double ro_init = 1.225;		//Air
 	double Pave = 1.0e5;		//average pressure			
 
@@ -349,14 +349,14 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 
-	conf.MaxTime = 0.2;
+	conf.MaxTime = 1.0;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionSnapshotTime = 0.01;
 	conf.SaveSolutionSnapshotIterations = 10000;
-	conf.ResidualOutputIterations = 10;
+	conf.ResidualOutputIterations = 50;
 
 	conf.Viscosity = viscosity;
-	conf.Sigma = sigma;
+	conf.Sigma = -sigma;
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -471,6 +471,89 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	kernel->Finilaze();
 };
 
+void RunShearFlow2D(int argc, char *argv[]) {
+	double viscosity = 1.73e-5;	//Air
+	double sigma = 0.0;		// dPdx
+	double ro_init = 1.225;		//Air
+	double Pave = 1.0e5;		//average pressure
+	double Utop = 1.0;
+
+	KernelConfiguration conf;
+	conf.nDims = 2;
+	conf.nX = 10;
+	conf.nY = 40;
+	conf.LX = 0.2;
+	conf.LY = 0.1;	
+	conf.isPeriodicX = true;
+	conf.isPeriodicY = false;
+
+	conf.Gamma = 1.4;
+	conf.nVariables = 5;
+	conf.IsViscousFlow = true;
+
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xLeftBoundary.Gamma = 1.4;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xRightBoundary.Gamma = 1.4;
+	conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::MovingWall;
+	conf.yRightBoundary.Gamma = 1.4;
+	conf.yRightBoundary.Velocity = Vector(Utop, 0, 0);
+
+	//Example of moving wall BC
+	//conf.yLeftBoundary.BCType = BoundaryConditionType::MovingWall;
+	//conf.yLeftBoundary.Gamma = 1.4;
+	//conf.yLeftBoundary.Velocity = Vector(5, 0, 0);
+
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+
+	conf.MaxTime = 1.0;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 0.01;
+	conf.SaveSolutionSnapshotIterations = 1000;
+	conf.ResidualOutputIterations = 50;
+
+	conf.Viscosity = viscosity;
+	conf.Sigma = sigma;
+
+	//init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
+		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
+	};	
+	kernel->Init(conf);
+
+	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
+	auto initD = [ro_init, Pave, Utop, &conf](Vector r) {
+		double u = r.y * Utop / conf.LY;
+		//u = 0;
+		double roe = Pave/(conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init*u;
+		res[2] = 0.0;
+		res[3] = 0.0;
+		res[4] =  roe + 0.5*ro_init*u*u;
+		return res; 
+	};
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolution("init.dat");
+	
+	//run computation
+	kernel->Run();		
+
+	//finalize kernel
+	kernel->Finilaze();
+};
+
 int main(int argc, char *argv[])
 {
 	//main function
@@ -480,5 +563,7 @@ int main(int argc, char *argv[])
 	RunPoiseuille2D(argc, argv);
 	//RunSODTestHybrid1D(argc, argv);
 	//RunPoiseuille3D(argc, argv);
+	//RunShearFlow2D(argc, argv);
+
 	return 0;
 };
