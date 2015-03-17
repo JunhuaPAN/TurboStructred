@@ -897,10 +897,12 @@ public:
 						RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
 						fr = result.Fluxes;
 
+						//Compute viscous flux
+						int sL = getSerialIndexLocal(i, j, k - 1);
+						int sR = getSerialIndexLocal(i, j, k);
 						//fvisc = ComputeViscousFlux(sL, sR, U[0], U[1], fn);
 						fvisc = vfluxesZ[faceInd];
 						for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
-						
 	
 						//Update residuals
 						if(k > kMin)
@@ -995,7 +997,7 @@ public:
 		//Sync
 		pManager->Barrier();
 
-		//Compute residual
+		//Compute residual   TO DO second argument remove
 		ComputeResidual(values, residual, spectralRadius);
 
 		if (DebugOutputEnabled) {

@@ -40,6 +40,27 @@ public:
 			return;
 		};
 	};
+	void ExchangeVelocityComponents(std::vector<double> &U, direction dir) {
+		if(dir == X_direction) return;
+		
+		//	(u, v, w) -> (v, w, u)
+		if(dir == Y_direction) {
+			double temp = U[1];
+			U[1] = U[2];
+			U[2] = U[3];
+			U[3] = temp;
+			return;
+		};
+
+		//	(u, v, w) -> (w, u, v)
+		if(dir == Z_direction) {
+			double temp = U[1];
+			U[1] = U[3];
+			U[3] = U[2];
+			U[2] = temp;
+			return;
+		};
+	};
 
 	//Prepare conservative variables for appropriate directions
 	//(u v w) components of velocity have feature that u is a normal velocity component everytime and v and w are considered as passive scalar
@@ -168,33 +189,34 @@ public:
 		Matrix E = R*Rinv;
 		int test;
 	};
-
+	
 	//Compute fluxes in X direction and write values_new array
-	void Xfluxes() {
+	void Xfluxes(double dt) {
 		direction dir = X_direction;
+		for (double& r : residual) r = 0;	//Nullify residuals
 
 		//initialize data containers
 		double* Uim1, *Ui, *Uip1, *Uip2;	//vectors of conservative variables in i-1  i  i+1  i+2 cells
-		std::vector<double> Gim1, Gi, Gip1, Gip2;	//vectors of characteristic variables computed as Gj = Rinv(i+1/2)*Uj,  j = im1, im, ip1, ip2
+		std::vector<double> Gim1, Gi, Gip1, Gip2;	//vectors of characteristic variables computed as Gjj = Rinv(i+1/2)*Ujj,  j = im1, im, ip1, ip2
 		double alf, bet, gam, del;					//coefficients of monotone scheme
 		std::vector<double> fr(nVariables), fl(nVariables);					//left and right fluxes
 		
 		//Initialize eigenvalues and eigenvectors structures
-		std::vector<double> eigenvals(5);
-		Matrix R(5, 5);
-		Matrix Rinv(5, 5);
+		std::vector<double> eigenvals(nVariables);
+		Matrix R(nVariables, nVariables);
+		Matrix Rinv(nVariables, nVariables);
 
-		double dx = stepInfo.TimeStep/hx;
+		//Compute face square
+		double fS = 0;
+		if (nDims == 1) fS = 1.0;
+		if (nDims == 2) fS = hy;
+		if (nDims == 3) fS = hy * hz;
+
+		double dx = dt/hx;			//need for local courant number
 		for (int iz = kMin; iz <= kMax; iz++)
 		{
 			for (int iy = jMin; iy <= jMax; iy++)
 			{
-				//Compute face square
-				double fS = 0;
-				if (nDims == 1) fS = 1.0;
-				if (nDims == 2) fS = hy;
-				if (nDims == 3) fS = hy * hz;
-
 				Uim1 = PrepareConservativeVariables(iMin-2, iy, iz, dir);
 				Ui = PrepareConservativeVariables(iMin-1, iy, iz, dir);
 				Uip1 = PrepareConservativeVariables(iMin, iy, iz, dir);
@@ -261,11 +283,6 @@ public:
 					//for all inner cells
 					if(ix > iMin)
 					{
-						//compute new conservative values
-						//std::vector<double> res(nVariables);
-						//for(int k = 0; k < nVariables; k++) res[k] = Ui[k] - (fr[k] - fl[k])*dx;
-						//ExchangeVelocityComponents(&res.front(), dir);
-
 						//Fluxes difference equals residual 
 						int idx = getSerialIndexLocal(ix - 1, iy, iz);
 						for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] = - (fr[nv] - fl[nv]) * fS;
@@ -281,21 +298,27 @@ public:
 	};
 
 	//Compute fluxes in Y direction and write values_new array
-	void Yfluxes() {
+	void Yfluxes(double dt) {
 		direction dir = Y_direction;
+		for (double& r : residual) r = 0;	//Nullify residuals
 
 		//initialize data containers
-		double* Uim1, *Ui, *Uip1, *Uip2;	//vectors of conservative variables in i-1  i  i+1  i+2 cells
-		std::vector<double> Gim1, Gi, Gip1, Gip2;	//vectors of characteristic variables computed as Gj = Rinv(i+1/2)*Uj,  j = im1, im, ip1, ip2
+		double* Uim1, *Ui, *Uip1, *Uip2;	//vectors of conservative variables in j-1  j  j+1  j+2 cells
+		std::vector<double> Gim1, Gi, Gip1, Gip2;	//vectors of characteristic variables computed as Gjj = Rinv(j+1/2)*Ujj,  jj = jm1, jm, jp1, jp2
 		double alf, bet, gam, del;					//coefficients of monotone scheme
 		std::vector<double> fr, fl;					//left and right fluxes
 		
 		//Initialize eigenvalues and eigenvectors structures
-		std::vector<double> eigenvals(5);
-		Matrix R(5, 5);
-		Matrix Rinv(5, 5);
+		std::vector<double> eigenvals(nVariables);
+		Matrix R(nVariables, nVariables);
+		Matrix Rinv(nVariables, nVariables);
 
-		double dy = stepInfo.TimeStep/hy;
+		//Compute face square
+		double fS = 0;
+		if (nDims == 2) fS = hx;
+		if (nDims == 3) fS = hx * hz;
+
+		double dy = dt/hy;			//need for local courant number
 		for (int ix = iMin; ix <= iMax; ix++)
 		{
 			for (int iz = kMin; iz <= kMax; iz++)
@@ -366,14 +389,14 @@ public:
 					//for all inner cells
 					if(iy > jMin)
 					{
-						//compute new conservative values
-						std::vector<double> res(nVariables);
-						for(int k = 0; k < nVariables; k++) res[k] = Ui[k] - (fr[k]-fl[k])*dy;
-						ExchangeVelocityComponents(&res.front(), dir);
+						//compute delta of fluxes
+						int idx = getSerialIndexLocal(ix, iy - 1, iz);
+						std::vector<double> deltaFlux(nVariables);
+						for(int nv = 0; nv < nVariables; nv++) deltaFlux[nv] = (fr[nv] - fl[nv]) * fS;
+						ExchangeVelocityComponents(deltaFlux, Y_direction);
 
-						//write them
-						int sBegin = getSerialIndexLocal(ix, iy, iz) * nVariables;
-						//for (int k = 0; k < nVariables; k++) values_new[sBegin + k] = res[k];
+						//Fluxes difference equals residual 
+						for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] = deltaFlux[nv];
 					};
           
 					fl = fr;
@@ -385,22 +408,26 @@ public:
 		};
 	};
 
-	//Compute fluxes in Z direction and write values_new array
-	void Zfluxes() {
+	//Compute fluxes in Z direction and write values_new array			START FROM HERE
+	void Zfluxes(double dt) {
 		direction dir = Z_direction;
+		for (double& r : residual) r = 0;	//Nullify residuals
 
 		//initialize data containers
-		double* Uim1, *Ui, *Uip1, *Uip2;	//vectors of conservative variables in i-1  i  i+1  i+2 cells
-		std::vector<double> Gim1, Gi, Gip1, Gip2;	//vectors of characteristic variables computed as Gj = Rinv(i+1/2)*Uj,  j = im1, im, ip1, ip2
+		double* Uim1, *Ui, *Uip1, *Uip2;	//vectors of conservative variables in k-1  k  k+1  k+2 cells
+		std::vector<double> Gim1, Gi, Gip1, Gip2;	//vectors of characteristic variables computed as Gjj = Rinv(k+1/2)*Ujj,  jj = km1, km, kp1, kp2
 		double alf, bet, gam, del;					//coefficients of monotone scheme
 		std::vector<double> fr, fl;					//left and right fluxes
 		
 		//Initialize eigenvalues and eigenvectors structures
-		std::vector<double> eigenvals(5);
-		Matrix R(5, 5);
-		Matrix Rinv(5, 5);
+		std::vector<double> eigenvals(nVariables);
+		Matrix R(nVariables, nVariables);
+		Matrix Rinv(nVariables, nVariables);
 
-		double dz = stepInfo.TimeStep/hz;
+		//Compute face square
+		double fS = hx * hy;
+
+		double dz = dt/hz;			//need for local courant number
 		for (int iy = jMin; iy <= jMax; iy++)
 		{
 			for (int ix = iMin; ix <= iMax; ix++)
@@ -471,14 +498,14 @@ public:
 					//for all inner cells
 					if(iz > kMin)
 					{
-						//compute new conservative values
-						std::vector<double> res(nVariables);
-						for(int k = 0; k < nVariables; k++) res[k] = Ui[k] - (fr[k] - fl[k])*dz;
-						ExchangeVelocityComponents(&res.front(), dir);
+						////compute delta of fluxes
+						int idx = getSerialIndexLocal(ix, iy, iz - 1);
+						std::vector<double> deltaFlux(nVariables);
+						for(int nv = 0; nv < nVariables; nv++) deltaFlux[nv] = (fr[nv] - fl[nv]) * fS;
+						ExchangeVelocityComponents(deltaFlux, Z_direction);
 
-						//write them
-						int sBegin = getSerialIndexLocal(ix, iy, iz) * nVariables;
-						//for (int k = 0; k < nVariables; k++) values_new[sBegin + k] = res[k];
+						//Fluxes difference equals residual 
+						for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] = deltaFlux[nv];
 					};
           
 					fl = fr;
@@ -490,6 +517,7 @@ public:
 		};
 	};
 
+	//compute full tine step
 	void ComputeTimeStep() {
 		//variables to collect maximum values
 		double dmax  = 0;
@@ -547,6 +575,28 @@ public:
 		stepInfo.TimeStep = dt;
 	};
 
+	//Update solution without reseting of residuals (for intermidiate step)
+	void RewriteDuringSolution(double dt) {
+		double volume = hx * hy * hz;
+		for (int i = iMin; i <= iMax; i++)
+		{
+			for (int j = jMin; j <= jMax; j++)
+			{
+				for (int k = kMin; k <= kMax; k++)
+				{
+					int idx = getSerialIndexLocal(i, j, k);
+
+					//Update cell values
+					for(int nv = 0; nv < nVariables; nv++) {
+						values[idx * nVariables + nv] += residual[idx * nVariables + nv] * dt / volume;
+						//Compute total residual
+						stepInfo.Residual[nv] += abs(residual[idx * nVariables + nv]);
+					};
+				};
+			};
+		};
+	};
+
 	
 public:
 	//Constuctor inherited
@@ -566,33 +616,72 @@ public:
 		return 2;
 	};
 
-	//Explicit time step
-	virtual void IterationStep() override {			
-		//Determine timestep
-		ComputeTimeStep();		
-
+	//one iteration for spatial splitting scheme accuracy by time (Update solution and write residuals)
+	void CompleteOneIteration() {
+		stepInfo.Residual.resize(nVariables);
 		//Determine order of spacial directions
-		Xfluxes();
+		double dt = 0;
+		switch (nDims) {
+		case 1 :
+			dt = stepInfo.TimeStep;
+			Xfluxes(dt);
+			RewriteDuringSolution(dt);
+			break;
+		case 2 :
+			dt = 0.5*stepInfo.TimeStep;
+			if ( stepInfo.Iteration % 2 == 0 ) {
+				//half of a Step
+				Xfluxes(dt);
+				RewriteDuringSolution(dt);
+				Yfluxes(dt);
+				RewriteDuringSolution(dt);
+			} else {
+				Yfluxes(dt);
+				RewriteDuringSolution(dt);
+				Xfluxes(dt);
+				RewriteDuringSolution(dt);
+			};
+			break;
+		};
+	};
+
+	//Explicit time step
+	virtual void IterationStep() override {
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Iteration started\n";
+			std::cout.flush();
+		};
+		//Sync
+		pManager->Barrier();
+
+		//Determine timestep
+		ComputeTimeStep();
+
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Timestep calculated\n";
+			std::cout.flush();
+		};
+		//Sync
+		pManager->Barrier();
+
+		CompleteOneIteration();
+
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Residual calculated\n";
+			std::cout.flush();
+		};
+		//Sync
+		pManager->Barrier();
 
 		//Compute residuals and update solution
-		stepInfo.Residual.resize(5, 0);
-		for (int ix = iMin; ix <= iMax; ix++)
-		{
-			for (int iy = jMin; iy <= jMax; iy++)
-			{
-				for (int iz = kMin; iz <= kMax; iz++)
-				{
-					int idx = getSerialIndexLocal(ix, iy, iz);
+		UpdateSolution(stepInfo.TimeStep);
+				
+		// Update time
+		stepInfo.Time += stepInfo.TimeStep;
+		stepInfo.Iteration++;
 
-					//Compute total residual
-					stepInfo.Residual[0] += abs(residual[idx * nVariables]);			//ro
-					stepInfo.Residual[1] += abs(residual[idx * nVariables + 1]);		//rou
-					stepInfo.Residual[2] += abs(residual[idx * nVariables + 2]);		//rov
-					stepInfo.Residual[3] += abs(residual[idx * nVariables + 3]);		//row
-					stepInfo.Residual[4] += abs(residual[idx * nVariables + 4]);		//roE
-				};
-			};
-		};
+		//Sync
+		pManager->Barrier();
 		
 
 		//Update conservative variables

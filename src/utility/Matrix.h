@@ -113,26 +113,6 @@ inline std::vector<double> operator*(const Matrix& A, const Vector& x)
 	return res;
 };
 
-//inline std::vector<double> operator*(const Matrix& A, const std::vector<double>& B)
-//{
-//	int N = A.Nrows;
-//	int M = A.Mcolumns;
-//
-//	if(M != B.size()) {
-//		std::cout << "Error: Can't perform matrix/vector production - incorrect sizes of multipliers\n";
-//		return std::vector<double>();
-//	};
-//	
-//	std::vector<double> res(N, 0);
-//	for(int n = 0; n < N; n++) {
-//		for(int m = 0; m < M; m++) {
-//				res[n] += A.element[n][m]*B[m];
-//		};
-//	};
-//
-//	return res;
-//};
-
 inline std::vector<double> operator*(const Matrix& A, const double *B)
 {
 	int N = A.Nrows;
