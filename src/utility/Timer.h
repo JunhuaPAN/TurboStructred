@@ -26,6 +26,7 @@ public:
 	};
 
 	void Start() {
+		IsActive = true;
 		StartTime = std::chrono::system_clock::now();
 		_pauseTime = StartTime;
 		ElapsedTime = std::chrono::high_resolution_clock::duration(0);

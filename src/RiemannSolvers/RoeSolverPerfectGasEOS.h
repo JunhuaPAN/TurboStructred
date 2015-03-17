@@ -92,6 +92,7 @@ public:
 		double phi2 = 0.5*(_gamma - 1)*(velocity*velocity);
 		double dn = 1.0;
 		double c = sqrt((_gamma - 1)*h - phi2);	//acoustic velocity
+		assert(c>0);
 		//Debug	
 		double uw = velocity * fn;
 		double eig_max = fabs(uw)+c*dn;	

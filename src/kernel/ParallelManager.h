@@ -4,6 +4,17 @@
 #include "mpi.h"
 #include <chrono>
 
+enum class Direction {
+	XDirection = 0,
+	YDirection = 1,
+	ZDirection = 2
+};
+
+enum class SubDirection {
+	Left = -1,
+	Right = 1
+};
+
 struct StructuredGridInfo {
 	int nDims;
 	int nX;
@@ -26,6 +37,7 @@ public:
 	MPI_Comm _commCart; //cartesian communicator
 	int _nDims;			//number of dimensions
 	int _rankCart;		//current processor rank in _commCart
+	int _nProcessorsCart;	//total number of processes
 	int rankCart[3];	//Position of process in cartesian mpi grid
 	int dimsCart[3];	//Dimensions of cartesian mpi grid
 	bool periodic[3];	//Periodic boundaries
@@ -52,8 +64,8 @@ public:
 		if (!periodic[0] && ((coords[0] < 0) || (coords[0] >= dimsCart[0]))) return rank;
 		if (!periodic[1] && ((coords[1] < 0) || (coords[1] >= dimsCart[1]))) return rank;
 		if (!periodic[2] && ((coords[2] < 0) || (coords[2] >= dimsCart[2]))) return rank;
-		coords[0] %= dimsCart[0];
-		coords[1] %= dimsCart[1];
+		coords[0] = (coords[0] + dimsCart[0]) % dimsCart[0];
+		coords[1] = (coords[1] + dimsCart[1]) % dimsCart[1];
 		coords[2] %= dimsCart[2];
 		int MPIResult = MPI_Cart_rank(_commCart, coords, &rank);
 		if (MPIResult == MPI_PROC_NULL) rank = -1;
@@ -63,7 +75,7 @@ public:
 	void InitCartesianTopology(StructuredGridInfo info) {
 		//Simple one dimensional topology for now
 		_nDims = info.nDims;				
-		dimsCart[0] = _nProcessors;//0;
+		dimsCart[0] = 0;
 		dimsCart[1] = 1;
 		if (_nDims > 1) dimsCart[1] = 0;		
 		dimsCart[2] = 1;
@@ -92,13 +104,12 @@ public:
 		//Get rank for
 		MPI_Comm_rank(_commCart, &_rankCart);
 
+		//Get number of processors
+		MPI_Comm_size(_commCart, &_nProcessorsCart);
+
 		//Determine catezian coordinates
 		MPI_Cart_coords(_commCart, _rankCart, _nDims, rankCart);
 
-		//Debug info
-		std::cout<<"rankX = "<<rankCart[0]<<" "
-		<<"rankY = "<<rankCart[1]<<" "
-		<<"rankZ = "<<rankCart[2]<<"\n";
 		//Sync
 		Barrier();
 	};
@@ -162,10 +173,34 @@ public:
 	inline bool IsMaster() {
 		return _rank == 0;
 	};
+	
+	//Is first node
+	inline bool IsFirstNode() {
+		return _rank == 0;
+	};
+
+	//Is last node
+	inline bool IsLastNode() {
+		return _rank == _nProcessors - 1;
+	};
 
 	//Is master node in cartesian topology
 	inline bool IsMasterCart() {
 		return _rankCart == 0;
+	};
+
+	//Is first node in cartesian topology in given direction
+	inline bool IsFirstNodeCart(Direction direction) {
+		int dimIndex = (int)direction;
+		bool result = (!periodic[dimIndex]) && (rankCart[dimIndex] == 0);
+		return result;
+	};
+
+	//Is last node in cartesian topology in given direction
+	inline bool IsLastNodeCart(Direction direction) {
+		int dimIndex = (int)direction;
+		bool result = (!periodic[dimIndex]) && (rankCart[dimIndex] == dimsCart[dimIndex] - 1);
+		return result;
 	};
 
 	//Constructor
@@ -183,7 +218,7 @@ public:
 		isInitilized = true;
 		_idleDuration = std::chrono::high_resolution_clock::duration(0);
 
-		std::cout<<"rank = "<<_rank<<", Process started.\n";
+		//std::cout<<"rank = "<<_rank<<", Process started.\n";
 		//Sync
 		Barrier();
 	};	
@@ -202,6 +237,20 @@ public:
 		MPI_Barrier(_comm);
 		auto after = std::chrono::high_resolution_clock::now();
 		_idleDuration += after - before; // update idle time duration
+	};
+
+	//Blocking wait
+	void Wait(int rank) {
+		MPI_Status status;
+		auto before = std::chrono::high_resolution_clock::now();
+		MPI_Recv(nullptr, 0, MPI_INT, rank, 0, _comm, &status);
+		auto after = std::chrono::high_resolution_clock::now();
+		_idleDuration += after - before; // update idle time duration
+	};
+
+	//Signal for waiting process
+	void Signal(int rank) {
+		MPI_Send(nullptr, 0, MPI_INT, rank, 0, _comm);
 	};
 
 	//Exchange routines

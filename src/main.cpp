@@ -311,17 +311,22 @@ void RunFluxesTest2D(int argc, char *argv[]) {
 	kernel->Finilaze();
 };
 
-
 void RunPoiseuille2D(int argc, char *argv[]) {
 	double viscosity = 1.73e-5;	//Air
 	double sigma = 0.14;		// dPdx
 	double ro_init = 1.225;		//Air
-	double Pave = 1.0e5;		//average pressure			
+	double Pave = 1.0e5;		//average pressure		
+
+	//Test
+	ro_init = 1.0;
+	Pave = 20.0;
+	sigma = 1.0;
+	viscosity = 0.25;
 
 	KernelConfiguration conf;
 	conf.nDims = 2;
-	conf.nX = 10;
-	conf.nY = 40;
+	conf.nX = 100;
+	conf.nY = 100;
 	conf.LX = 0.2;
 	conf.LY = 0.1;	
 	conf.isPeriodicX = true;
@@ -349,10 +354,10 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 
-	conf.MaxTime = 0.2;
+	conf.MaxTime = 0.01;
 	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0.01;
-	conf.SaveSolutionSnapshotIterations = 10000;
+	conf.SaveSolutionSnapshotTime = 0.0001;
+	conf.SaveSolutionSnapshotIterations = 0;
 	conf.ResidualOutputIterations = 10;
 
 	conf.Viscosity = viscosity;
@@ -367,11 +372,12 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
 	};	
 	kernel->Init(conf);
-
+	
 	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
+	
 	auto initD = [ro_init, Pave, &conf](Vector r) {
 		double u = 0.5*conf.Sigma*r.y*(conf.LY - r.y)/conf.Viscosity;
-		//u = 0;
+		u = 0.01;
 		double roe = Pave/(conf.Gamma - 1);
 		std::vector<double> res(5);
 		res[0] = ro_init;
@@ -456,7 +462,7 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 		res[1] = res[0]*u;
 		res[2] = 0.0;
 		res[3] = 0.0;
-		res[4] =  roe + 0.5*res[0]*u*u;
+		res[4] = roe + 0.5*res[0]*u*u;
 		return res; 
 	};
 	kernel->SetInitialConditions(initD);

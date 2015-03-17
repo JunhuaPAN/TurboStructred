@@ -43,7 +43,7 @@ public:
 
 		//Method specific part
 		MethodConfiguration config = kernelConfig.methodConfiguration;
-		_riemannSolver = (std::unique_ptr<RiemannSolver>)std::move(new RoeSolverPerfectGasEOS(kernelConfig.Gamma, 0.05, 0.0));
+		_riemannSolver = (std::unique_ptr<RiemannSolver>)std::move(new RoeSolverPerfectGasEOS(kernelConfig.Gamma, 0.0, 0.0));
 		CFL = config.CFL;
 		RungeKuttaOrder = config.RungeKuttaOrder;
 		
@@ -89,6 +89,24 @@ public:
 		return grad;
 	};
 
+	Vector ComputeGradientUniformStructured(int i, int j, int k, std::function<double(double*)> func) {\
+		Vector grad(0,0,0);
+		double dux = func(getCellValues(i+1, j, k)) - func(getCellValues(i-1, j, k));
+		double dudx = dux / (2.0 * hx);
+		grad.x = dudx;
+		if (nDims > 1) {
+			double duy = func(getCellValues(i, j+1, k)) - func(getCellValues(i, j-1, k));
+			double dudy = duy / (2.0 * hy);
+			grad.y = dudy;
+		};
+		if (nDims > 2) {
+			double duz = func(getCellValues(i, j, k+1)) - func(getCellValues(i, j, k-1));
+			double dudz = duz / (2.0 * hz);
+			grad.z = dudz;
+		};
+		return grad;
+	};
+
 	//Compute all required gradient in each inner cell
 	void ComputeGradients() {
 		//Gradients required
@@ -109,9 +127,14 @@ public:
 					double *V = getCellValues(i, j, k);
 
 					//Gradients required
-					gradientVelocityX[idx] = ComputeGradient(i, j, k, getu);
-					gradientVelocityY[idx] = ComputeGradient(i, j, k, getv);
-					gradientVelocityZ[idx] = ComputeGradient(i, j, k, getw);
+
+					//gradientVelocityX[idx] = ComputeGradient(i, j, k, getu);
+					//gradientVelocityY[idx] = ComputeGradient(i, j, k, getv);
+					//gradientVelocityZ[idx] = ComputeGradient(i, j, k, getw);
+					
+					gradientVelocityX[idx] = ComputeGradientUniformStructured(i, j, k, getu);
+					gradientVelocityY[idx] = ComputeGradientUniformStructured(i, j, k, getv);
+					gradientVelocityZ[idx] = ComputeGradientUniformStructured(i, j, k, getw);
 				};
 			};
 		};
@@ -124,7 +147,9 @@ public:
 		pManager->Barrier();
 		
 		//Interprocessor exchange
-		ExchangeGradients();
+		ExchangeGradients(gradientVelocityX);
+		if (nDims > 1) ExchangeGradients(gradientVelocityY);
+		if (nDims > 2) ExchangeGradients(gradientVelocityZ);
 
 		if (DebugOutputEnabled) {
 			std::cout<<"rank = "<<pManager->getRank()<<", Gradients exchange executed\n";
@@ -145,9 +170,160 @@ public:
 	};
 
 	//Exchange gradient values between processors
-	void ExchangeGradients() {
+	void ExchangeGradients(std::vector<Vector>& cellGradients) {
+		//Index variables
+		int i = 0;
+		int j = 0;
+		int k = 0;
 
-	};
+		//Get parallel run info
+		MPI_Comm comm = pManager->getComm();		
+
+		//Buffers
+		std::vector<double> bufferToRecv;
+		std::vector<double> bufferToSend;		
+		int rankLeft; // if equals -1 no left neighbour
+		int rankRight; // if equals -1 no right neighbour
+		
+		//X direction exchange		
+
+		//Allocate buffers
+		int layerSizeX = nlocalYAll * nlocalZAll;
+		int layerSizeY = nlocalXAll * nlocalZAll;
+		int bufferSize = std::max(layerSizeX, layerSizeY) * nDims;// * nVariables;
+		bufferToSend.resize(bufferSize);
+		bufferToRecv.resize(bufferSize);
+
+		SubDirection subDirection = SubDirection::Left;
+
+		auto exchangeLayers = [&](Direction direction, int iSend, int rankDest, int iRecv, int rankSource) {
+			int nRecv = 0;
+			int nSend = 0;
+
+			//Fill buffer with gradient values
+			int idxBuffer = 0;
+			for (i = iMin - dummyCellLayersX; i <= iMax + dummyCellLayersX; i++) {
+				if ((direction == Direction::XDirection) && (i != iSend)) continue; //skip
+				for (j = jMin - dummyCellLayersY; j <= jMax + dummyCellLayersY; j++) {
+					if ((direction == Direction::YDirection) && (j != iSend)) continue; //skip
+					for (k = kMin - dummyCellLayersZ; k <= kMax + dummyCellLayersZ; k++) {
+						if ((direction == Direction::ZDirection) && (k != iSend)) continue; //skip
+						nRecv+=nDims;
+						if (rankDest == -1) continue;
+
+						int idxCell = getSerialIndexLocal(i, j, k);
+						bufferToSend[idxBuffer * nDims] = cellGradients[idxCell].x;
+						if (nDims > 1) bufferToSend[idxBuffer * nDims + 1] =  cellGradients[idxCell].y;
+						if (nDims > 2) bufferToSend[idxBuffer * nDims + 2] =  cellGradients[idxCell].z;
+						idxBuffer++;
+					};
+				};
+			};
+
+			if (rankDest != -1) nSend = idxBuffer * nDims; //Determine number of doubles to send
+
+			//Determine recive number
+			if (rankSource == -1) {
+				nRecv = 0;				
+			};
+			
+			//Make exchange
+			pManager->SendRecvDouble(comm, rankDest, rankSource, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
+
+			//Write recieved values back
+			idxBuffer = 0;
+			for (i = iMin - dummyCellLayersX; i <= iMax + dummyCellLayersX; i++) {
+				if ((direction == Direction::XDirection) && (i != iRecv)) continue; //skip
+				for (j = jMin - dummyCellLayersY; j <= jMax + dummyCellLayersY; j++) {
+					if ((direction == Direction::YDirection) && (j != iRecv)) continue; //skip
+					for (k = kMin - dummyCellLayersZ; k <= kMax + dummyCellLayersZ; k++) {
+						if ((direction == Direction::ZDirection) && (k != iRecv)) continue; //skip
+						int idxCell = getSerialIndexLocal(i, j, k);
+						cellGradients[idxCell].x = bufferToRecv[idxBuffer * nDims];
+						cellGradients[idxCell].y = 0;
+						if (nDims > 1) cellGradients[idxCell].y = bufferToRecv[idxBuffer * nDims + 1];
+						cellGradients[idxCell].z = 0;
+						if (nDims > 2) cellGradients[idxCell].z = bufferToRecv[idxBuffer * nDims + 2];
+						idxBuffer++;
+					};
+				};
+			};
+
+			//Syncronize
+			pManager->Barrier();
+		};
+
+		//Determine neighbours' ranks
+		int rankL = pManager->GetRankByCartesianIndexShift(-1, 0, 0);
+		int rankR = pManager->GetRankByCartesianIndexShift(+1, 0, 0);
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<rank<<
+				"; rankL = "<<rankL<<
+				"; rankR = "<<rankR<<
+				std::endl<<std::flush;
+		};
+
+		for (int layer = 1; layer <= dummyCellLayersX; layer++) {
+			// Minus direction exchange
+			int iSend = iMin + layer - 1; // layer index to send
+			int iRecv = iMax + layer; // layer index to recv
+			exchangeLayers(Direction::XDirection, iSend, rankL, iRecv, rankR);
+
+			// Plus direction exchange
+			iSend = iMax - layer + 1; // layer index to send
+			iRecv = iMin - layer; // layer index to recv
+			exchangeLayers(Direction::XDirection, iSend, rankR, iRecv, rankL);
+		};
+
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Exchange values X-direction executed\n";
+		};
+		//Sync
+		pManager->Barrier();
+
+		if (nDims < 2) return;
+		//Y direction exchange		
+		//Determine neighbours' ranks
+		rankL = pManager->GetRankByCartesianIndexShift(0, -1, 0);
+		rankR = pManager->GetRankByCartesianIndexShift(0, +1, 0);
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<rank<<
+				"; rankL = "<<rankL<<
+				"; rankR = "<<rankR<<
+				std::endl<<std::flush;
+		};
+
+		
+		for (int layer = 1; layer <= dummyCellLayersY; layer++) {
+			// Minus direction exchange
+			int iSend = jMin + layer - 1; // layer index to send
+			int iRecv = jMax + layer; // layer index to recv
+			exchangeLayers(Direction::YDirection, iSend, rankL, iRecv, rankR);
+
+			// Plus direction exchange
+			iSend = jMax - layer + 1; // layer index to send
+			iRecv = jMin - layer; // layer index to recv
+			exchangeLayers(Direction::YDirection, iSend, rankR, iRecv, rankL);
+		};
+
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Exchange values Y-direction executed\n";
+			std::cout.flush();
+		};
+		//Sync
+		pManager->Barrier();
+
+		if (nDims < 3) return;
+		//Z direction exchange		
+
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Exchange values Z-direction executed\n";
+			std::cout.flush();
+		};
+		//Sync
+		pManager->Barrier();
+
+	}; // function
 
 	//Compute gradients inside dummy cells
 	void ComputeDummyCellGradients() {
@@ -362,6 +538,7 @@ public:
 					double v = 0.5 * (getv(UR) + getv(UL));
 					double w = 0.5 * (getw(UR) + getw(UL));
 
+
 					//compute stress tensor
 					double tau_diagonal = s_viscosity*(du.x + dv.y + dw.z);
 					double tau_xx = tau_diagonal + 2*viscosity*du.x;
@@ -553,7 +730,6 @@ public:
 
 	//Compute residual
 	void ComputeResidual(const std::vector<double> values, std::vector<double>& residual, std::vector<double>& spectralRadius) {
-
 		//  init spectral radius storage for each cell
 		for (double& sr : spectralRadius) sr = 0; //Nullify
 		for (double& r : residual) r = 0; //Nullify residual
@@ -574,6 +750,7 @@ public:
 		std::vector<std::vector<double> > vfluxesY;
 		std::vector<std::vector<double> > vfluxesZ;
 		ComputeViscousFluxes(vfluxesX, vfluxesY, vfluxesZ);
+		double volume = hx * hy * hz;
 
 		// I step
 		faceInd = 0;
@@ -593,7 +770,9 @@ public:
 					//Update stencil values
 					U[1] = getCellValues(i, j, k);
 
-					//Compute convective flux
+					//Compute convective flux		
+					std::vector<double> UL(U[0], U[0] + nVariables);
+					std::vector<double> UR(U[1], U[1] + nVariables);
 					RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
 					fr = result.Fluxes;
 
@@ -612,7 +791,16 @@ public:
 						for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += - (fr[nv] - fl[nv]) * fS;
 
 						//Add up spectral radius estimate
-						spectralRadius[idx] += fS * result.MaxEigenvalue;
+						spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
+						double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
+						double gammaFace = gamma;
+						double vsr = std::max(4.0 / (3.0 * roFace), gammaFace/roFace);
+						double viscosityFace = viscosity;
+						double PrandtlNumberFace = 1.0;
+						vsr *= viscosityFace / PrandtlNumberFace; 
+						vsr *= fS*fS;
+						vsr /= volume;
+						spectralRadius[idx] += vsr;
 					};
           
 					//Shift stencil
@@ -645,6 +833,8 @@ public:
 						U[1] = getCellValues(i, j, k);
 
 						//Compute flux
+						std::vector<double> UL(U[0], U[0] + nVariables);
+						std::vector<double> UR(U[1], U[1] + nVariables);
 						RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
 						fr = result.Fluxes;
 
@@ -664,6 +854,15 @@ public:
 
 							//Add up spectral radius estimate
 							spectralRadius[idx] += fS * result.MaxEigenvalue;
+							double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
+							double gammaFace = gamma;
+							double vsr = std::max(4.0 / (3.0 * roFace), gammaFace/roFace);
+							double viscosityFace = viscosity;
+							double PrandtlNumberFace = 1.0;
+							vsr *= viscosityFace / PrandtlNumberFace; 
+							vsr *= fS*fS;
+							vsr /= volume;
+							spectralRadius[idx] += vsr;
 						};
           
 						//Shift stencil
@@ -697,6 +896,11 @@ public:
 						//Compute flux
 						RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
 						fr = result.Fluxes;
+
+						//fvisc = ComputeViscousFlux(sL, sR, U[0], U[1], fn);
+						fvisc = vfluxesZ[faceInd];
+						for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
+						
 	
 						//Update residuals
 						if(k > kMin)
@@ -721,16 +925,12 @@ public:
 		};
 
 		
-		double volume = hx * hy * hz;
-
+		//Source term treatment
 
 		//right handside part
-		for (int i = iMin; i <= iMax; i++)
-		{
-			for (int j = jMin; j <= jMax; j++)
-			{
-				for (int k = kMin; k <= kMax; k++)
-				{
+		for (int i = iMin; i <= iMax; i++) {
+			for (int j = jMin; j <= jMax; j++) {
+				for (int k = kMin; k <= kMax; k++) {
 					int idx = getSerialIndexLocal(i, j, k);
 
 					double *V = getCellValues(i, j, k);
@@ -767,47 +967,23 @@ public:
 		//Compute cell volume
 		double volume = hx * hy * hz;
 		double dt = std::numeric_limits<double>::max();
-		for (int cellIndex = 0; cellIndex< nCellsLocalAll; cellIndex++)
-		{		
-			double sR = spectralRadius[cellIndex];
-			double localdt = CFL * volume / sR; //Blazek f. 6.20
-
-			//Find minimum
-			if (dt > localdt) dt = localdt;
-		}
-
-		dt = std::min(stepInfo.NextSnapshotTime - stepInfo.Time, dt);
-		dt = pManager->Min(dt);
-
-		return dt;
-	};
-	
-	//Update solution
-	void UpdateSolution(double dt) {
-		//Compute cell volume
-		double volume = hx * hy * hz;
-		stepInfo.Residual.resize(5, 0);
-
-		for (int i = iMin; i <= iMax; i++)
-		{
-			for (int j = jMin; j <= jMax; j++)
-			{
-				for (int k = kMin; k <= kMax; k++)
-				{
+		for (int i = iMin; i <= iMax; i++) {
+			for (int j = jMin; j <= jMax; j++) {
+				for (int k = kMin; k <= kMax; k++) {
 					int idx = getSerialIndexLocal(i, j, k);
+					double sR = spectralRadius[idx];
+					double localdt = CFL * volume / sR; //Blazek f. 6.20
 
-					//Update cell values
-					for(int nv = 0; nv < nVariables; nv++) values[idx * nVariables + nv] += residual[idx * nVariables + nv] * dt / volume;
-
-					//Compute total residual
-					stepInfo.Residual[0] += abs(residual[idx * nVariables]);			//ro
-					stepInfo.Residual[1] += abs(residual[idx * nVariables + 1]);		//rou
-					stepInfo.Residual[2] += abs(residual[idx * nVariables + 2]);		//rov
-					stepInfo.Residual[3] += abs(residual[idx * nVariables + 3]);		//row
-					stepInfo.Residual[4] += abs(residual[idx * nVariables + 4]);		//roE
+					//Find minimum
+					if (dt > localdt) dt = localdt;
 				};
 			};
 		};
+
+		if (SaveSolutionSnapshotTime != 0) dt = std::min(stepInfo.NextSnapshotTime - stepInfo.Time, dt);
+		dt = pManager->Min(dt);
+
+		return dt;
 	};
 
 	//Explicit time step

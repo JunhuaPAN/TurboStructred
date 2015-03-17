@@ -169,7 +169,6 @@ public:
 		int test;
 	};
 
-
 	//Compute fluxes in X direction and write values_new array
 	void Xfluxes() {
 		direction dir = X_direction;
