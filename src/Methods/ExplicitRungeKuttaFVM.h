@@ -29,8 +29,7 @@ public:
 	std::vector<Vector> gradientVelocityX;  //array for storing gradients of u
 	std::vector<Vector> gradientVelocityY;  //array for storing gradients of v
 	std::vector<Vector> gradientVelocityZ;  //array for storing gradients of w
-
-
+	
 	//Number of required dummy layers
 	virtual int GetDummyCellLayerSize() override {
 		return 1;
@@ -798,7 +797,7 @@ public:
 		//Sync
 		pManager->Barrier();
 
-		//Compute residual
+		//Compute residual   TO DO second argument remove
 		ComputeResidual(values, residual, spectralRadius);
 
 		if (DebugOutputEnabled) {

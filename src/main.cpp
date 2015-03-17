@@ -311,7 +311,6 @@ void RunFluxesTest2D(int argc, char *argv[]) {
 	kernel->Finilaze();
 };
 
-
 void RunPoiseuille2D(int argc, char *argv[]) {
 	double viscosity = 1.73e-5;	//Air
 	double sigma = 0.14;		// -dPdx
@@ -349,14 +348,14 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 
-	conf.MaxTime = 1.0;
+	conf.MaxTime = 5.0;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionSnapshotTime = 0.01;
 	conf.SaveSolutionSnapshotIterations = 10000;
 	conf.ResidualOutputIterations = 50;
 
 	conf.Viscosity = viscosity;
-	conf.Sigma = -sigma;
+	conf.Sigma = sigma;
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -371,7 +370,7 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
 	auto initD = [ro_init, Pave, &conf](Vector r) {
 		double u = 0.5*conf.Sigma*r.y*(conf.LY - r.y)/conf.Viscosity;
-		//u = 0;
+		//double u = 0;
 		double roe = Pave/(conf.Gamma - 1);
 		std::vector<double> res(5);
 		res[0] = ro_init;

@@ -33,7 +33,7 @@ public:
 //Calculation kernel
 class Kernel {
 public:
-	//Interface part
+	//Interface part  TO DO REMOVE GetDummyCellLayerSize
 	virtual int GetDummyCellLayerSize() = 0; // request as much dummy cell layers as required
 	virtual void IterationStep() = 0; // main function
 
@@ -345,8 +345,7 @@ public:
 		double volume = hx * hy * hz;
 		stepInfo.Residual.resize(nVariables);
 		for (int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = 0;
-
-
+		
 		for (int i = iMin; i <= iMax; i++)
 		{
 			for (int j = jMin; j <= jMax; j++)
@@ -356,24 +355,17 @@ public:
 					int idx = getSerialIndexLocal(i, j, k);
 
 					//Update cell values
-					for(int nv = 0; nv < nVariables; nv++) values[idx * nVariables + nv] += residual[idx * nVariables + nv] * dt / volume;
-
-					//Compute total residual
-					stepInfo.Residual[0] += abs(residual[idx * nVariables]);			//ro
-					stepInfo.Residual[1] += abs(residual[idx * nVariables + 1]);		//rou
-					stepInfo.Residual[2] += abs(residual[idx * nVariables + 2]);		//rov
-					stepInfo.Residual[3] += abs(residual[idx * nVariables + 3]);		//row
-					stepInfo.Residual[4] += abs(residual[idx * nVariables + 4]);		//roE
+					for(int nv = 0; nv < nVariables; nv++) {
+						values[idx * nVariables + nv] += residual[idx * nVariables + nv] * dt / volume;
+						//Compute total residual
+						stepInfo.Residual[nv] += abs(residual[idx * nVariables + nv]);
+					};
 				};
 			};
 		};
 
 		//Aggregate
-		stepInfo.Residual[0] = pManager->Sum(stepInfo.Residual[0]);
-		stepInfo.Residual[1] = pManager->Sum(stepInfo.Residual[1]);
-		stepInfo.Residual[2] = pManager->Sum(stepInfo.Residual[2]);
-		stepInfo.Residual[3] = pManager->Sum(stepInfo.Residual[3]);
-		stepInfo.Residual[4] = pManager->Sum(stepInfo.Residual[4]);
+		for(int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = pManager->Sum(stepInfo.Residual[nv]);
 	};
 
 	//Exchange values between processormos
@@ -1244,8 +1236,8 @@ public:
 		return;
 	};
 
-	//Save solution
-	void SaveSolution(std::string fname) {
+	//Save solution (temporal for Ekr) TO DO Remove
+	void SaveSolutionErik(std::string fname) {
 		//Tecpol version
 		std::ofstream ofs;
 
@@ -1469,6 +1461,105 @@ public:
 		std::cout.flush();
 		//Sync
 		pManager->Barrier();
+	};
+
+	void SaveSolution(std::string fname) {
+		//Tecplot version
+		std::ofstream ofs;
+
+		//1D tecplot style
+		if(nDims == 1)
+		{
+			//Header				
+			ofs<<"VARIABLES = ";
+			ofs<<"\""<<"X"<<"\" ";
+			ofs<<"\""<<"ro"<<"\" ";
+			ofs<<"\""<<"u"<<"\" ";
+			ofs<<"\""<<"v"<<"\" ";
+			ofs<<"\""<<"w"<<"\" ";
+			ofs<<"\""<<"P"<<"\" ";
+			ofs<<"\""<<"e"<<"\" ";
+			ofs<<std::endl;
+			
+			//Solution
+			for (int i = iMin; i <= iMax; i++) {
+				//Obtain cell data
+				double x = CoordinateX[i];
+				double* U = getCellValues(i, jMin, kMin);
+				double ro = U[0];
+				double u = U[1] / ro;
+				double v = U[2] / ro;
+				double w = U[3] / ro;
+				double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
+				double P = (gamma - 1.0) * ro * e;
+
+				//Write to file
+				ofs<<x<<" ";
+				ofs<<ro<<" ";
+				ofs<<u<<" ";
+				ofs<<v<<" ";
+				ofs<<w<<" ";
+				ofs<<P<<" ";
+				ofs<<e<<" ";
+				ofs<<std::endl;
+			};	//end cycle
+
+			ofs.close();
+			return;
+		};	//end if
+
+		//2D/3D tecplot style
+		if(nDims > 1)
+		{
+			//Header				
+			ofs<<"VARIABLES = ";
+			ofs<<"\""<<"X"<<"\" ";
+			ofs<<"\""<<"Y"<<"\" ";
+			ofs<<"\""<<"Z"<<"\" ";
+			ofs<<"\""<<"ro"<<"\" ";
+			ofs<<"\""<<"u"<<"\" ";
+			ofs<<"\""<<"v"<<"\" ";
+			ofs<<"\""<<"w"<<"\" ";
+			ofs<<"\""<<"P"<<"\" ";
+			ofs<<"\""<<"e"<<"\" ";
+			ofs<<std::endl;
+			
+			ofs << "ZONE T=\"1\"\nI=" << nX <<"J=" << nY << "K=" << nZ << "F=POINT\n";
+			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
+		
+			//Solution
+			for (int k = kMin; k <= kMax; k++) {
+				for (int j = jMin; j <= jMax; j++) {
+					for (int i = iMin; i <= iMax; i++) {
+						//Obtain cell data
+						double x = CoordinateX[i];
+						double y = CoordinateY[j];
+						double z = CoordinateZ[k];
+						double* U = getCellValues(i,j,k);
+						double ro = U[0];
+						double u = U[1] / ro;
+						double v = U[2] / ro;
+						double w = U[3] / ro;
+						double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
+						double P = (gamma - 1.0) * ro * e;
+
+						//Write to file
+						ofs<<x<<" ";
+						ofs<<y<<" ";
+						ofs<<z<<" ";
+						ofs<<ro<<" ";
+						ofs<<u<<" ";
+						ofs<<v<<" ";
+						ofs<<w<<" ";
+						ofs<<P<<" ";
+						ofs<<e<<" ";
+						ofs<<std::endl;
+					};
+				};
+			};	//end for ijk
+
+		};	//end if
+
 	};
 
 	//Run calculation
