@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <random>
 #include "kernel\kernel.h";
 #include "Methods\ExplicitRungeKuttaFVM.h"
 #include "Methods\HybridFVM.h"
@@ -321,7 +322,7 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	ro_init = 1.0;
 	Pave = 20.0;
 	sigma = 1.0;
-	viscosity = 0.25;
+	viscosity = 0.000025;	
 
 	KernelConfiguration conf;
 	conf.nDims = 2;
@@ -350,14 +351,18 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	//conf.yLeftBoundary.Gamma = 1.4;
 	//conf.yLeftBoundary.Velocity = Vector(5, 0, 0);
 
+	double uShear = std::sqrt(sigma * conf.LY);
+	double Re = uShear * conf.LY * ro_init / viscosity;
+	std::cout<<"Reynolds Number = "<<Re<<std::endl;
+
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 
 	conf.MaxTime = 0.01;
 	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0.0001;
-	conf.SaveSolutionSnapshotIterations = 0;
+	conf.SaveSolutionSnapshotTime = 1;
+	conf.SaveSolutionSnapshotIterations = 100;
 	conf.ResidualOutputIterations = 10;
 
 	conf.Viscosity = viscosity;
@@ -374,17 +379,23 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	kernel->Init(conf);
 	
 	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
+	double sdv = 0.001;
+	std::random_device rd;
+    std::mt19937 mt(rd());
+	std::normal_distribution<double> normal_dist(0.0, sdv);  // N(mean, stddeviation)
 	
-	auto initD = [ro_init, Pave, &conf](Vector r) {
+	auto initD = [ro_init, Pave, &conf, &normal_dist, &mt](Vector r) {
 		double u = 0.5*conf.Sigma*r.y*(conf.LY - r.y)/conf.Viscosity;
-		u = 0.01;
+		double v = 0.0 + normal_dist(mt);
+		double w = 0.0;
+		//u = 0.01;
 		double roe = Pave/(conf.Gamma - 1);
 		std::vector<double> res(5);
 		res[0] = ro_init;
-		res[1] = res[0]*u;
-		res[2] = 0.0;
-		res[3] = 0.0;
-		res[4] =  roe + 0.5*res[0]*u*u;
+		res[1] = res[0] * u;
+		res[2] = res[0] * v;
+		res[3] = res[0] * w;
+		res[4] = roe + 0.5 * res[0] * u * u;
 		return res; 
 	};
 	kernel->SetInitialConditions(initD);
