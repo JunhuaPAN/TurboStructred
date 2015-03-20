@@ -275,7 +275,7 @@ public:
 		if (nDims > 1) hy = dy;
 		if (nDims > 2) hz = dz;
 
-		//Initialize gas model parameters and riemann solver
+		//Initialize gas model parameters and Riemann solver
 		gamma = config.Gamma;
 		nVariables = config.nVariables;	
 		viscosity = config.Viscosity;
@@ -813,6 +813,65 @@ public:
 		};
 		//Sync
 		pManager->Barrier();
+
+		if (nDims < 3) return;
+		//Z direction		
+		faceNormalL = Vector(0.0, 0.0, -1.0);
+		faceNormalR = Vector(0.0, 0.0, 1.0);
+		for (i = iMin; i <= iMax; i++) {
+			for (j = jMin; j <= jMax; j++) {				
+				//Inner cell
+				cellCenter.x = CoordinateX[i];
+				cellCenter.y = CoordinateY[j];
+
+				//And face
+				faceCenter.x = CoordinateX[i];
+				faceCenter.y = CoordinateY[j];
+
+				for (int layer = 1; layer <= dummyCellLayersY; layer++) {
+					if (!IsPeriodicZ) {
+						if (pManager->rankCart[2] == 0) {
+							//Left border
+							k = kMin - layer; // layer index
+							int kIn = kMin + layer - 1; // opposite index
+							cellCenter.z = CoordinateZ[kIn];
+							faceCenter.z = (CoordinateZ[kIn] + CoordinateZ[k]) / 2.0;
+							int idx = getSerialIndexLocal(i, j, k);
+							int idxIn = getSerialIndexLocal(i, j, kIn);
+					
+							//Apply left boundary conditions						
+							std::vector<double> dValues = zLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
+							for (int nv = 0; nv < nVariables; nv++) {
+								values[idx * nVariables + nv] = dValues[nv];
+							};
+						};
+
+						if (pManager->rankCart[2] == pManager->dimsCart[2]-1) {
+							//Right border
+							k = kMax + layer; // layer index
+							int kIn = kMax - layer + 1; // opposite index
+							cellCenter.z = CoordinateZ[kIn];
+							faceCenter.z = (CoordinateZ[kIn] + CoordinateZ[k]) / 2.0;
+							int idx = getSerialIndexLocal(i, j, k);
+							int idxIn = getSerialIndexLocal(i, j, kIn);
+					
+							//Apply right boundary conditions						
+							std::vector<double> dValues = zRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
+							for (int nv = 0; nv < nVariables; nv++) {
+								values[idx * nVariables + nv] = dValues[nv];
+							};
+						};
+					};
+				};
+			};
+		}; //Z direction
+
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<pManager->getRank()<<", Dummy values Y-direction computed\n";
+			std::cout.flush();
+		};
+		//Sync
+		pManager->Barrier();
 	};
 
 	//Save solution CGNS
@@ -1259,6 +1318,7 @@ public:
 		return;
 	};
 
+	//Save solution TecPlot Format 
 	void SaveSliceToTecplot(std::string fname, int I, int J, int K) {
 		
 		std::ofstream ofs;
@@ -1291,6 +1351,18 @@ public:
 			ofs<<"\""<<"P"<<"\" ";
 			ofs<<"\""<<"e"<<"\" ";
 			ofs<<std::endl;
+
+			ofs << "ZONE T=\"1\"";	//zone name
+			ofs<<std::endl;
+
+			if (I == -1) ofs << "I=" << nX;
+			else ofs << "I=" << 1;
+			if (J == -1) ofs << "J=" << nY;
+			else ofs << "J=" << 1;
+			if (K == -1) ofs << "K=" << nZ;
+			else ofs << "K=" << 1;
+			ofs << "F=POINT\n";
+			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
 		} else {
 			//Wait for previous process to finish writing
 			pManager->Wait(rank - 1);
@@ -1345,7 +1417,6 @@ public:
 		pManager->Barrier();
 	};
 
-	//Save solution
 	void SaveSolution(std::string fname) {
 		SaveSliceToTecplot(fname, -1, -1, 0);
 
@@ -1579,7 +1650,7 @@ public:
 
 	void SaveSolutionSega(std::string fname) {
 		//Tecplot version
-		std::ofstream ofs;
+		std::ofstream ofs(fname);
 
 		//1D tecplot style
 		if(nDims == 1)
@@ -1671,9 +1742,10 @@ public:
 					};
 				};
 			};	//end for ijk
-
 		};	//end if
 
+		ofs.close();
+		return;
 	};
 
 	//Run calculation
@@ -1768,7 +1840,7 @@ public:
 				std::stringstream snapshotFileName;
 				snapshotFileName.str(std::string());
 				snapshotFileName<<"dataI"<<stepInfo.Iteration<<".dat";						
-				SaveSolution(snapshotFileName.str());
+				SaveSolutionSega(snapshotFileName.str());
 
 				if (pManager->IsMaster()) {
 					std::cout<<"Solution has been written to file \""<<snapshotFileName.str()<<"\""<<std::endl;
@@ -1783,7 +1855,7 @@ public:
 				snapshotFileName<<std::fixed;
 				snapshotFileName.precision(snapshotTimePrecision);								
 				snapshotFileName<<"dataT"<<stepInfo.Time<<".dat";							
-				SaveSolution(snapshotFileName.str());
+				SaveSolutionSega(snapshotFileName.str());
 
 				if (pManager->IsMaster()) {
 					std::cout<<"Solution has been written to file \""<<snapshotFileName.str()<<"\""<<std::endl;
@@ -1793,7 +1865,7 @@ public:
 				stepInfo.NextSnapshotTime += SaveSolutionSnapshotTime;
 			};
 
-			//Find maximum x velocity	
+			//Find maximum x velocity	//TO DO something 
 			double uMax = 0;
 			for (int i = iMin; i <= iMax; i++) {
 				for (int j = jMin; j <= jMax; j++) {

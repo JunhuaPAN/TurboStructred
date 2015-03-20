@@ -1,7 +1,6 @@
 #ifndef TurboStructured_Methods_ExplicitRungeKuttaFVM
 #define TurboStructured_Methods_ExplicitRungeKuttaFVM
 
-#include "Methods\Method.h"
 #include "KernelConfiguration.h"
 #include "utility\Vector.h"
 #include "utility\Matrix.h"
@@ -744,12 +743,14 @@ public:
 
 		//viscous part
 		int faceInd = 0;
-		isGradientRequired = true;
 		if (isGradientRequired == true) ComputeGradients();
+
 		std::vector<std::vector<double> > vfluxesX;
 		std::vector<std::vector<double> > vfluxesY;
 		std::vector<std::vector<double> > vfluxesZ;
-		ComputeViscousFluxes(vfluxesX, vfluxesY, vfluxesZ);
+		if (isViscousFlow == true) {
+			ComputeViscousFluxes(vfluxesX, vfluxesY, vfluxesZ);
+		};
 		double volume = hx * hy * hz;
 
 		// I step
@@ -779,8 +780,7 @@ public:
 					//Compute viscous flux
 					int sL = getSerialIndexLocal(i - 1, j, k);
 					int sR = getSerialIndexLocal(i, j, k);
-					//fvisc = ComputeViscousFlux(sL, sR, U[0], U[1], fn);
-					fvisc = vfluxesX[faceInd];
+					if (isViscousFlow == true) fvisc = vfluxesX[faceInd];
 					for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
 	
 					//Update residuals
@@ -841,8 +841,7 @@ public:
 						//Compute viscous flux
 						int sL = getSerialIndexLocal(i, j - 1, k);
 						int sR = getSerialIndexLocal(i, j, k);
-						//fvisc = ComputeViscousFlux(sL, sR, U[0], U[1], fn);
-						fvisc = vfluxesY[faceInd];
+						if (isViscousFlow == true) fvisc = vfluxesY[faceInd];
 						for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
 	
 						//Update residuals
@@ -900,8 +899,7 @@ public:
 						//Compute viscous flux
 						int sL = getSerialIndexLocal(i, j, k - 1);
 						int sR = getSerialIndexLocal(i, j, k);
-						//fvisc = ComputeViscousFlux(sL, sR, U[0], U[1], fn);
-						fvisc = vfluxesZ[faceInd];
+						if (isViscousFlow == true) fvisc = vfluxesZ[faceInd];
 						for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
 	
 						//Update residuals

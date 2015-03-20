@@ -14,7 +14,10 @@ enum class BoundaryVariableType {
 	VelocityX,
 	VelocityY,
 	VelocityZ,
-	InternalEnergy
+	VelocityNormal,
+	VelocityTangential,
+	InternalEnergy,
+	Natural
 };
 
 class CompositeBoundaryConditionInfo {
@@ -107,7 +110,61 @@ public:
 	};
  
 	void loadConfiguration(BoundaryConditionConfiguration& bcConfig) {
-		if (bcConfig.BCType == BoundaryConditionType::Symmetry) {				
+		//Symmetry condition for left and right bounds
+		if (bcConfig.BCType == BoundaryConditionType::SymmetryX) {				
+			boundaryConditions[BoundaryVariableType::Density] = CompositeBoundaryConditionInfo();
+			boundaryConditions[BoundaryVariableType::VelocityX] = CompositeBoundaryConditionInfo();
+			boundaryConditions[BoundaryVariableType::VelocityY] = CompositeBoundaryConditionInfo();
+			boundaryConditions[BoundaryVariableType::VelocityZ] = CompositeBoundaryConditionInfo();
+			boundaryConditions[BoundaryVariableType::Pressure] = CompositeBoundaryConditionInfo();
+
+			boundaryConditions[BoundaryVariableType::Density].SetNeumanBoundary(0);
+			boundaryConditions[BoundaryVariableType::VelocityX].SetDirichletBoundary(0);
+			boundaryConditions[BoundaryVariableType::VelocityY].SetNeumanBoundary(0);
+			boundaryConditions[BoundaryVariableType::VelocityZ].SetNeumanBoundary(0);
+			boundaryConditions[BoundaryVariableType::Pressure].SetNeumanBoundary(0);
+
+			gamma = bcConfig.Gamma;
+			return;
+		};
+
+		//Symmetry condition for top and bottom bounds
+		if (bcConfig.BCType == BoundaryConditionType::SymmetryY) {				
+			boundaryConditions[BoundaryVariableType::Density] = CompositeBoundaryConditionInfo();
+			boundaryConditions[BoundaryVariableType::VelocityX] = CompositeBoundaryConditionInfo();
+			boundaryConditions[BoundaryVariableType::VelocityY] = CompositeBoundaryConditionInfo();
+			boundaryConditions[BoundaryVariableType::VelocityZ] = CompositeBoundaryConditionInfo();
+			boundaryConditions[BoundaryVariableType::Pressure] = CompositeBoundaryConditionInfo();
+
+			boundaryConditions[BoundaryVariableType::Density].SetNeumanBoundary(0);
+			boundaryConditions[BoundaryVariableType::VelocityX].SetNeumanBoundary(0);
+			boundaryConditions[BoundaryVariableType::VelocityY].SetDirichletBoundary(0);
+			boundaryConditions[BoundaryVariableType::VelocityZ].SetNeumanBoundary(0);
+			boundaryConditions[BoundaryVariableType::Pressure].SetNeumanBoundary(0);
+
+			gamma = bcConfig.Gamma;
+			return;
+		};
+
+		//Symmetry condition for front and back bounds
+		if (bcConfig.BCType == BoundaryConditionType::SymmetryZ) {				
+			boundaryConditions[BoundaryVariableType::Density] = CompositeBoundaryConditionInfo();
+			boundaryConditions[BoundaryVariableType::VelocityX] = CompositeBoundaryConditionInfo();
+			boundaryConditions[BoundaryVariableType::VelocityY] = CompositeBoundaryConditionInfo();
+			boundaryConditions[BoundaryVariableType::VelocityZ] = CompositeBoundaryConditionInfo();
+			boundaryConditions[BoundaryVariableType::Pressure] = CompositeBoundaryConditionInfo();
+
+			boundaryConditions[BoundaryVariableType::Density].SetNeumanBoundary(0);
+			boundaryConditions[BoundaryVariableType::VelocityX].SetNeumanBoundary(0);
+			boundaryConditions[BoundaryVariableType::VelocityY].SetNeumanBoundary(0);
+			boundaryConditions[BoundaryVariableType::VelocityZ].SetDirichletBoundary(0);
+			boundaryConditions[BoundaryVariableType::Pressure].SetNeumanBoundary(0);
+
+			gamma = bcConfig.Gamma;
+			return;
+		};
+
+		if (bcConfig.BCType == BoundaryConditionType::Natural) {				
 			boundaryConditions[BoundaryVariableType::Density] = CompositeBoundaryConditionInfo();
 			boundaryConditions[BoundaryVariableType::VelocityX] = CompositeBoundaryConditionInfo();
 			boundaryConditions[BoundaryVariableType::VelocityY] = CompositeBoundaryConditionInfo();
@@ -118,7 +175,7 @@ public:
 			boundaryConditions[BoundaryVariableType::VelocityX].SetNeumanBoundary(0);
 			boundaryConditions[BoundaryVariableType::VelocityY].SetNeumanBoundary(0);
 			boundaryConditions[BoundaryVariableType::VelocityZ].SetNeumanBoundary(0);
-			boundaryConditions[BoundaryVariableType::Pressure].SetDirichletBoundary(0);
+			boundaryConditions[BoundaryVariableType::Pressure].SetNeumanBoundary(0);
 
 			gamma = bcConfig.Gamma;
 			return;

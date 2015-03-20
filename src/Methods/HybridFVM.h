@@ -1,14 +1,13 @@
 #ifndef TurboStructured_Methods_HybridFVM
 #define TurboStructured_Methods_HybridFVM
 
-#include "Methods\Method.h"
 #include "KernelConfiguration.h"
 #include "utility\Vector.h"
 #include "utility\Matrix.h"
 #include "utility\Timer.h"
 #include "kernel.h"
 
-//Base class for all solution methods that desribe iterations process in detail
+//Base class for Hybrid methods (works with one phase ideal gas model)
 class HybridFVM : public Kernel {
 public:
 	//splitting over directions types
@@ -22,42 +21,38 @@ public:
 	void ExchangeVelocityComponents(double* U, direction dir) {
 		if(dir == X_direction) return;
 		
-		//	(u, v, w) -> (v, w, u)
+		//	(u, v, w) -> (v, u, w)
 		if(dir == Y_direction) {
 			double temp = U[1];
 			U[1] = U[2];
-			U[2] = U[3];
-			U[3] = temp;
+			U[2] = temp;
 			return;
 		};
 
-		//	(u, v, w) -> (w, u, v)
+		//	(u, v, w) -> (w, v, u)
 		if(dir == Z_direction) {
 			double temp = U[1];
 			U[1] = U[3];
-			U[3] = U[2];
-			U[2] = temp;
+			U[3] = temp;
 			return;
 		};
 	};
 	void ExchangeVelocityComponents(std::vector<double> &U, direction dir) {
 		if(dir == X_direction) return;
 		
-		//	(u, v, w) -> (v, w, u)
+		//	(u, v, w) -> (v, u, w)
 		if(dir == Y_direction) {
 			double temp = U[1];
 			U[1] = U[2];
-			U[2] = U[3];
-			U[3] = temp;
+			U[2] = temp;
 			return;
 		};
 
-		//	(u, v, w) -> (w, u, v)
+		//	(u, v, w) -> (w, v, u)
 		if(dir == Z_direction) {
 			double temp = U[1];
 			U[1] = U[3];
-			U[3] = U[2];
-			U[2] = temp;
+			U[3] = temp;
 			return;
 		};
 	};
@@ -303,10 +298,10 @@ public:
 		for (double& r : residual) r = 0;	//Nullify residuals
 
 		//initialize data containers
-		double* Uim1, *Ui, *Uip1, *Uip2;	//vectors of conservative variables in j-1  j  j+1  j+2 cells
-		std::vector<double> Gim1, Gi, Gip1, Gip2;	//vectors of characteristic variables computed as Gjj = Rinv(j+1/2)*Ujj,  jj = jm1, jm, jp1, jp2
-		double alf, bet, gam, del;					//coefficients of monotone scheme
-		std::vector<double> fr, fl;					//left and right fluxes
+		double* Uim1, *Ui, *Uip1, *Uip2;								//vectors of conservative variables in j-1  j  j+1  j+2 cells
+		std::vector<double> Gim1, Gi, Gip1, Gip2;						//vectors of characteristic variables computed as Gjj = Rinv(j+1/2)*Ujj,  jj = jm1, jm, jp1, jp2
+		double alf, bet, gam, del;										//coefficients of monotone scheme
+		std::vector<double> fr(nVariables), fl(nVariables);				//left and right fluxes
 		
 		//Initialize eigenvalues and eigenvectors structures
 		std::vector<double> eigenvals(nVariables);
@@ -414,10 +409,10 @@ public:
 		for (double& r : residual) r = 0;	//Nullify residuals
 
 		//initialize data containers
-		double* Uim1, *Ui, *Uip1, *Uip2;	//vectors of conservative variables in k-1  k  k+1  k+2 cells
-		std::vector<double> Gim1, Gi, Gip1, Gip2;	//vectors of characteristic variables computed as Gjj = Rinv(k+1/2)*Ujj,  jj = km1, km, kp1, kp2
-		double alf, bet, gam, del;					//coefficients of monotone scheme
-		std::vector<double> fr, fl;					//left and right fluxes
+		double* Uim1, *Ui, *Uip1, *Uip2;											//vectors of conservative variables in k-1  k  k+1  k+2 cells
+		std::vector<double> Gim1, Gi, Gip1, Gip2;									//vectors of characteristic variables computed as Gjj = Rinv(k+1/2)*Ujj,  jj = km1, km, kp1, kp2
+		double alf, bet, gam, del;													//coefficients of monotone scheme
+		std::vector<double> fr(nVariables), fl(nVariables);							//left and right fluxes
 		
 		//Initialize eigenvalues and eigenvectors structures
 		std::vector<double> eigenvals(nVariables);
@@ -635,10 +630,21 @@ public:
 				RewriteDuringSolution(dt);
 				Yfluxes(dt);
 				RewriteDuringSolution(dt);
-			} else {
+				//second half
 				Yfluxes(dt);
 				RewriteDuringSolution(dt);
 				Xfluxes(dt);
+				RewriteDuringSolution(dt);
+			} else {
+				//half of Step
+				Yfluxes(dt);
+				RewriteDuringSolution(dt);
+				Xfluxes(dt);
+				RewriteDuringSolution(dt);
+				//second half
+				Xfluxes(dt);
+				RewriteDuringSolution(dt);
+				Yfluxes(dt);
 				RewriteDuringSolution(dt);
 			};
 			break;
@@ -673,23 +679,14 @@ public:
 		//Sync
 		pManager->Barrier();
 
-		//Compute residuals and update solution
-		UpdateSolution(stepInfo.TimeStep);
-				
-		// Update time
-		stepInfo.Time += stepInfo.TimeStep;
-		stepInfo.Iteration++;
-
-		//Sync
-		pManager->Barrier();
-		
-
 		//Update conservative variables
 		UpdateSolution(stepInfo.TimeStep);
 		
 		// Update time
 		stepInfo.Time += stepInfo.TimeStep;
 		stepInfo.Iteration++;
+
+		pManager->Barrier();
 	};	
 
 };

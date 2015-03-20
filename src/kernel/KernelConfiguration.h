@@ -6,9 +6,12 @@
 
 enum class BoundaryConditionType {
 	Wall,
-	Symmetry,
+	SymmetryX,
+	SymmetryY,
+	SymmetryZ,
 	MovingWall,
-	General
+	General,
+	Natural
 };
 
 class BoundaryConditionConfiguration {
