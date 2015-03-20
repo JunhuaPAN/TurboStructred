@@ -1,7 +1,12 @@
 #ifndef TurboStructured_RiemannSolvers_RoeSolverPerfectGasEOS
 #define TurboStructured_RiemannSolvers_RoeSolverPerfectGasEOS
 
+#include <cassert>
 #include "RiemannSolver.h"
+//#include "device_launch_parameters.h"
+//#include "cuda.h"
+//#include "cuda_runtime.h"
+//#include "device_functions.hpp"
 
 class RoeSolverPerfectGasEOS : public RiemannSolver {
 	//Number of variables
@@ -148,6 +153,12 @@ public:
 		return result;
 	};
 
+
+	//Solve riemann problem using CUDA
+	void ComputeFluxCUDA(double *UL, double *UR) {
+
+	};
+	
 };
 
 #endif

@@ -573,11 +573,17 @@ void RunShearFlow2D(int argc, char *argv[]) {
 
 int main(int argc, char *argv[])
 {
+	CUDAConfiguration cudaConfiguration;
+
+	CUDAManager cudaManager;
+	cudaManager.Init(cudaConfiguration);
+
+
 	//main function
 	//RunSODTestRoe1D(argc, argv);
 	//RunSODTestRoe2DX(argc, argv);
 	//RunFluxesTest2D(argc, argv);
-	RunPoiseuille2D(argc, argv);
+	//RunPoiseuille2D(argc, argv);
 	//RunSODTestHybrid1D(argc, argv);
 	//RunPoiseuille3D(argc, argv);
 	//RunShearFlow2D(argc, argv);

@@ -25,6 +25,9 @@
     <Filter Include="Header Files\BoundaryConditions">
       <UniqueIdentifier>{8d884abd-430d-4fc3-ad48-6cbaa90c1809}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\CUDA">
+      <UniqueIdentifier>{214fd84e-0c20-4c6e-93c9-517fe5645a67}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -48,9 +51,6 @@
       <Filter>Header Files\Utility</Filter>
     </ClInclude>
     <ClInclude Include="..\src\RiemannSolvers\RiemannSolver.h">
-      <Filter>Header Files\RiemannSolvers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\RiemannSolvers\RoeSolverPerfectGasEOS.h">
       <Filter>Header Files\RiemannSolvers</Filter>
     </ClInclude>
     <ClInclude Include="..\src\RiemannSolvers\RiemannSolversList.h">
@@ -80,5 +80,16 @@
     <ClInclude Include="..\src\utility\GeomFunctions.h">
       <Filter>Header Files\Utility</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\RiemannSolvers\RoeSolverPerfectGasEOS.h">
+      <Filter>Header Files\RiemannSolvers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\CUDA\CUDAManager.cu.h">
+      <Filter>Header Files\CUDA</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="..\src\CUDA\CUDAManager.cu">
+      <Filter>Header Files\CUDA</Filter>
+    </CudaCompile>
   </ItemGroup>
 </Project>

@@ -12,6 +12,7 @@
 
 #include "KernelConfiguration.h"
 #include "ParallelManager.h"
+#include "CUDA\CUDAManager.cu.h"
 #include "utility\Vector.h"
 #include "utility\Matrix.h"
 #include "utility\Timer.h"
@@ -32,6 +33,8 @@ public:
 
 //Calculation kernel
 class Kernel {
+	//CUDA manager
+	std::unique_ptr<CUDAManager> _CUDAManager;
 public:
 	//Interface part  TO DO REMOVE GetDummyCellLayerSize
 	virtual int GetDummyCellLayerSize() = 0; // request as much dummy cell layers as required
@@ -88,6 +91,7 @@ public:
 	double viscosity;
 	bool isViscousFlow;
 	bool isGradientRequired;
+	bool isCUDAEnabled;
 
 	//External forces
 	Vector Sigma; //Potential force	
@@ -322,13 +326,17 @@ public:
 			zRightBC->loadConfiguration(config.zRightBoundary);
 		};
 
-		//
-
 		//External forces
 		Sigma = Vector(config.Sigma, 0, 0);
 
 		//Output settings
 		DebugOutputEnabled = config.DebugOutputEnabled;
+
+		//CUDA initialization
+		if (config.IsCUDAEnabled) {
+			_CUDAManager = std::unique_ptr<CUDAManager>(new CUDAManager());
+			_CUDAManager->Init(config.CUDASettings);
+		};
 		
 		if (DebugOutputEnabled) {
 			std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";

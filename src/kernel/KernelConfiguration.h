@@ -18,6 +18,11 @@ public:
 	double Gamma;
 };
 
+class CUDAConfiguration {
+public:
+
+};
+
 //Class that manages all configurable parameters
 class KernelConfiguration {
 public:
@@ -66,6 +71,10 @@ public:
 	BoundaryConditionConfiguration zLeftBoundary;
 	BoundaryConditionConfiguration zRightBoundary;
 
+	//CUDA settings
+	bool IsCUDAEnabled;
+	CUDAConfiguration CUDASettings;
+
 	//External potential forces
 	double Sigma;
 
@@ -76,6 +85,7 @@ public:
 		Sigma = 0.0;
 		IsViscousFlow = false;
 		DebugOutputEnabled = false;
+		IsCUDAEnabled = false;
 	};
 };
 
