@@ -816,8 +816,8 @@ void RunDemchenkoTest2D(int argc, char *argv[]) {
 
 	KernelConfiguration conf;
 	conf.nDims = 2;
-	conf.nX = 40;
-	conf.nY = 40;
+	conf.nX = 120;
+	conf.nY = 60;
 	conf.LX = 0.006;
 	conf.LY = 0.002;	
 	conf.isPeriodicX = false;
@@ -838,13 +838,13 @@ void RunDemchenkoTest2D(int argc, char *argv[]) {
 	conf.yRightBoundary.Gamma = 1.4;
 
 	conf.SolutionMethod = KernelConfiguration::Method::HybridFVM;
-	conf.methodConfiguration.CFL = 0.001;
+	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 
-	conf.MaxTime = 1.0e-5;
+	conf.MaxTime = 6.0e-6;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionSnapshotTime = 1.0e-6;
-	conf.SaveSolutionSnapshotIterations = 100;
+	conf.SaveSolutionSnapshotIterations = 0;
 	conf.ResidualOutputIterations = 10;
 
 	//init kernel
