@@ -1676,7 +1676,7 @@ public:
 		pManager->Barrier();
 	};
 
-	void SaveSolutionSega(std::string fname) {
+	virtual void SaveSolutionSega(std::string fname) {
 		//Tecplot version
 		std::ofstream ofs(fname);
 

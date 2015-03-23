@@ -243,6 +243,107 @@ public:
 		SetEOS(config.methodConfiguration.eos);
 	};
 
+	//Save solution to TecPlot
+	virtual void SaveSolutionSega(std::string fname) override {
+		//Tecplot version
+		std::ofstream ofs(fname);
+
+		//1D tecplot style
+		if(nDims == 1)
+		{
+			//Header				
+			ofs<<"VARIABLES = ";
+			ofs<<"\""<<"X"<<"\" ";
+			ofs<<"\""<<"ro"<<"\" ";
+			ofs<<"\""<<"u"<<"\" ";
+			ofs<<"\""<<"v"<<"\" ";
+			ofs<<"\""<<"w"<<"\" ";
+			ofs<<"\""<<"P"<<"\" ";
+			ofs<<"\""<<"e"<<"\" ";
+			ofs<<std::endl;
+			
+			//Solution
+			for (int i = iMin; i <= iMax; i++) {
+				//Obtain cell data
+				double x = CoordinateX[i];
+				double* U = getCellValues(i, jMin, kMin);
+				double ro = U[0];
+				double u = U[1] / ro;
+				double v = U[2] / ro;
+				double w = U[3] / ro;
+				double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
+				double P = eos->GetPressure(ro, e);
+
+				//Write to file
+				ofs<<x<<" ";
+				ofs<<ro<<" ";
+				ofs<<u<<" ";
+				ofs<<v<<" ";
+				ofs<<w<<" ";
+				ofs<<P<<" ";
+				ofs<<e<<" ";
+				ofs<<std::endl;
+			};	//end cycle
+
+			ofs.close();
+			return;
+		};	//end if
+
+		//2D/3D tecplot style
+		if(nDims > 1)
+		{
+			//Header				
+			ofs<<"VARIABLES = ";
+			ofs<<"\""<<"X"<<"\" ";
+			ofs<<"\""<<"Y"<<"\" ";
+			ofs<<"\""<<"Z"<<"\" ";
+			ofs<<"\""<<"ro"<<"\" ";
+			ofs<<"\""<<"u"<<"\" ";
+			ofs<<"\""<<"v"<<"\" ";
+			ofs<<"\""<<"w"<<"\" ";
+			ofs<<"\""<<"P"<<"\" ";
+			ofs<<"\""<<"e"<<"\" ";
+			ofs<<std::endl;
+			
+			ofs << "ZONE T=\"1\"\nI=" << nX <<"J=" << nY << "K=" << nZ << "F=POINT\n";
+			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
+		
+			//Solution
+			for (int k = kMin; k <= kMax; k++) {
+				for (int j = jMin; j <= jMax; j++) {
+					for (int i = iMin; i <= iMax; i++) {
+						//Obtain cell data
+						double x = CoordinateX[i];
+						double y = CoordinateY[j];
+						double z = CoordinateZ[k];
+						double* U = getCellValues(i,j,k);
+						double ro = U[0];
+						double u = U[1] / ro;
+						double v = U[2] / ro;
+						double w = U[3] / ro;
+						double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
+						double P = eos->GetPressure(ro, e);
+
+						//Write to file
+						ofs<<x<<" ";
+						ofs<<y<<" ";
+						ofs<<z<<" ";
+						ofs<<ro<<" ";
+						ofs<<u<<" ";
+						ofs<<v<<" ";
+						ofs<<w<<" ";
+						ofs<<P<<" ";
+						ofs<<e<<" ";
+						ofs<<std::endl;
+					};
+				};
+			};	//end for ijk
+		};	//end if
+
+		ofs.close();
+		return;
+	};
+
 };
 
 #endif
