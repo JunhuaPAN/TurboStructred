@@ -53,6 +53,35 @@ std::vector<double> SODinitialDistribution(Vector r, double xI, ShockTubeParamet
 	return U;
 };
 
+std::vector<double> SODinitialDistributionY(Vector r, double yI, ShockTubeParameters params) {
+	std::vector<double> U(5);	
+	double ro;
+	double u;
+	double gamma;
+	double P;
+
+	//Left
+	if (r.y <= yI) {
+		ro = params.roL;
+		u = params.uL;
+		P = params.PL;
+		gamma = params.gammaL;
+	} else {
+		ro = params.roR;
+		u = params.uR;
+		P = params.PR;
+		gamma = params.gammaR;
+	};
+
+	U[0] = ro;
+	U[1] = 0;
+	U[2] = u * ro;
+	U[3] = 0;
+	U[4] = P / (gamma - 1.0) + ro * u * u / 2.0;
+
+	return U;
+};
+
 //Tests
 void RunSODTestRoe1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
@@ -117,17 +146,211 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 void RunSODTestHybrid1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 500;
+	conf.nX = 1000;
 	conf.LX = 1.0;
 	conf.isPeriodicX = false;
 
 	conf.Gamma = 1.4;
 	conf.nVariables = 5;
 
-	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
 	conf.xLeftBoundary.Gamma = 1.4;
-	conf.xRightBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
 	conf.xRightBoundary.Gamma = 1.4;
+
+	conf.SolutionMethod = KernelConfiguration::Method::HybridFVM;
+	conf.methodConfiguration.CFL = 0.03;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+
+	conf.MaxTime = 0.2;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 0.1;
+	conf.SaveSolutionSnapshotIterations = 0;
+	conf.ResidualOutputIterations = 100;
+
+	//init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
+		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
+	};	
+	kernel->Init(conf);
+
+	// initial conditions
+	ShockTubeParameters params;
+	params.gammaL = params.gammaR = 1.4;
+	params.roL = 1.0;
+	params.PL = 1.0;
+	params.uL = 0.75;
+	//params.uL = 0;
+	params.roR = 0.125;
+	params.PR = 0.1;
+	params.uR = 0.0;
+	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.3, params);
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolution("init.dat");
+	
+	//run computation
+	kernel->Run();		
+
+	//finalize kernel
+	kernel->Finilaze();
+};
+
+void RunSODTestHybrid1DY(int argc, char *argv[]) {
+	KernelConfiguration conf;
+	conf.nDims = 2;
+	conf.nX = 1;
+	conf.nY = 200;
+	conf.LX = 0.5;
+	conf.LY = 1.0;
+	conf.isPeriodicX = false;
+	conf.isPeriodicY = false;
+
+	conf.Gamma = 1.4;
+	conf.nVariables = 5;
+
+	conf.xLeftBoundary.BCType = BoundaryConditionType::SymmetryX;
+	conf.xLeftBoundary.Gamma = 1.4;
+	conf.xRightBoundary.BCType = BoundaryConditionType::SymmetryX;
+	conf.xRightBoundary.Gamma = 1.4;
+	conf.yLeftBoundary.BCType = BoundaryConditionType::Natural;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::Natural;
+	conf.yRightBoundary.Gamma = 1.4;
+
+	conf.SolutionMethod = KernelConfiguration::Method::HybridFVM;
+	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+
+	conf.MaxTime = 0.2;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 0.1;
+	conf.SaveSolutionSnapshotIterations = 0;
+	conf.ResidualOutputIterations = 100;
+
+	//init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
+		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
+	};	
+	kernel->Init(conf);
+
+	// initial conditions
+	ShockTubeParameters params;
+	params.gammaL = params.gammaR = 1.4;
+	params.roL = 1.0;
+	params.PL = 1.0;
+	params.uL = 0.75;
+	//params.uL = 0;
+	params.roR = 0.125;
+	params.PR = 0.1;
+	params.uR = 0.0;
+	auto initD = std::bind(SODinitialDistributionY, std::placeholders::_1, 0.3, params);
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolution("init.dat");
+	
+	//run computation
+	kernel->Run();		
+
+	//finalize kernel
+	kernel->Finilaze();
+};
+void RunSODTestHybrid1DX(int argc, char *argv[]) {
+	KernelConfiguration conf;
+	conf.nDims = 2;
+	conf.nX = 200;
+	conf.nY = 1;
+	conf.LX = 1.0;
+	conf.LY = 0.5;
+	conf.isPeriodicX = false;
+	conf.isPeriodicY = false;
+
+	conf.Gamma = 1.4;
+	conf.nVariables = 5;
+
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xLeftBoundary.Gamma = 1.4;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xRightBoundary.Gamma = 1.4;
+	conf.yLeftBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yRightBoundary.Gamma = 1.4;
+
+	conf.SolutionMethod = KernelConfiguration::Method::HybridFVM;
+	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+
+	conf.MaxTime = 0.2;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 0.1;
+	conf.SaveSolutionSnapshotIterations = 0;
+	conf.ResidualOutputIterations = 100;
+
+	//init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
+		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
+	};	
+	kernel->Init(conf);
+
+	// initial conditions
+	ShockTubeParameters params;
+	params.gammaL = params.gammaR = 1.4;
+	params.roL = 1.0;
+	params.PL = 1.0;
+	params.uL = 0.75;
+	//params.uL = 0;
+	params.roR = 0.125;
+	params.PR = 0.1;
+	params.uR = 0.0;
+	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.3, params);
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolution("init.dat");
+	
+	//run computation
+	kernel->Run();		
+
+	//finalize kernel
+	kernel->Finilaze();
+};
+
+void RunSODTestHybrid2D(int argc, char *argv[]) {
+	KernelConfiguration conf;
+	conf.nDims = 2;
+	conf.nX = 500;
+	conf.nY = 10;
+	conf.LX = 1.0;
+	conf.LY = 2.0;
+	conf.isPeriodicX = false;
+	conf.isPeriodicY = false;
+
+	conf.Gamma = 1.4;
+	conf.nVariables = 5;
+
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xLeftBoundary.Gamma = 1.4;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xRightBoundary.Gamma = 1.4;
+	conf.yLeftBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yRightBoundary.Gamma = 1.4;
 
 	conf.SolutionMethod = KernelConfiguration::Method::HybridFVM;
 	conf.methodConfiguration.CFL = 0.05;
@@ -137,7 +360,7 @@ void RunSODTestHybrid1D(int argc, char *argv[]) {
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionSnapshotTime = 0.1;
 	conf.SaveSolutionSnapshotIterations = 0;
-	conf.ResidualOutputIterations = 100;
+	conf.ResidualOutputIterations = 10;
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -593,8 +816,8 @@ void RunDemchenkoTest2D(int argc, char *argv[]) {
 
 	KernelConfiguration conf;
 	conf.nDims = 2;
-	conf.nX = 160;
-	conf.nY = 80;
+	conf.nX = 40;
+	conf.nY = 40;
 	conf.LX = 0.006;
 	conf.LY = 0.002;	
 	conf.isPeriodicX = false;
@@ -614,14 +837,14 @@ void RunDemchenkoTest2D(int argc, char *argv[]) {
 	conf.yRightBoundary.BCType = BoundaryConditionType::SymmetryY;
 	conf.yRightBoundary.Gamma = 1.4;
 
-	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-	conf.methodConfiguration.CFL = 0.5;
+	conf.SolutionMethod = KernelConfiguration::Method::HybridFVM;
+	conf.methodConfiguration.CFL = 0.001;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 
 	conf.MaxTime = 1.0e-5;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionSnapshotTime = 1.0e-6;
-	conf.SaveSolutionSnapshotIterations = 10000;
+	conf.SaveSolutionSnapshotIterations = 100;
 	conf.ResidualOutputIterations = 10;
 
 	//init kernel

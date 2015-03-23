@@ -18,26 +18,7 @@ public:
 	};
 
 	//for splitting over x, y, z directions
-	void ExchangeVelocityComponents(double* U, direction dir) {
-		if(dir == X_direction) return;
-		
-		//	(u, v, w) -> (v, u, w)
-		if(dir == Y_direction) {
-			double temp = U[1];
-			U[1] = U[2];
-			U[2] = temp;
-			return;
-		};
-
-		//	(u, v, w) -> (w, v, u)
-		if(dir == Z_direction) {
-			double temp = U[1];
-			U[1] = U[3];
-			U[3] = temp;
-			return;
-		};
-	};
-	void ExchangeVelocityComponents(std::vector<double> &U, direction dir) {
+	inline void ExchangeVelocityComponents(std::vector<double> &U, direction dir) {
 		if(dir == X_direction) return;
 		
 		//	(u, v, w) -> (v, u, w)
@@ -60,16 +41,17 @@ public:
 	//Prepare conservative variables for appropriate directions
 	//(u v w) components of velocity have feature that u is a normal velocity component everytime and v and w are considered as passive scalar
 	//only for x_direction now
-	double* PrepareConservativeVariables(int i,int j, int k, direction dir) {
-		//EKR need to implement MPI request part and dummy cells
-		double* U = getCellValues(i, j, k);
+	inline std::vector<double> PrepareConservativeVariables(int i, int j, int k, direction dir) {
+		std::vector<double> U(nVariables, 0);
+		double* Value = getCellValues(i, j, k);
+		for(int nv = 0; nv < nVariables; nv++) U[nv] = Value[nv];
 		ExchangeVelocityComponents(U, dir);
 		return U;
 	};
 
 	//Prepare conservative variables form left and right (relatively edge) cells
 	//Prepare right eigenvectors matrix R, inverse to it - Rinv (has left eigenvectors rows) and eigenvalues
-	void PrepareEigenMatrix(double* &UL, double* &UR, Matrix &R, Matrix &Rinv, std::vector<double> &eigenvals) {
+	void PrepareEigenMatrix(std::vector<double> &UL, std::vector<double> &UR, Matrix &R, Matrix &Rinv, std::vector<double> &eigenvals) {
 		//Grunaisen
 		double gr = gamma - 1.0;
 
@@ -184,14 +166,14 @@ public:
 		Matrix E = R*Rinv;
 		int test;
 	};
-	
+	 
 	//Compute fluxes in X direction and write values_new array
 	void Xfluxes(double dt) {
 		direction dir = X_direction;
 		for (double& r : residual) r = 0;	//Nullify residuals
 
 		//initialize data containers
-		double* Uim1, *Ui, *Uip1, *Uip2;	//vectors of conservative variables in i-1  i  i+1  i+2 cells
+		std::vector<double> Uim1, Ui, Uip1, Uip2;	//vectors of conservative variables in i-1  i  i+1  i+2 cells
 		std::vector<double> Gim1, Gi, Gip1, Gip2;	//vectors of characteristic variables computed as Gjj = Rinv(i+1/2)*Ujj,  j = im1, im, ip1, ip2
 		double alf, bet, gam, del;					//coefficients of monotone scheme
 		std::vector<double> fr(nVariables), fl(nVariables);					//left and right fluxes
@@ -298,7 +280,7 @@ public:
 		for (double& r : residual) r = 0;	//Nullify residuals
 
 		//initialize data containers
-		double* Uim1, *Ui, *Uip1, *Uip2;								//vectors of conservative variables in j-1  j  j+1  j+2 cells
+		std::vector<double> Uim1, Ui, Uip1, Uip2;						//vectors of conservative variables in j-1  j  j+1  j+2 cells
 		std::vector<double> Gim1, Gi, Gip1, Gip2;						//vectors of characteristic variables computed as Gjj = Rinv(j+1/2)*Ujj,  jj = jm1, jm, jp1, jp2
 		double alf, bet, gam, del;										//coefficients of monotone scheme
 		std::vector<double> fr(nVariables), fl(nVariables);				//left and right fluxes
@@ -388,10 +370,10 @@ public:
 						int idx = getSerialIndexLocal(ix, iy - 1, iz);
 						std::vector<double> deltaFlux(nVariables);
 						for(int nv = 0; nv < nVariables; nv++) deltaFlux[nv] = (fr[nv] - fl[nv]) * fS;
-						ExchangeVelocityComponents(deltaFlux, Y_direction);
+						ExchangeVelocityComponents(deltaFlux, dir);
 
 						//Fluxes difference equals residual 
-						for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] = deltaFlux[nv];
+						for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] = - deltaFlux[nv];
 					};
           
 					fl = fr;
@@ -409,7 +391,7 @@ public:
 		for (double& r : residual) r = 0;	//Nullify residuals
 
 		//initialize data containers
-		double* Uim1, *Ui, *Uip1, *Uip2;											//vectors of conservative variables in k-1  k  k+1  k+2 cells
+		std::vector<double> Uim1, Ui, Uip1, Uip2;											//vectors of conservative variables in k-1  k  k+1  k+2 cells
 		std::vector<double> Gim1, Gi, Gip1, Gip2;									//vectors of characteristic variables computed as Gjj = Rinv(k+1/2)*Ujj,  jj = km1, km, kp1, kp2
 		double alf, bet, gam, del;													//coefficients of monotone scheme
 		std::vector<double> fr(nVariables), fl(nVariables);							//left and right fluxes
@@ -516,7 +498,7 @@ public:
 	void ComputeTimeStep() {
 		//variables to collect maximum values
 		double dmax  = 0;
-		double ccmax = 0;
+		double ccmax = 0;	//maximum of speed of sound (not used yet)
 
 		//conservative variable temporal container
 		std::vector<double> U;
@@ -628,24 +610,32 @@ public:
 				//half of a Step
 				Xfluxes(dt);
 				RewriteDuringSolution(dt);
+				ComputeDummyCellValues();
 				Yfluxes(dt);
 				RewriteDuringSolution(dt);
+				ComputeDummyCellValues();
 				//second half
 				Yfluxes(dt);
 				RewriteDuringSolution(dt);
+				ComputeDummyCellValues();
 				Xfluxes(dt);
 				RewriteDuringSolution(dt);
+				//ComputeDummyCellValues();
 			} else {
 				//half of Step
 				Yfluxes(dt);
 				RewriteDuringSolution(dt);
+				ComputeDummyCellValues();
 				Xfluxes(dt);
 				RewriteDuringSolution(dt);
+				ComputeDummyCellValues();
 				//second half
 				Xfluxes(dt);
 				RewriteDuringSolution(dt);
+				ComputeDummyCellValues();
 				Yfluxes(dt);
 				RewriteDuringSolution(dt);
+				//ComputeDummyCellValues();
 			};
 			break;
 		};
@@ -680,7 +670,7 @@ public:
 		pManager->Barrier();
 
 		//Update conservative variables
-		UpdateSolution(stepInfo.TimeStep);
+		UpdateResiduals();
 		
 		// Update time
 		stepInfo.Time += stepInfo.TimeStep;

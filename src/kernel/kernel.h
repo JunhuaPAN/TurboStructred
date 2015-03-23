@@ -367,6 +367,34 @@ public:
 		for(int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = pManager->Sum(stepInfo.Residual[nv]);
 	};
 
+	//Update Residual
+	void UpdateResiduals() {
+		//Compute cell volume
+		double volume = hx * hy * hz;
+		stepInfo.Residual.resize(nVariables);
+		for (int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = 0;
+		
+		for (int i = iMin; i <= iMax; i++)
+		{
+			for (int j = jMin; j <= jMax; j++)
+			{
+				for (int k = kMin; k <= kMax; k++)
+				{
+					int idx = getSerialIndexLocal(i, j, k);
+
+					//Update cell values
+					for(int nv = 0; nv < nVariables; nv++) {
+						//Compute total residual
+						stepInfo.Residual[nv] += abs(residual[idx * nVariables + nv]);
+					};
+				};
+			};
+		};
+
+		//Aggregate
+		for(int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = pManager->Sum(stepInfo.Residual[nv]);
+	};
+
 	//Exchange values between processormos
 	void ExchangeValues() {
 		//Index variables
@@ -1865,26 +1893,6 @@ public:
 				stepInfo.NextSnapshotTime += SaveSolutionSnapshotTime;
 			};
 
-			//Find maximum x velocity	//TO DO something 
-			double uMax = 0;
-			for (int i = iMin; i <= iMax; i++) {
-				for (int j = jMin; j <= jMax; j++) {
-					for (int k = kMin; k <= kMax; k++) {
-						double *U = getCellValues(i, j, k);
-						double u = U[1] / U[0];
-						if (std::abs(u) > std::abs(uMax)) uMax = u;
-					};
-				};
-			};
-
-			double uMaxAbs = std::abs(uMax);
-			uMaxAbs = pManager->Max(uMaxAbs);
-			if (uMax > 0) {
-				uMax = uMaxAbs;
-			} else {
-				uMax = -uMaxAbs;
-			};
-			
 			//Save convergence history		
 			if (pManager->IsMaster() && (stepInfo.Iteration % ResidualOutputIterations)) {
 				ofs<<stepInfo.Time<<" ";			
@@ -1893,7 +1901,6 @@ public:
 				if (nDims > 1) ofs<<stepInfo.Residual[2]<<" ";			
 				if (nDims > 2) ofs<<stepInfo.Residual[3]<<" ";			
 				ofs<<stepInfo.Residual[4]<<" ";				
-				ofs<<uMax<<" ";			
 				ofs<<std::endl;	
 			};
 
