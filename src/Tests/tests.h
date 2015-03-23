@@ -7,6 +7,7 @@
 #include "kernel\kernel.h";
 #include "Methods\ExplicitRungeKuttaFVM.h"
 #include "Methods\HybridFVM.h"
+#include "Methods\GeneralEosMethods\HybridGeneralEOSOnePhase.h"
 
 #define PI 3.14159265359
 
@@ -200,7 +201,6 @@ void RunSODTestHybrid1D(int argc, char *argv[]) {
 	//finalize kernel
 	kernel->Finilaze();
 };
-
 void RunSODTestHybrid1DY(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 2;
@@ -318,6 +318,71 @@ void RunSODTestHybrid1DX(int argc, char *argv[]) {
 	params.PR = 0.1;
 	params.uR = 0.0;
 	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.3, params);
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolution("init.dat");
+	
+	//run computation
+	kernel->Run();		
+
+	//finalize kernel
+	kernel->Finilaze();
+};
+
+//SOD Test for general EOS
+void RunSODTestHybrid1DGeneral(int argc, char *argv[]) {
+	KernelConfiguration conf;
+	conf.nDims = 1;
+	conf.nX = 200;
+	conf.LX = 1.0;
+	conf.isPeriodicX = false;
+
+	conf.Gamma = 1.4;
+	IdealGasEOS eos(conf.Gamma);
+	conf.nVariables = 5;
+
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xLeftBoundary.Gamma = conf.Gamma;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xRightBoundary.Gamma = conf.Gamma;
+
+	conf.SolutionMethod = KernelConfiguration::Method::HybridGeneralEOSOnePhase;
+	conf.methodConfiguration.CFL = 0.1;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.UseExactPressureDerivative = false;
+	conf.methodConfiguration.eos = &eos;
+
+	conf.MaxTime = 0.2;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 0.1;
+	conf.SaveSolutionSnapshotIterations = 0;
+	conf.ResidualOutputIterations = 10;
+
+	//init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
+		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridGeneralEOSOnePhase) {
+		kernel = std::unique_ptr<Kernel>(new HybridGeneralEOSOnePhase(&argc, &argv));
+	};
+	kernel->Init(conf);
+
+	// initial conditions
+	ShockTubeParameters params;
+	params.gammaL = params.gammaR = 1.4;
+	params.roL = 1.0;
+	params.PL = 1.0;
+	params.uL = 0.75;
+	params.uL = 0;
+	params.roR = 0.125;
+	params.PR = 0.1;
+	params.uR = 0.0;
+	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
 	kernel->SetInitialConditions(initD);
 
 	//save solution

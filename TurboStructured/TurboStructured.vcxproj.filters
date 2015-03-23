@@ -28,6 +28,12 @@
     <Filter Include="Header Files\Tests">
       <UniqueIdentifier>{a7f52c3f-86bc-416d-92b5-a1c5bbb7f531}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Methods\GeneralEosMethods">
+      <UniqueIdentifier>{85cc7d2e-2897-420b-96e8-ed685a0ca09d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\EquationsOfState">
+      <UniqueIdentifier>{25ec4059-96a0-497e-a0c6-d20e801d511b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -82,6 +88,18 @@
     </ClInclude>
     <ClInclude Include="..\src\tests\tests.h">
       <Filter>Header Files\Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Methods\GeneralEosMethods\HybridGeneralEOSOnePhase.h">
+      <Filter>Header Files\Methods\GeneralEosMethods</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\EquationsOfState\generalEOS.h">
+      <Filter>Header Files\EquationsOfState</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\EquationsOfState\idealGasEOS.h">
+      <Filter>Header Files\EquationsOfState</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\EquationsOfState\EquationsOfState.h">
+      <Filter>Header Files\EquationsOfState</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

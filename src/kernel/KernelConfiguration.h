@@ -48,7 +48,8 @@ public:
 	//Solution method parameters
 	enum class Method {
 		HybridFVM,
-		ExplicitRungeKuttaFVM
+		ExplicitRungeKuttaFVM,
+		HybridGeneralEOSOnePhase
 	} SolutionMethod;
 
 	MethodConfiguration methodConfiguration;

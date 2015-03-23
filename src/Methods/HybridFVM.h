@@ -51,7 +51,7 @@ public:
 
 	//Prepare conservative variables form left and right (relatively edge) cells
 	//Prepare right eigenvectors matrix R, inverse to it - Rinv (has left eigenvectors rows) and eigenvalues
-	void PrepareEigenMatrix(std::vector<double> &UL, std::vector<double> &UR, Matrix &R, Matrix &Rinv, std::vector<double> &eigenvals) {
+	virtual void PrepareEigenMatrix(std::vector<double> &UL, std::vector<double> &UR, Matrix &R, Matrix &Rinv, std::vector<double> &eigenvals) {
 		//Grunaisen
 		double gr = gamma - 1.0;
 
@@ -162,9 +162,6 @@ public:
 		Rinv.element[4][2] = va*gr/dc2;
 		Rinv.element[4][3] = wa*gr/dc2;
 		Rinv.element[4][4] = gr/dc2;
-
-		Matrix E = R*Rinv;
-		int test;
 	};
 	 
 	//Compute fluxes in X direction and write values_new array
@@ -574,8 +571,6 @@ public:
 		};
 	};
 
-	
-public:
 	//Constuctor inherited
 	HybridFVM(int* argc, char **argv[]) : Kernel(argc, argv) {};
 
