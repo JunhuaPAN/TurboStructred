@@ -1,176 +1,93 @@
-#ifndef TurboStructured_Methods_GeneralEosMethods_HybridGeneralEOSOnePhase
-#define TurboStructured_Methods_GeneralEosMethods_HybridGeneralEOSOnePhase
+#ifndef TurboStructured_Methods_GeneralEosMethods_HybridBarotropicEOSOnePhase
+#define TurboStructured_Methods_GeneralEosMethods_HybridBarotropicEOSOnePhase
 
 #include "Methods\HybridFVM.h"
 #include "EquationsOfState\EquationsOfState.h"
+#include "BCGeneralBarotropic.h"
 
 //Base class for Hybrid methods (works with one phase ideal gas model)
-class HybridGeneralEOSOnePhase : public HybridFVM {
+class HybridBarotropicEOSOnePhase : public HybridFVM {
 public:
 	//pointer to equation of state
-	GeneralEOS* eos;
+	BaratropicEOS* eos;
 
-	//use exact expression of pressure derivative
-	bool UseExactPressureDerivative;
-
-	void SetEOS(GeneralEOS* _eos) {
+	void SetEOS(BaratropicEOS* _eos) {
 		eos = _eos;
 	};
 
 	//Prepare conservative variables form left and right (relatively edge) cells
 	//Prepare right eigenvectors matrix R, inverse to it - Rinv (has left eigenvectors rows) and eigenvalues
 	void PrepareEigenMatrix(std::vector<double> &UL, std::vector<double> &UR, Matrix &R, Matrix &Rinv, std::vector<double> &eigenvals) override  {
-		//accuracy of computer
-		double eps = 1.0e-13;
-		
 		//Left cell
 		double rol = UL[0];
 		double ul  = UL[1]/rol;
 		double vl = UL[2]/rol;
 		double wl  = UL[3]/rol;
-		double El  = UL[4]/rol;
-		double el = El - 0.5*(ul*ul + vl*vl + wl*wl);	//specific internal energy
-		
-		//compute pressure and entalphy by eos
-		double pl  = eos->GetPressure(rol, el);
-		double hl = El + pl/rol;	//total entalpy
 
 		//Right cell
 		double ror = UR[0];
 		double ur  = UR[1]/ror;
 		double vr = UR[2]/ror;
 		double wr  = UR[3]/ror;
-		double Er  = UR[4]/ror;
-		double er = Er - 0.5*(ur*ur + vr*vr + wr*wr);	//specific internal energy
 
-		//compute pressure and entalphy by eos
-		double pr  = eos->GetPressure(ror, er);
-		double hr = Er + pr/ror;	//total entalpy
-
-		//compute 
-
-		//values avaraged on faces
+		//values averaged on faces
 		double roa = sqrt(rol*ror);
 		double sl  = sqrt(rol)/(sqrt(rol) + sqrt(ror));			//density based weight coefficients
 		double sr  = sqrt(ror)/(sqrt(rol) + sqrt(ror));
 		double ua = ul*sl + ur*sr;
 		double va = vl*sl + vr*sr;
 		double wa = wl*sl + wr*sr;
-		double ha  = hl*sl + hr*sr;
-		double ea = el*sl + er*sr;
-		double q2  = ua*ua + va*va + wa*wa;
-		double Ka = 0.5 * q2;						//kinetic energy
-		double pa = roa*(ha - ea - Ka);
-		double dpdea = 0;
-		double dpdroa = 0;
-		if(UseExactPressureDerivative == true) {
-			dpdea = eos->GetPressureEnergyDerivative(roa, ea);
-			dpdroa = eos->GetPressureDensityDerivative(roa, ea);
-		} else {
-			//Use Glaister exrpessions of approximate derivations
-			//Derivative by energy
-			double delta_e = er - el;
-			if(delta_e < eps) {
-				dpdea = 0.5*(eos->GetPressureEnergyDerivative(rol, el) + eos->GetPressureEnergyDerivative(ror, er));
-			} else {
-				double prr = eos->GetPressure(ror, er);
-				double prl = eos->GetPressure(ror, el);
-				double plr = eos->GetPressure(rol, er);
-				double pll = eos->GetPressure(rol, el);
-				dpdea = 0.5*(prr + plr - prl - pll);
-				dpdea /= delta_e;
-			};
-			//Derivative by density
-			double delta_ro = ror - rol;
-			if(delta_ro < eps) {
-				dpdroa = 0.5*(eos->GetPressureDensityDerivative(rol, el) + eos->GetPressureDensityDerivative(ror, er));
-			} else {
-				double prr = eos->GetPressure(ror, er);
-				double prl = eos->GetPressure(ror, el);
-				double plr = eos->GetPressure(rol, er);
-				double pll = eos->GetPressure(rol, el);
-				dpdroa = 0.5*(prr + prl - plr - pll);
-				dpdroa /= delta_ro;
-			};
-		};
-		double c2 = pa * dpdea / (roa * roa) + dpdroa;
-		double c  = sqrt(c2);	
+
+		double c = eos->GetSoundSpeed(roa,  0);
+		double c2  = c * c;	
 
 		//write eigenvalues
 		eigenvals[0] = ua - c;
 		eigenvals[1] = ua;
 		eigenvals[2] = ua;
-		eigenvals[3] = ua;
-		eigenvals[4] = ua + c;
+		eigenvals[3] = ua + c;
 
 		//write right eigenvectors
 		R.element[0][0] = 1;
 		R.element[1][0] = ua - c;
 		R.element[2][0] = va;
 		R.element[3][0] = wa;
-		R.element[4][0] = ha - c*ua;
 
-		R.element[0][1] = 1;
-		R.element[1][1] = ua;
-		R.element[2][1] = va;
-		R.element[3][1] = wa;
-		R.element[4][1] = ea + Ka - roa * dpdroa / dpdea;		// H - c^2 / gr
-		
-		R.element[0][2] = 0;
+		R.element[0][1] = 0;
+		R.element[1][1] = 0;
+		R.element[2][1] = 1;
+		R.element[3][1] = 0;
+
+	    R.element[0][2] = 0;
 		R.element[1][2] = 0;
-		R.element[2][2] = 1;
-		R.element[3][2] = 0;
-		R.element[4][2] = va;
-
-	    R.element[0][3] = 0;
-		R.element[1][3] = 0;
-		R.element[2][3] = 0;
-		R.element[3][3] = 1;
-		R.element[4][3] = wa;
+		R.element[2][2] = 0;
+		R.element[3][2] = 1;
 		
-		R.element[0][4] = 1;
-		R.element[1][4] = ua + c;
-		R.element[2][4] = va;
-		R.element[3][4] = wa;
-		R.element[4][4] = ha + c*ua;
+		R.element[0][3] = 1;
+		R.element[1][3] = ua + c;
+		R.element[2][3] = va;
+		R.element[3][3] = wa;
 		
-		//grunaisen to c^2 ratio
-		double grc2 = ha - ea - Ka + roa * dpdroa / dpdea;
-		grc2 = 1.0 / grc2;
-
-		//grc2 and tetta (tetta = q2 - H + 1/grc2) product
-		double tetta = grc2 * q2 - grc2 * ha + 1;
-
 		//write inverse matrix (left eigenvectors are rows)
-		Rinv.element[0][0] = 0.5 * (tetta + ua / c);
-		Rinv.element[0][1] = (-0.5) * (ua * grc2 + 1.0 / c);
-		Rinv.element[0][2] = -0.5 * va * grc2;
-		Rinv.element[0][3] = -0.5 * wa * grc2;
-		Rinv.element[0][4] = 0.5 * grc2;
+		Rinv.element[0][0] = 0.5 * (c + ua) / c;
+		Rinv.element[0][1] = -0.5 / c;
+		Rinv.element[0][2] = 0;
+		Rinv.element[0][3] = 0;
 
-		Rinv.element[1][0] = grc2 * (ha - q2);
-		Rinv.element[1][1] = ua*grc2;
-		Rinv.element[1][2] = va*grc2;
-		Rinv.element[1][3] = wa*grc2;
-		Rinv.element[1][4] = -grc2;
+		Rinv.element[1][0] = -va;
+		Rinv.element[1][1] = 0;
+		Rinv.element[1][2] = 1;
+		Rinv.element[1][3] = 0;
 
-		Rinv.element[2][0] = -va;
+		Rinv.element[2][0] = -wa;
 		Rinv.element[2][1] = 0;
-		Rinv.element[2][2] = 1;
-		Rinv.element[2][3] = 0;
-		Rinv.element[2][4] = 0;
+		Rinv.element[2][2] = 0;
+		Rinv.element[2][3] = 1;
 
-		Rinv.element[3][0] = -wa;
-		Rinv.element[3][1] = 0;
+		Rinv.element[3][0] = 0.5 * (c - ua) / c;
+		Rinv.element[3][1] = 0.5 / c;
 		Rinv.element[3][2] = 0;
-		Rinv.element[3][3] = 1;
-		Rinv.element[3][4] = 0;
-
-		Rinv.element[4][0] = 0.5 * (tetta - ua / c);
-		Rinv.element[4][1] = (-0.5) * (ua * grc2 - 1.0 / c);
-		Rinv.element[4][2] = -0.5 * va * grc2;
-		Rinv.element[4][3] = -0.5 * wa * grc2;
-		Rinv.element[4][4] = 0.5 * grc2;
+		Rinv.element[3][3] = 0;
 
 		Matrix test = R*Rinv;
 	};
@@ -196,16 +113,12 @@ public:
 					double rou = U[1];
 					double rov = U[2];
 					double row = U[3];
-					double roE = U[4];
 					double uu = rou/ro;
 					double vv = rov/ro;
 					double ww = row/ro;
-					double E = roE/ro;
-					double ek = (uu*uu + vv*vv + ww*ww)/2;
-					double e = E - ek;
 					
 					//Compute sound speed by eos
-					double c = eos->GetSoundSpeed(ro, e);
+					double c = eos->GetSoundSpeed(ro, 0);
 
 					double um = fabs(uu) + c;
 					ccmax = std::max(ccmax, c);
@@ -233,14 +146,35 @@ public:
 	};
 
 	//Constuctor inherited
-	HybridGeneralEOSOnePhase(int* argc, char **argv[]) : HybridFVM(argc, argv) {};
+	HybridBarotropicEOSOnePhase(int* argc, char **argv[]) : HybridFVM(argc, argv) {};
 
 	//Initizalization
 	virtual void Init(KernelConfiguration& config) override {
 		Kernel::Init(config);
 		CFL = config.methodConfiguration.CFL;
-		UseExactPressureDerivative = config.methodConfiguration.UseExactPressureDerivative;
-		SetEOS(config.methodConfiguration.eos);
+		SetEOS(dynamic_cast<BaratropicEOS*>(config.methodConfiguration.eos));
+	};
+
+	//Init boundary conditions
+	virtual void InitBoundaryConditions(KernelConfiguration& config) override {
+		if (!IsPeriodicX) {
+			xLeftBC = std::unique_ptr<BoundaryConditions::BCGeneralBarotropic>(new BoundaryConditions::BCGeneralBarotropic());
+			xRightBC = std::unique_ptr<BoundaryConditions::BCGeneralBarotropic>(new BoundaryConditions::BCGeneralBarotropic());
+			xLeftBC->loadConfiguration(config.xLeftBoundary);
+			xRightBC->loadConfiguration(config.xRightBoundary);
+		};
+		if ((!IsPeriodicY) && (nDims > 1)) {
+			yLeftBC = std::unique_ptr<BoundaryConditions::BCGeneralBarotropic>(new BoundaryConditions::BCGeneralBarotropic());
+			yRightBC = std::unique_ptr<BoundaryConditions::BCGeneralBarotropic>(new BoundaryConditions::BCGeneralBarotropic());
+			yLeftBC->loadConfiguration(config.yLeftBoundary);
+			yRightBC->loadConfiguration(config.yRightBoundary);
+		};
+		if ((!IsPeriodicZ) && (nDims > 2)) {
+			zLeftBC = std::unique_ptr<BoundaryConditions::BCGeneralBarotropic>(new BoundaryConditions::BCGeneralBarotropic());
+			zRightBC = std::unique_ptr<BoundaryConditions::BCGeneralBarotropic>(new BoundaryConditions::BCGeneralBarotropic());
+			zLeftBC->loadConfiguration(config.zLeftBoundary);
+			zRightBC->loadConfiguration(config.zRightBoundary);
+		};
 	};
 
 	//Save solution to TecPlot

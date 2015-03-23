@@ -101,5 +101,14 @@
     <ClInclude Include="..\src\EquationsOfState\EquationsOfState.h">
       <Filter>Header Files\EquationsOfState</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\EquationsOfState\BaratropicEOS.h">
+      <Filter>Header Files\EquationsOfState</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Methods\GeneralEosMethods\HybridBarotropicEOSOnePhase.h">
+      <Filter>Header Files\Methods\GeneralEosMethods</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\BoundaryConditions\BCGeneralBarotropic.h">
+      <Filter>Header Files\BoundaryConditions</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

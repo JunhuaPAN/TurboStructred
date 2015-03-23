@@ -82,7 +82,7 @@ public:
 	std::map<BoundaryVariableType, CompositeBoundaryConditionInfo> boundaryConditions;
 
 	//Get dummy cell values
-	std::vector<double> getDummyValues(double* values, Vector& faceNormal, Vector& faceCenter, Vector& cellCenter) {		
+	virtual std::vector<double> getDummyValues(double* values, Vector& faceNormal, Vector& faceCenter, Vector& cellCenter) {		
 		//Compute dummy values
 		double ro = values[0];
 		double u = values[1]/values[0];
@@ -109,7 +109,7 @@ public:
 		return res;
 	};
  
-	void loadConfiguration(BoundaryConditionConfiguration& bcConfig) {
+	virtual void loadConfiguration(BoundaryConditionConfiguration& bcConfig) {
 		//Symmetry condition for left and right bounds
 		if (bcConfig.BCType == BoundaryConditionType::SymmetryX) {				
 			boundaryConditions[BoundaryVariableType::Density] = CompositeBoundaryConditionInfo();

@@ -49,7 +49,8 @@ public:
 	enum class Method {
 		HybridFVM,
 		ExplicitRungeKuttaFVM,
-		HybridGeneralEOSOnePhase
+		HybridGeneralEOSOnePhase,
+		HybridBarotropicEOSOnePhase
 	} SolutionMethod;
 
 	MethodConfiguration methodConfiguration;

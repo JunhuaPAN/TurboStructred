@@ -492,7 +492,7 @@ public:
 	};
 
 	//compute full tine step
-	void ComputeTimeStep() {
+	virtual void ComputeTimeStep() {
 		//variables to collect maximum values
 		double dmax  = 0;
 		double ccmax = 0;	//maximum of speed of sound (not used yet)

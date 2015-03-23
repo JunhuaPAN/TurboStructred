@@ -301,28 +301,9 @@ public:
 		stepInfo.Time = 0;
 		stepInfo.Iteration = 0;
 		stepInfo.NextSnapshotTime = stepInfo.Time + SaveSolutionSnapshotTime;
-
+		
 		//Initialize boundary conditions
-		if (!gridInfo.IsPeriodicX) {
-			xLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-			xRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-			xLeftBC->loadConfiguration(config.xLeftBoundary);
-			xRightBC->loadConfiguration(config.xRightBoundary);
-		};
-		if ((!gridInfo.IsPeriodicY) && (nDims > 1)) {
-			yLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-			yRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-			yLeftBC->loadConfiguration(config.yLeftBoundary);
-			yRightBC->loadConfiguration(config.yRightBoundary);
-		};
-		if ((!gridInfo.IsPeriodicZ) && (nDims > 2)) {
-			zLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-			zRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-			zLeftBC->loadConfiguration(config.zLeftBoundary);
-			zRightBC->loadConfiguration(config.zRightBoundary);
-		};
-
-		//
+		InitBoundaryConditions(config);
 
 		//External forces
 		Sigma = Vector(config.Sigma, 0, 0);
@@ -336,6 +317,28 @@ public:
 		};
 		//Sync
 		pManager->Barrier();
+	};
+
+	//Initialize boundary conditions
+	virtual void InitBoundaryConditions(KernelConfiguration& config) {
+		if (!IsPeriodicX) {
+			xLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
+			xRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
+			xLeftBC->loadConfiguration(config.xLeftBoundary);
+			xRightBC->loadConfiguration(config.xRightBoundary);
+		};
+		if ((!IsPeriodicY) && (nDims > 1)) {
+			yLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
+			yRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
+			yLeftBC->loadConfiguration(config.yLeftBoundary);
+			yRightBC->loadConfiguration(config.yRightBoundary);
+		};
+		if ((!IsPeriodicZ) && (nDims > 2)) {
+			zLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
+			zRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
+			zLeftBC->loadConfiguration(config.zLeftBoundary);
+			zRightBC->loadConfiguration(config.zRightBoundary);
+		};
 	};
 
 	//Update solution
@@ -1899,8 +1902,8 @@ public:
 				ofs<<stepInfo.Residual[0]<<" ";							
 				ofs<<stepInfo.Residual[1]<<" ";			
 				if (nDims > 1) ofs<<stepInfo.Residual[2]<<" ";			
-				if (nDims > 2) ofs<<stepInfo.Residual[3]<<" ";			
-				ofs<<stepInfo.Residual[4]<<" ";				
+				if (nDims > 2) ofs<<stepInfo.Residual[3]<<" ";		
+				if (nVariables > 4) ofs<<stepInfo.Residual[4]<<" ";				
 				ofs<<std::endl;	
 			};
 

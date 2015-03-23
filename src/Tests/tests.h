@@ -8,6 +8,7 @@
 #include "Methods\ExplicitRungeKuttaFVM.h"
 #include "Methods\HybridFVM.h"
 #include "Methods\GeneralEosMethods\HybridGeneralEOSOnePhase.h"
+#include "Methods\GeneralEosMethods\HybridBarotropicEOSOnePhase.h"
 
 #define PI 3.14159265359
 
@@ -331,6 +332,80 @@ void RunSODTestHybrid1DX(int argc, char *argv[]) {
 };
 
 //SOD Test for general EOS
+void RunCollisionHybrid1DBaratropic(int argc, char *argv[]) {
+	KernelConfiguration conf;
+	conf.nDims = 1;
+	conf.nX = 500;
+	conf.LX = 1.0;
+	conf.isPeriodicX = false;
+	conf.nVariables = 4;
+
+	//task parameters
+	double E = 2.0e13;
+	double p0 = 2.0e14;
+	double ro0 = 11400.0;
+	double uLeft = 10.0;
+	double uRight = -10.0;
+	BaratropicEOS eos(E, p0, ro0);
+
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xLeftBoundary.Gamma = conf.Gamma;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xRightBoundary.Gamma = conf.Gamma;
+
+	conf.SolutionMethod = KernelConfiguration::Method::HybridBarotropicEOSOnePhase;
+	conf.methodConfiguration.CFL = 0.1;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.eos = &eos;
+
+	conf.MaxTime = 1.0e-5;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 1.0e-6;
+	conf.SaveSolutionSnapshotIterations = 0;
+	conf.ResidualOutputIterations = 10;
+
+	//init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
+		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridGeneralEOSOnePhase) {
+		kernel = std::unique_ptr<Kernel>(new HybridGeneralEOSOnePhase(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridBarotropicEOSOnePhase) {
+		kernel = std::unique_ptr<Kernel>(new HybridBarotropicEOSOnePhase(&argc, &argv));
+	};
+	kernel->Init(conf);
+
+	// initial conditions
+	auto initD = [&conf, &eos, uLeft, uRight](Vector r) {
+		std::vector<double> res(conf.nVariables);
+		double u = 0;
+		if(r.x < 0.5 * conf.LX) u = uLeft; 
+		else u = uRight;
+		res[0] = eos.Ro0;
+		res[1] = eos.Ro0 * u;
+		res[2] = 0;
+		res[3] = 0;
+
+		return res;
+	};
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolution("init.dat");
+	
+	//run computation
+	kernel->Run();		
+
+	//finalize kernel
+	kernel->Finilaze();
+};
+
+//1D collision of identical materials by Baratropic EOS
 void RunSODTestHybrid1DGeneral(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
