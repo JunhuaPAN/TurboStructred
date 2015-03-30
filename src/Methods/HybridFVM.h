@@ -269,6 +269,8 @@ public:
 				 };
 			};
 		};
+
+		RewriteDuringSolution(dt);
 	};
 
 	//Compute fluxes in Y direction and write values_new array
@@ -380,6 +382,7 @@ public:
 				 };
 			};
 		};
+		RewriteDuringSolution(dt);
 	};
 
 	//Compute fluxes in Z direction and write values_new array			START FROM HERE
@@ -489,6 +492,7 @@ public:
 				 };
 			};
 		};
+		RewriteDuringSolution(dt);
 	};
 
 	//compute full tine step
@@ -597,40 +601,66 @@ public:
 		case 1 :
 			dt = stepInfo.TimeStep;
 			Xfluxes(dt);
-			RewriteDuringSolution(dt);
+			// source terms
+			if(isExternalForce == true) {
+				for (double r : residual) r = 0;
+				ProcessExternalForces();
+				RewriteDuringSolution(dt);
+			};
+			if(isExternalAccelaration = true) {
+				for (double r : residual) r = 0;
+				ProcessExternalAcceleration();
+				RewriteDuringSolution(dt);
+			};
 			break;
 		case 2 :
 			dt = 0.5*stepInfo.TimeStep;
 			if ( stepInfo.Iteration % 2 == 0 ) {
 				//half of a Step
 				Xfluxes(dt);
-				RewriteDuringSolution(dt);
 				ComputeDummyCellValues();
 				Yfluxes(dt);
-				RewriteDuringSolution(dt);
 				ComputeDummyCellValues();
+
 				//second half
 				Yfluxes(dt);
-				RewriteDuringSolution(dt);
 				ComputeDummyCellValues();
 				Xfluxes(dt);
-				RewriteDuringSolution(dt);
-				//ComputeDummyCellValues();
+				
+				// source terms
+				if(isExternalForce == true) {
+					for (double r : residual) r = 0;
+					ProcessExternalForces();
+					RewriteDuringSolution(2*dt);
+				};
+				if(isExternalAccelaration = true) {
+					for (double r : residual) r = 0;
+					ProcessExternalAcceleration();
+					RewriteDuringSolution(2*dt);
+				};
 			} else {
 				//half of Step
 				Yfluxes(dt);
-				RewriteDuringSolution(dt);
 				ComputeDummyCellValues();
 				Xfluxes(dt);
-				RewriteDuringSolution(dt);
 				ComputeDummyCellValues();
+
 				//second half
 				Xfluxes(dt);
-				RewriteDuringSolution(dt);
 				ComputeDummyCellValues();
 				Yfluxes(dt);
-				RewriteDuringSolution(dt);
-				//ComputeDummyCellValues();
+
+				// source terms
+				if(isExternalForce == true) {
+					for (double r : residual) r = 0;
+					ProcessExternalForces();
+					RewriteDuringSolution(2*dt);
+				};
+				if(isExternalAccelaration = true) {
+					for (double r : residual) r = 0;
+					ProcessExternalAcceleration();
+					RewriteDuringSolution(2*dt);
+				};
 			};
 			break;
 		};

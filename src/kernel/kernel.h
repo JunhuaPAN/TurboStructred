@@ -408,7 +408,7 @@ public:
 		for(int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = pManager->Sum(stepInfo.Residual[nv]);
 	};
 
-	//Exchange values between processormos
+	//Exchange values between processors
 	void ExchangeValues() {
 		//Index variables
 		int i = 0;
@@ -913,6 +913,58 @@ public:
 		};
 		//Sync
 		pManager->Barrier();
+	};
+
+	//compute source terms
+	virtual void ProcessExternalForces() {
+		double volume = hx * hy * hz;
+
+		//right handside part - mass foces
+		for (int i = iMin; i <= iMax; i++) {
+			for (int j = jMin; j <= jMax; j++) {
+				for (int k = kMin; k <= kMax; k++) {
+					int idx = getSerialIndexLocal(i, j, k);
+
+					double *V = getCellValues(i, j, k);
+					double u = V[1]/V[0];
+					double v = V[2]/V[0];
+					double w = V[3]/V[0];
+					Vector velocity = Vector(u, v, w); //Cell velocity
+
+					//Compute total residual
+					residual[idx * nVariables];										//ro
+					residual[idx * nVariables + 1] += volume * Sigma.x;				//rou
+					residual[idx * nVariables + 2] += volume * Sigma.y;				//rov
+					residual[idx * nVariables + 3] += volume * Sigma.z;				//row
+					residual[idx * nVariables + 4] += Sigma * velocity * volume;	//roE
+				};
+			};
+		}; //end right hand side part
+	};
+	virtual void ProcessExternalAcceleration() {
+		double volume = hx * hy * hz;
+
+		//right handside part - mass foces
+		for (int i = iMin; i <= iMax; i++) {
+			for (int j = jMin; j <= jMax; j++) {
+				for (int k = kMin; k <= kMax; k++) {
+					int idx = getSerialIndexLocal(i, j, k);
+
+					double *V = getCellValues(i, j, k);
+					double u = V[1]/V[0];
+					double v = V[2]/V[0];
+					double w = V[3]/V[0];
+					Vector velocity = Vector(u, v, w); //Cell velocity
+
+					//Mass forces represents body accelerations (per unit mass)
+					double ro = V[0];
+					residual[idx * nVariables + 1] += ro * volume * UniformAcceleration.x;				//rou
+					residual[idx * nVariables + 2] += ro * volume * UniformAcceleration.y;				//rov
+					residual[idx * nVariables + 3] += ro * volume * UniformAcceleration.z;				//row
+					residual[idx * nVariables + 4] += ro * UniformAcceleration * velocity * volume ;	//roE
+				};
+			};
+		};
 	};
 
 	//Save solution CGNS
