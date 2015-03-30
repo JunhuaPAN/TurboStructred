@@ -88,6 +88,8 @@ public:
 	double viscosity;
 	bool isViscousFlow;
 	bool isGradientRequired;
+	bool isExternalAccelaration;
+	bool isExternalForce;
 
 	//External forces
 	Vector Sigma; //Potential force like presure gradient
@@ -288,6 +290,12 @@ public:
 			isViscousFlow = false;
 			isGradientRequired = false;
 		};
+		if(config.IsExternalForceRequared == true) {
+			isExternalForce = true;
+		};
+		if(config.IsUnifromAccelerationRequared == true) {
+			isExternalAccelaration = true;
+		};
 
 		//Allocate data structures
 		values.resize(nVariables * nlocalXAll * nlocalYAll * nlocalZAll);	
@@ -307,8 +315,9 @@ public:
 		InitBoundaryConditions(config);
 
 		//External forces
-		Sigma = Vector(config.Sigma, 0, 0);
-
+		Sigma = config.Sigma;
+		UniformAcceleration = config.UniformAcceleration;
+		
 		//Output settings
 		DebugOutputEnabled = config.DebugOutputEnabled;
 		

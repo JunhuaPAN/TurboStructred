@@ -923,39 +923,53 @@ public:
 				};
 			};
 		};
-
-		
+				
 		//Source term treatment
 
-		//right handside part
-		for (int i = iMin; i <= iMax; i++) {
-			for (int j = jMin; j <= jMax; j++) {
-				for (int k = kMin; k <= kMax; k++) {
-					int idx = getSerialIndexLocal(i, j, k);
+		//right handside part - mass foces
+		if(isExternalAccelaration == true) {
+			for (int i = iMin; i <= iMax; i++) {
+				for (int j = jMin; j <= jMax; j++) {
+					for (int k = kMin; k <= kMax; k++) {
+						int idx = getSerialIndexLocal(i, j, k);
 
-					double *V = getCellValues(i, j, k);
-					double u = V[1]/V[0];
-					double v = V[2]/V[0];
-					double w = V[3]/V[0];
-					Vector velocity = Vector(u, v, w); //Cell velocity
+						double *V = getCellValues(i, j, k);
+						double u = V[1]/V[0];
+						double v = V[2]/V[0];
+						double w = V[3]/V[0];
+						Vector velocity = Vector(u, v, w); //Cell velocity
 
-					//Mass forces represents body accelerations (per unit mass)
-					Vector mForce = Vector(0, 0, 0);
-					double ro = V[0];
-					residual[idx * nVariables + 1] += ro * volume * mForce.x;	//rou
-					residual[idx * nVariables + 2] += ro * volume * mForce.y;	//rov
-					residual[idx * nVariables + 3] += ro * volume * mForce.z;		//row
-					residual[idx * nVariables + 4] += ro * mForce * velocity * volume ;	//roE
+						//Mass forces represents body accelerations (per unit mass)
+						double ro = V[0];
+						residual[idx * nVariables + 1] += ro * volume * UniformAcceleration.x;	//rou
+						residual[idx * nVariables + 2] += ro * volume * UniformAcceleration.y;	//rov
+						residual[idx * nVariables + 3] += ro * volume * UniformAcceleration.z;		//row
+						residual[idx * nVariables + 4] += ro * UniformAcceleration * velocity * volume ;	//roE
+					};
+				};
+			};
+		};
 
-					//Potential forces
-					Vector pForce = Sigma;
+		//right handside part - mass foces
+		if(isExternalForce == true) {
+			for (int i = iMin; i <= iMax; i++) {
+				for (int j = jMin; j <= jMax; j++) {
+					for (int k = kMin; k <= kMax; k++) {
+						int idx = getSerialIndexLocal(i, j, k);
 
-					//Compute total residual
-					residual[idx * nVariables];										//ro
-					residual[idx * nVariables + 1] += volume * pForce.x;			//rou
-					residual[idx * nVariables + 2] += volume * pForce.y;			//rov
-					residual[idx * nVariables + 3] += volume * pForce.z;			//row
-					residual[idx * nVariables + 4] += pForce * velocity * volume;	//roE
+						double *V = getCellValues(i, j, k);
+						double u = V[1]/V[0];
+						double v = V[2]/V[0];
+						double w = V[3]/V[0];
+						Vector velocity = Vector(u, v, w); //Cell velocity
+
+						//Compute total residual
+						residual[idx * nVariables];										//ro
+						residual[idx * nVariables + 1] += volume * Sigma.x;			//rou
+						residual[idx * nVariables + 2] += volume * Sigma.y;			//rov
+						residual[idx * nVariables + 3] += volume * Sigma.z;			//row
+						residual[idx * nVariables + 4] += Sigma * velocity * volume;	//roE
+					};
 				};
 			};
 		};

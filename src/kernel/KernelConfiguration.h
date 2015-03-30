@@ -44,6 +44,8 @@ public:
 
 	//model configuration
 	bool IsViscousFlow;
+	bool IsExternalForceRequared;
+	bool IsUnifromAccelerationRequared;
 
 	//Solution method parameters
 	enum class Method {
@@ -73,14 +75,17 @@ public:
 	BoundaryConditionConfiguration zRightBoundary;
 
 	//External potential forces
-	double Sigma;
+	Vector Sigma;			//dP/dn
+	Vector UniformAcceleration;		// g acceleration
 
 	//Default values
 	KernelConfiguration() {
 		Viscosity = 0;
 		ThermalConductivity = 0;
-		Sigma = 0.0;
+
 		IsViscousFlow = false;
+		IsExternalForceRequared = false;
+		IsUnifromAccelerationRequared = false;
 		DebugOutputEnabled = false;
 	};
 };

@@ -719,7 +719,6 @@ void RunFluxesTest2D(int argc, char *argv[]) {
 	conf.ResidualOutputIterations = 1;
 
 	conf.Viscosity = viscosity;
-	conf.Sigma = 0;
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -812,7 +811,7 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	conf.ResidualOutputIterations = 10;
 
 	conf.Viscosity = viscosity;
-	conf.Sigma = sigma;
+	conf.Sigma = Vector(sigma, 0, 0);
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -831,7 +830,7 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	std::normal_distribution<double> normal_dist(0.0, sdv);  // N(mean, stddeviation)
 	
 	auto initD = [ro_init, Pave, &conf, &normal_dist, &mt](Vector r) {
-		double u = 0.5*conf.Sigma*r.y*(conf.LY - r.y)/conf.Viscosity;
+		double u = 0.5*conf.Sigma.x*r.y*(conf.LY - r.y)/conf.Viscosity;
 		double v = 0.0 + normal_dist(mt);
 		double w = 0.0;
 		//u = 0.01;
@@ -897,7 +896,7 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	conf.ResidualOutputIterations = 1;
 
 	conf.Viscosity = viscosity;
-	conf.Sigma = sigma;
+	conf.Sigma = Vector(sigma, 0, 0);
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -911,7 +910,7 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 
 	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
 	auto initD = [ro_init, Pave, &conf](Vector r) {
-		double u = 0.5*conf.Sigma*r.y*(conf.LY - r.y)/conf.Viscosity;
+		double u = 0.5*conf.Sigma.x*r.y*(conf.LY - r.y)/conf.Viscosity;
 		u = 0;
 		double roe = Pave/(conf.Gamma - 1);
 		std::vector<double> res(5);
@@ -980,7 +979,7 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	conf.ResidualOutputIterations = 50;
 
 	conf.Viscosity = viscosity;
-	conf.Sigma = sigma;
+	conf.Sigma = Vector(sigma, 0, 0);
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;

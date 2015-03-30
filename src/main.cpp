@@ -14,8 +14,8 @@ int main(int argc, char *argv[])
 	//RunDemchenkoTest2DGeneralEOS(argc, argv);
 	//RunCollisionHybrid1DBaratropic(argc, argv);
 	//RunDemchenkoTestBaratropicEOS(argc, argv);
-	//RunCollisionHybrid1DBaratropicTwoPhase(argc, argv);
-	RunDemchenkoTestBaratropicEOSTwoPhase(argc, argv);
+	RunCollisionHybrid1DBaratropicTwoPhase(argc, argv);
+	//RunDemchenkoTestBaratropicEOSTwoPhase(argc, argv);
 	//RunSODTestHybrid2D(argc, argv);
 	//RunDemchenkoTest3D(argc, argv);
 	//RunSODTestHybrid1D(argc, argv);
