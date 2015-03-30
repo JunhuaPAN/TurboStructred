@@ -4,14 +4,14 @@
 #include "generalEOS.h"
 
 
-class BaratropicEOS : public GeneralEOS {
+class BarotropicEOS : public GeneralEOS {
 public:
 	double E;	//modul Yunga
 	double P0;		//initial pressure
-	double Ro0;		//initial dencity
+	double Ro0;		//initial density
 
 	//Constructor specifies material to use
-	BaratropicEOS(double _E, double _P0, double _Ro0) : E(_E), P0(_P0), Ro0(_Ro0) {};
+	BarotropicEOS(double _E, double _P0, double _Ro0) : E(_E), P0(_P0), Ro0(_Ro0) {};
 
 	//set gamma
 	inline void SetE(double _E) {

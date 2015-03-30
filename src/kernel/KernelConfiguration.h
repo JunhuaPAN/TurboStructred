@@ -50,7 +50,8 @@ public:
 		HybridFVM,
 		ExplicitRungeKuttaFVM,
 		HybridGeneralEOSOnePhase,
-		HybridBarotropicEOSOnePhase
+		HybridBarotropicEOSOnePhase,
+		HybridBarotropicEOSTwoPhase
 	} SolutionMethod;
 
 	MethodConfiguration methodConfiguration;

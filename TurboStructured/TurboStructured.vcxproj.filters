@@ -34,6 +34,9 @@
     <Filter Include="Header Files\EquationsOfState">
       <UniqueIdentifier>{25ec4059-96a0-497e-a0c6-d20e801d511b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\EquationsOfState\VOFMixture">
+      <UniqueIdentifier>{bf1236cd-51d9-4951-994c-58eed3c49a36}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -101,14 +104,23 @@
     <ClInclude Include="..\src\EquationsOfState\EquationsOfState.h">
       <Filter>Header Files\EquationsOfState</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\EquationsOfState\BaratropicEOS.h">
-      <Filter>Header Files\EquationsOfState</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\Methods\GeneralEosMethods\HybridBarotropicEOSOnePhase.h">
       <Filter>Header Files\Methods\GeneralEosMethods</Filter>
     </ClInclude>
     <ClInclude Include="..\src\BoundaryConditions\BCGeneralBarotropic.h">
       <Filter>Header Files\BoundaryConditions</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\EquationsOfState\VOFMixture\BarotropicTwoPhaseEOS.h">
+      <Filter>Header Files\EquationsOfState\VOFMixture</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\EquationsOfState\BarotropicEOS.h">
+      <Filter>Header Files\EquationsOfState</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Methods\GeneralEosMethods\HybridBarotropicEOSTwoPhase.h">
+      <Filter>Header Files\Methods\GeneralEosMethods</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram.cd" />
   </ItemGroup>
 </Project>

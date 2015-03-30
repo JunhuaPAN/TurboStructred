@@ -9,6 +9,7 @@
 #include "Methods\HybridFVM.h"
 #include "Methods\GeneralEosMethods\HybridGeneralEOSOnePhase.h"
 #include "Methods\GeneralEosMethods\HybridBarotropicEOSOnePhase.h"
+#include "Methods\GeneralEosMethods\HybridBarotropicEOSTwoPhase.h"
 
 #define PI 3.14159265359
 
@@ -344,9 +345,9 @@ void RunCollisionHybrid1DBaratropic(int argc, char *argv[]) {
 	double E = 2.0e13;
 	double p0 = 2.0e14;
 	double ro0 = 11400.0;
-	double uLeft = 10.0;
-	double uRight = -10.0;
-	BaratropicEOS eos(E, p0, ro0);
+	double uLeft = 250.0;
+	double uRight = -250.0;
+	BarotropicEOS eos(E, p0, ro0);
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
 	conf.xLeftBoundary.Gamma = conf.Gamma;
@@ -354,7 +355,7 @@ void RunCollisionHybrid1DBaratropic(int argc, char *argv[]) {
 	conf.xRightBoundary.Gamma = conf.Gamma;
 
 	conf.SolutionMethod = KernelConfiguration::Method::HybridBarotropicEOSOnePhase;
-	conf.methodConfiguration.CFL = 0.1;
+	conf.methodConfiguration.CFL = 0.2;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.eos = &eos;
 
@@ -397,6 +398,80 @@ void RunCollisionHybrid1DBaratropic(int argc, char *argv[]) {
 
 	//save solution
 	kernel->SaveSolution("init.dat");
+	
+	//run computation
+	kernel->Run();		
+
+	//finalize kernel
+	kernel->Finilaze();
+};
+
+void RunCollisionHybrid1DBaratropicTwoPhase(int argc, char *argv[]) {
+	KernelConfiguration conf;
+	conf.nDims = 1;
+	conf.nX = 500;
+	conf.LX = 1.0;
+	conf.isPeriodicX = false;
+	conf.nVariables = 5;
+
+	//task parameters
+	double x0 = 0.5 * conf.LX;
+	double E1 = 2.0e13;
+	double E2 = E1;
+	double p01 = 2.0e14;
+	double p02 = p01;
+	double ro01 = 7900.0;
+	double ro02 = 11400;
+	double uLeft = 250.0;
+	double uRight = -250.0;
+	BarotropicTwoPhaseEOS eos(E1, E2, p01, p02, ro01, ro02);
+
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xLeftBoundary.Gamma = conf.Gamma;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xRightBoundary.Gamma = conf.Gamma;
+
+	conf.SolutionMethod = KernelConfiguration::Method::HybridBarotropicEOSTwoPhase;
+	conf.methodConfiguration.CFL = 0.01;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.eos = &eos;
+	conf.methodConfiguration.UseExactPressureDerivative = true;
+
+	conf.MaxTime = 1.0e-5;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 1.0e-6;
+	conf.SaveSolutionSnapshotIterations = 0;
+	conf.ResidualOutputIterations = 10;
+
+	//init kernel
+	std::unique_ptr<Kernel> kernel = std::unique_ptr<Kernel>(new HybridBarotropicEOSTwoPhase(&argc, &argv));
+	kernel->Init(conf);
+
+	// initial conditions
+	auto initD = [&conf, &eos, x0, uLeft, uRight, ro01, ro02](Vector r) {
+		std::vector<double> res(conf.nVariables);
+		double u, ro, P, alpha;
+		if(r.x < x0) {
+			u = uLeft;
+			ro = ro01;
+			alpha = 1.0;
+		} else {
+			u = uRight;
+			ro = ro02;
+			alpha = 0;
+		};
+		res[0] = ro;
+		res[1] = ro * u;
+		res[2] = 0;
+		res[3] = 0;
+		res[4] = ro*alpha;
+
+		return res;
+	};
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolutionSega("init.dat");
 	
 	//run computation
 	kernel->Run();		
@@ -1121,6 +1196,197 @@ void RunDemchenkoTest2DGeneralEOS(int argc, char *argv[]) {
 		res[2] = 0;
 		res[3] = 0;
 		res[4] = roe + 0.5 * ro * u * u;
+		return res; 
+	};
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolutionSega("init.dat");
+	
+	//run computation
+	kernel->Run();		
+
+	//finalize kernel
+	kernel->Finilaze();
+};
+
+void RunDemchenkoTestBaratropicEOS(int argc, char *argv[]) {
+
+	//collision parameters
+	double E = 2.0e13;
+	double p0 = 2.0e14;
+	double ro0 = 11400.0;
+	double uLeft = 250.0;
+	double uRight = -250.0;
+	BarotropicEOS eos(E, p0, ro0);
+
+	KernelConfiguration conf;
+	conf.nDims = 2;
+	conf.nX = 120;
+	conf.nY = 80;
+	conf.LX = 0.006;
+	conf.LY = 0.002;	
+	conf.isPeriodicX = false;
+	conf.isPeriodicY = false;
+
+	conf.nVariables = 4;
+	conf.IsViscousFlow = false;
+
+	//Symmetry for top and bottom faces and Natural for left and right ones
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xLeftBoundary.Gamma = 1.4;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xRightBoundary.Gamma = 1.4;
+	conf.yLeftBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yRightBoundary.Gamma = 1.4;
+
+	conf.SolutionMethod = KernelConfiguration::Method::HybridBarotropicEOSOnePhase;
+	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.eos = &eos;
+
+	conf.MaxTime = 6.0e-6;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 1.0e-6;
+	conf.SaveSolutionSnapshotIterations = 0;
+	conf.ResidualOutputIterations = 10;
+
+	//init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
+		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridGeneralEOSOnePhase) {
+		kernel = std::unique_ptr<Kernel>(new HybridGeneralEOSOnePhase(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridBarotropicEOSOnePhase) {
+		kernel = std::unique_ptr<Kernel>(new HybridBarotropicEOSOnePhase(&argc, &argv));
+	};
+	kernel->Init(conf);
+	
+	auto initD = [&eos, ro0, uLeft, uRight, &conf](Vector r) {
+		double roLeft = ro0;
+		double roRight = ro0;
+		double x0 = 0.5 * conf.LX;		//position of distorbancesfree surface
+		double bound_pos = 0;			//position of free surface
+		double yCentr = 0.5 * conf.LY;	//a half of a tube height
+		if (r.y < yCentr) {
+			bound_pos = 1 - cos((r.y - yCentr) * PI / yCentr);
+			bound_pos *= 0.5 * yCentr;
+		};
+		bound_pos += x0;
+
+		std::vector<double> res(5);
+		double ro = 0;
+		double u = 0;
+		if(r.x <= bound_pos) {
+			ro = roLeft;
+			u = uLeft;
+		} else {
+			ro = roRight;
+			u = uRight;
+		};
+
+		res[0] = ro;
+		res[1] = ro * u;
+		res[2] = 0;
+		res[3] = 0;
+		return res; 
+	};
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolutionSega("init.dat");
+	
+	//run computation
+	kernel->Run();		
+
+	//finalize kernel
+	kernel->Finilaze();
+};
+
+void RunDemchenkoTestBaratropicEOSTwoPhase(int argc, char *argv[]) {
+
+	//collision parameters
+	double E = 2.0e13;
+	double p0 = 2.0e14;
+	double ro01 = 7900.0;
+	double ro02 = 11400.0;
+	double uLeft = 250.0;
+	double uRight = -250.0;
+	BarotropicTwoPhaseEOS eos(E, E, p0, p0, ro01, ro02);
+
+	KernelConfiguration conf;
+	conf.nDims = 2;
+	conf.nX = 120;
+	conf.nY = 60;
+	conf.LX = 0.006;
+	conf.LY = 0.002;	
+	conf.isPeriodicX = false;
+	conf.isPeriodicY = false;
+
+	conf.nVariables = 5;
+	conf.IsViscousFlow = false;
+
+	//Symmetry for top and bottom faces and Natural for left and right ones
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xLeftBoundary.Gamma = 1.4;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xRightBoundary.Gamma = 1.4;
+	conf.yLeftBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yRightBoundary.Gamma = 1.4;
+
+	conf.SolutionMethod = KernelConfiguration::Method::HybridBarotropicEOSTwoPhase;
+	conf.methodConfiguration.CFL = 0.4;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.eos = &eos;
+	conf.methodConfiguration.UseExactPressureDerivative = true;
+
+	conf.MaxTime = 6.0e-6;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 1.0e-6;
+	conf.SaveSolutionSnapshotIterations = 0;
+	conf.ResidualOutputIterations = 10;
+
+	//init kernel
+	std::unique_ptr<Kernel>	kernel = std::unique_ptr<Kernel>(new HybridBarotropicEOSTwoPhase(&argc, &argv));
+	kernel->Init(conf);
+	
+	auto initD = [&eos, ro01, ro02, uLeft, uRight, &conf](Vector r) {
+		double x0 = 0.5 * conf.LX;		//position of distorbancesfree surface
+		double bound_pos = 0;			//position of free surface
+		double yCentr = 0.5 * conf.LY;	//a half of a tube height
+		if (r.y < yCentr) {
+			bound_pos = 1 - cos((r.y - yCentr) * PI / yCentr);
+			bound_pos *= 0.5 * yCentr;
+		};
+		bound_pos += x0;
+
+		std::vector<double> res(5);
+		double ro = 0;
+		double u = 0;
+		double alpha = 0;
+		if(r.x <= bound_pos) {
+			ro = ro01;
+			u = uLeft;
+			alpha = 1.0;
+		} else {
+			ro = ro02;
+			u = uRight;
+		};
+
+		res[0] = ro;
+		res[1] = ro * u;
+		res[2] = 0;
+		res[3] = 0;
+		res[4] = ro * alpha;
 		return res; 
 	};
 	kernel->SetInitialConditions(initD);

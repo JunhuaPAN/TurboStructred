@@ -9,9 +9,9 @@
 class HybridBarotropicEOSOnePhase : public HybridFVM {
 public:
 	//pointer to equation of state
-	BaratropicEOS* eos;
+	BarotropicEOS* eos;
 
-	void SetEOS(BaratropicEOS* _eos) {
+	void SetEOS(BarotropicEOS* _eos) {
 		eos = _eos;
 	};
 
@@ -88,8 +88,6 @@ public:
 		Rinv.element[3][1] = 0.5 / c;
 		Rinv.element[3][2] = 0;
 		Rinv.element[3][3] = 0;
-
-		Matrix test = R*Rinv;
 	};
 	 
 	//compute full tine step
@@ -144,7 +142,7 @@ public:
 		if(stepInfo.NextSnapshotTime>0) dt = std::min(stepInfo.NextSnapshotTime - stepInfo.Time, dt);
 		stepInfo.TimeStep = dt;
 	};
-
+	 
 	//Constuctor inherited
 	HybridBarotropicEOSOnePhase(int* argc, char **argv[]) : HybridFVM(argc, argv) {};
 
@@ -152,7 +150,7 @@ public:
 	virtual void Init(KernelConfiguration& config) override {
 		Kernel::Init(config);
 		CFL = config.methodConfiguration.CFL;
-		SetEOS(dynamic_cast<BaratropicEOS*>(config.methodConfiguration.eos));
+		SetEOS(dynamic_cast<BarotropicEOS*>(config.methodConfiguration.eos));
 	};
 
 	//Init boundary conditions

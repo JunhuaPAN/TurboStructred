@@ -90,7 +90,8 @@ public:
 	bool isGradientRequired;
 
 	//External forces
-	Vector Sigma; //Potential force	
+	Vector Sigma; //Potential force like presure gradient
+	Vector UniformAcceleration;	//external uniform acceleration
 
 	//Boundary conditions
 	std::unique_ptr<BoundaryConditions::BCGeneral> xLeftBC;

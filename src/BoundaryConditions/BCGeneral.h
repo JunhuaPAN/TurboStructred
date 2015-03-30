@@ -17,7 +17,7 @@ enum class BoundaryVariableType {
 	VelocityNormal,
 	VelocityTangential,
 	InternalEnergy,
-	Natural
+	VolumeFraction
 };
 
 class CompositeBoundaryConditionInfo {
