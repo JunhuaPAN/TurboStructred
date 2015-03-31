@@ -292,9 +292,13 @@ public:
 		};
 		if(config.IsExternalForceRequared == true) {
 			isExternalForce = true;
+		} else {
+			isExternalForce = false;
 		};
 		if(config.IsUnifromAccelerationRequared == true) {
 			isExternalAccelaration = true;
+		} else {
+			isExternalAccelaration = false;
 		};
 
 		//Allocate data structures

@@ -607,7 +607,7 @@ public:
 				ProcessExternalForces();
 				RewriteDuringSolution(dt);
 			};
-			if(isExternalAccelaration = true) {
+			if(isExternalAccelaration == true) {
 				for (double r : residual) r = 0;
 				ProcessExternalAcceleration();
 				RewriteDuringSolution(dt);
@@ -633,7 +633,7 @@ public:
 					ProcessExternalForces();
 					RewriteDuringSolution(2*dt);
 				};
-				if(isExternalAccelaration = true) {
+				if(isExternalAccelaration == true) {
 					for (double r : residual) r = 0;
 					ProcessExternalAcceleration();
 					RewriteDuringSolution(2*dt);

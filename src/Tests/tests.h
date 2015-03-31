@@ -409,7 +409,7 @@ void RunCollisionHybrid1DBaratropic(int argc, char *argv[]) {
 void RunCollisionHybrid1DBaratropicTwoPhase(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 500;
+	conf.nX = 400;
 	conf.LX = 1.0;
 	conf.isPeriodicX = false;
 	conf.nVariables = 5;
@@ -435,7 +435,7 @@ void RunCollisionHybrid1DBaratropicTwoPhase(int argc, char *argv[]) {
 	conf.methodConfiguration.CFL = 0.01;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.eos = &eos;
-	conf.methodConfiguration.UseExactPressureDerivative = true;
+	conf.methodConfiguration.UseExactPressureDerivative = false;
 
 	conf.MaxTime = 1.0e-5;
 	conf.MaxIteration = 1000000;
@@ -689,7 +689,7 @@ void RunFluxesTest2D(int argc, char *argv[]) {
 
 	KernelConfiguration conf;
 	conf.nDims = 2;
-	conf.nX = 4;
+	conf.nX = 400;
 	conf.nY = 4;
 	conf.LX = 2.0;
 	conf.LY = 1.0;	
