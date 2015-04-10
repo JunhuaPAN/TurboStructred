@@ -144,7 +144,9 @@ public:
 	};
 	 
 	//Constuctor inherited
-	HybridBarotropicEOSOnePhase(int* argc, char **argv[]) : HybridFVM(argc, argv) {};
+	HybridBarotropicEOSOnePhase(int* argc, char **argv[]) : HybridFVM(argc, argv) {
+		nVariables = 4;
+	};
 
 	//Initizalization
 	virtual void Init(KernelConfiguration& config) override {

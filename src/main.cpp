@@ -4,6 +4,8 @@
 int main(int argc, char *argv[])
 {
 	//main function
+	RunPoiseuille3D(argc, argv);
+
 	//RunSODTestRoe1D(argc, argv);
 	//RunSODTestHybrid1DGeneral(argc, argv);
 	//RunSODTestRoe2DX(argc, argv);
@@ -15,12 +17,13 @@ int main(int argc, char *argv[])
 	//RunCollisionHybrid1DBaratropic(argc, argv);
 	//RunDemchenkoTestBaratropicEOS(argc, argv);
 	//RunCollisionHybrid1DBaratropicTwoPhase(argc, argv);
-	RunDemchenkoTestBaratropicEOSTwoPhase(argc, argv);
+	//RunDemchenkoTestBaratropicEOSTwoPhase(argc, argv);
 	//RunSODTestHybrid2D(argc, argv);
 	//RunDemchenkoTest3D(argc, argv);
 	//RunSODTestHybrid1D(argc, argv);
-	//RunPoiseuille3D(argc, argv);
 	//RunShearFlow2D(argc, argv);
+	//RunReleighTaylor2D(argc, argv);
+	//RunDoludenko2D(argc, argv);
 
 	return 0;
 };

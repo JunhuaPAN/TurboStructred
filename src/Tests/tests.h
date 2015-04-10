@@ -97,7 +97,6 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	conf.isPeriodicY = false;
 
 	conf.Gamma = 1.4;
-	conf.nVariables = 5;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
 	conf.xLeftBoundary.Gamma = 1.4;
@@ -154,7 +153,6 @@ void RunSODTestHybrid1D(int argc, char *argv[]) {
 	conf.isPeriodicX = false;
 
 	conf.Gamma = 1.4;
-	conf.nVariables = 5;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
 	conf.xLeftBoundary.Gamma = 1.4;
@@ -214,7 +212,6 @@ void RunSODTestHybrid1DY(int argc, char *argv[]) {
 	conf.isPeriodicY = false;
 
 	conf.Gamma = 1.4;
-	conf.nVariables = 5;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::SymmetryX;
 	conf.xLeftBoundary.Gamma = 1.4;
@@ -278,7 +275,6 @@ void RunSODTestHybrid1DX(int argc, char *argv[]) {
 	conf.isPeriodicY = false;
 
 	conf.Gamma = 1.4;
-	conf.nVariables = 5;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
 	conf.xLeftBoundary.Gamma = 1.4;
@@ -339,7 +335,6 @@ void RunCollisionHybrid1DBaratropic(int argc, char *argv[]) {
 	conf.nX = 500;
 	conf.LX = 1.0;
 	conf.isPeriodicX = false;
-	conf.nVariables = 4;
 
 	//task parameters
 	double E = 2.0e13;
@@ -382,8 +377,8 @@ void RunCollisionHybrid1DBaratropic(int argc, char *argv[]) {
 	kernel->Init(conf);
 
 	// initial conditions
-	auto initD = [&conf, &eos, uLeft, uRight](Vector r) {
-		std::vector<double> res(conf.nVariables);
+	auto initD = [&kernel, &conf, &eos, uLeft, uRight](Vector r) {
+		std::vector<double> res(kernel->nVariables);
 		double u = 0;
 		if(r.x < 0.5 * conf.LX) u = uLeft; 
 		else u = uRight;
@@ -409,10 +404,9 @@ void RunCollisionHybrid1DBaratropic(int argc, char *argv[]) {
 void RunCollisionHybrid1DBaratropicTwoPhase(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 500;
+	conf.nX = 400;
 	conf.LX = 1.0;
 	conf.isPeriodicX = false;
-	conf.nVariables = 5;
 
 	//task parameters
 	double x0 = 0.5 * conf.LX;
@@ -435,7 +429,7 @@ void RunCollisionHybrid1DBaratropicTwoPhase(int argc, char *argv[]) {
 	conf.methodConfiguration.CFL = 0.01;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.eos = &eos;
-	conf.methodConfiguration.UseExactPressureDerivative = true;
+	conf.methodConfiguration.UseExactPressureDerivative = false;
 
 	conf.MaxTime = 1.0e-5;
 	conf.MaxIteration = 1000000;
@@ -448,8 +442,8 @@ void RunCollisionHybrid1DBaratropicTwoPhase(int argc, char *argv[]) {
 	kernel->Init(conf);
 
 	// initial conditions
-	auto initD = [&conf, &eos, x0, uLeft, uRight, ro01, ro02](Vector r) {
-		std::vector<double> res(conf.nVariables);
+	auto initD = [&kernel, &conf, &eos, x0, uLeft, uRight, ro01, ro02](Vector r) {
+		std::vector<double> res(kernel->nVariables);
 		double u, ro, P, alpha;
 		if(r.x < x0) {
 			u = uLeft;
@@ -490,7 +484,6 @@ void RunSODTestHybrid1DGeneral(int argc, char *argv[]) {
 
 	conf.Gamma = 1.4;
 	IdealGasEOS eos(conf.Gamma);
-	conf.nVariables = 5;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
 	conf.xLeftBoundary.Gamma = conf.Gamma;
@@ -556,7 +549,6 @@ void RunSODTestHybrid2D(int argc, char *argv[]) {
 	conf.isPeriodicY = false;
 
 	conf.Gamma = 1.4;
-	conf.nVariables = 5;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
 	conf.xLeftBoundary.Gamma = 1.4;
@@ -621,7 +613,6 @@ void RunSODTestRoe2DX(int argc, char *argv[]) {
 	conf.isPeriodicY = false;
 
 	conf.Gamma = 1.4;
-	conf.nVariables = 5;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
 	conf.xLeftBoundary.Gamma = 1.4;
@@ -689,7 +680,7 @@ void RunFluxesTest2D(int argc, char *argv[]) {
 
 	KernelConfiguration conf;
 	conf.nDims = 2;
-	conf.nX = 4;
+	conf.nX = 400;
 	conf.nY = 4;
 	conf.LX = 2.0;
 	conf.LY = 1.0;	
@@ -697,7 +688,6 @@ void RunFluxesTest2D(int argc, char *argv[]) {
 	conf.isPeriodicY = false;
 
 	conf.Gamma = 1.4;
-	conf.nVariables = 5;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
 	conf.xLeftBoundary.Gamma = 1.4;
@@ -719,7 +709,6 @@ void RunFluxesTest2D(int argc, char *argv[]) {
 	conf.ResidualOutputIterations = 1;
 
 	conf.Viscosity = viscosity;
-	conf.Sigma = 0;
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -780,7 +769,6 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	conf.isPeriodicY = false;
 
 	conf.Gamma = 1.4;
-	conf.nVariables = 5;
 	conf.IsViscousFlow = true;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
@@ -812,7 +800,7 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	conf.ResidualOutputIterations = 10;
 
 	conf.Viscosity = viscosity;
-	conf.Sigma = sigma;
+	conf.Sigma = Vector(sigma, 0, 0);
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -831,7 +819,7 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	std::normal_distribution<double> normal_dist(0.0, sdv);  // N(mean, stddeviation)
 	
 	auto initD = [ro_init, Pave, &conf, &normal_dist, &mt](Vector r) {
-		double u = 0.5*conf.Sigma*r.y*(conf.LY - r.y)/conf.Viscosity;
+		double u = 0.5*conf.Sigma.x*r.y*(conf.LY - r.y)/conf.Viscosity;
 		double v = 0.0 + normal_dist(mt);
 		double w = 0.0;
 		//u = 0.01;
@@ -858,15 +846,15 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 
 void RunPoiseuille3D(int argc, char *argv[]) {
 	double viscosity = 1.73e-5;	//Air
-	double sigma = 0.14;		// dPdx
+	double sigma = 0.14;		// absolute value of dPdx
 	double ro_init = 1.225;		//Air
 	double Pave = 1.0e5;		//average pressure
 
 	KernelConfiguration conf;
 	conf.nDims = 3;
-	conf.nX = 10;
-	conf.nY = 40;
-	conf.nZ = 6;
+	conf.nX = 100;
+	conf.nY = 100;
+	conf.nZ = 4;
 	conf.LX = 0.2;
 	conf.LY = 0.1;
 	conf.LZ = 0.1;
@@ -875,7 +863,6 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	conf.isPeriodicZ = true;
 
 	conf.Gamma = 1.4;
-	conf.nVariables = 5;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
 	conf.xLeftBoundary.Gamma = 1.4;
@@ -889,15 +876,16 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.IsExternalForceRequared = true;
 
 	conf.MaxTime = 0.5;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionSnapshotTime = 0.01;
-	conf.SaveSolutionSnapshotIterations = 1000;
-	conf.ResidualOutputIterations = 1;
+	conf.SaveSolutionSnapshotIterations = 0;
+	conf.ResidualOutputIterations = 50;
 
 	conf.Viscosity = viscosity;
-	conf.Sigma = sigma;
+	conf.Sigma = Vector(-sigma, 0, 0);
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -911,8 +899,7 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 
 	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
 	auto initD = [ro_init, Pave, &conf](Vector r) {
-		double u = 0.5*conf.Sigma*r.y*(conf.LY - r.y)/conf.Viscosity;
-		u = 0;
+		double u = -0.6*conf.Sigma.x*r.y*(conf.LY - r.y)/conf.Viscosity;
 		double roe = Pave/(conf.Gamma - 1);
 		std::vector<double> res(5);
 		res[0] = ro_init;
@@ -925,7 +912,7 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	kernel->SetInitialConditions(initD);
 
 	//save solution
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionSega("init.dat");
 	
 	//run computation
 	kernel->Run();		
@@ -951,7 +938,6 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	conf.isPeriodicY = false;
 
 	conf.Gamma = 1.4;
-	conf.nVariables = 5;
 	conf.IsViscousFlow = true;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
@@ -980,7 +966,7 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	conf.ResidualOutputIterations = 50;
 
 	conf.Viscosity = viscosity;
-	conf.Sigma = sigma;
+	conf.Sigma = Vector(sigma, 0, 0);
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -1039,7 +1025,6 @@ void RunDemchenkoTest2D(int argc, char *argv[]) {
 	conf.isPeriodicY = false;
 
 	conf.Gamma = 1.4;
-	conf.nVariables = 5;
 	conf.IsViscousFlow = false;
 
 	//Symmetry for top and bottom faces and Natural for left and right ones
@@ -1132,7 +1117,6 @@ void RunDemchenkoTest2DGeneralEOS(int argc, char *argv[]) {
 
 	conf.Gamma = 1.4;
 	IdealGasEOS eos(conf.Gamma);
-	conf.nVariables = 5;
 	conf.IsViscousFlow = false;
 
 	//Symmetry for top and bottom faces and Natural for left and right ones
@@ -1229,7 +1213,6 @@ void RunDemchenkoTestBaratropicEOS(int argc, char *argv[]) {
 	conf.isPeriodicX = false;
 	conf.isPeriodicY = false;
 
-	conf.nVariables = 4;
 	conf.IsViscousFlow = false;
 
 	//Symmetry for top and bottom faces and Natural for left and right ones
@@ -1330,7 +1313,6 @@ void RunDemchenkoTestBaratropicEOSTwoPhase(int argc, char *argv[]) {
 	conf.isPeriodicX = false;
 	conf.isPeriodicY = false;
 
-	conf.nVariables = 5;
 	conf.IsViscousFlow = false;
 
 	//Symmetry for top and bottom faces and Natural for left and right ones
@@ -1423,7 +1405,6 @@ void RunDemchenkoTest3D(int argc, char *argv[]) {
 	conf.isPeriodicZ = false;
 
 	conf.Gamma = 1.4;
-	conf.nVariables = 5;
 	conf.IsViscousFlow = false;
 
 	//Symmetry for top and bottom faces and Natural for left and right ones
@@ -1487,6 +1468,165 @@ void RunDemchenkoTest3D(int argc, char *argv[]) {
 		res[2] = 0;
 		res[3] = 0;
 		res[4] = roe + 0.5 * ro * u * u;
+		return res; 
+	};
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolutionSega("init.dat");
+	
+	//run computation
+	kernel->Run();		
+
+	//finalize kernel
+	kernel->Finilaze();
+};
+
+//DoludenkoTest
+void RunDoludenko2D(int argc, char *argv[]) {
+
+	//collision parameters
+	double E = 2.0e13;
+	double p0 = 2.0e14;
+	double ro01 = 4500.0;
+	double ro02 = 11400.0;
+	double pert_amplitude = 1.0e-4;
+	double g = -1.0e6;
+	BarotropicTwoPhaseEOS eos(E, E, p0, p0, ro01, ro02);
+
+	KernelConfiguration conf;
+	conf.nDims = 2;
+	conf.nX = 160;
+	conf.nY = 80;
+	conf.LX = 8.0e-3;
+	conf.LY = 4.0e-3;	
+	conf.isPeriodicX = true;
+	conf.isPeriodicY = false;
+	conf.IsUnifromAccelerationRequared = true;
+	conf.UniformAcceleration = Vector(0, g, 0);
+
+	conf.IsViscousFlow = false;
+
+	//Symmetry for top and bottom faces and Natural for left and right ones
+	conf.yLeftBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yRightBoundary.Gamma = 1.4;
+
+	conf.SolutionMethod = KernelConfiguration::Method::HybridBarotropicEOSTwoPhase;
+	conf.methodConfiguration.CFL = 0.2;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.eos = &eos;
+	conf.methodConfiguration.UseExactPressureDerivative = true;
+
+	conf.MaxTime = 1.0e-6;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 0.1e-6;
+	conf.SaveSolutionSnapshotIterations = 0;
+	conf.ResidualOutputIterations = 10;
+
+	//init kernel
+	std::unique_ptr<Kernel>	kernel = std::unique_ptr<Kernel>(new HybridBarotropicEOSTwoPhase(&argc, &argv));
+	kernel->Init(conf);
+	
+	auto initD = [&eos, ro01, ro02, pert_amplitude, &conf](Vector r) {
+		double yCentr = 0.5 * conf.LY;	//a half of a tube height
+		double ro = 0;
+		double alpha = 0;
+		if (r.y < yCentr) {
+			ro = ro01;
+			alpha = 1;
+		} else ro = ro02;
+
+		double v = pert_amplitude * cos(1200 * (r.x - 0.5 * conf.LX)) * exp(-abs(r.y - yCentr));
+		
+		std::vector<double> res(5);
+		res[0] = ro;
+		res[1] = 0;
+		res[2] = ro * v;
+		res[3] = 0;
+		res[4] = ro * alpha;
+		return res; 
+	};
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolutionSega("init.dat");
+	
+	//run computation
+	kernel->Run();		
+
+	//finalize kernel
+	kernel->Finilaze();
+};
+
+//2D and 3D releigh_taylor classic test
+void RunReleighTaylor2D(int argc, char *argv[]) {
+
+	//Collision parameters
+	double ro_top = 2.0;		//Collision speed of lest material
+	double ro_bottom = 1.0;	// and right one
+	double perturbation_amplitude = 0.01;
+	double pressure0 = 2.5;	//initial common pressure
+	double g = -0.25;
+
+	KernelConfiguration conf;
+	conf.nDims = 2;
+	conf.nX = 60;
+	conf.nY = 180;
+	conf.LX = 0.5;
+	conf.LY = 1.5;	
+	conf.isPeriodicX = true;
+	conf.isPeriodicY = false;
+
+	conf.Gamma = 1.4;
+	conf.IsViscousFlow = false;
+
+	//Symmetry for top and bottom faces and Natural for left and right ones
+	conf.yLeftBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yRightBoundary.Gamma = 1.4;
+
+	conf.SolutionMethod = KernelConfiguration::Method::HybridFVM;
+	conf.methodConfiguration.CFL = 0.2;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.UniformAcceleration = Vector(0, g, 0);
+
+	conf.MaxTime = 10.0;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 0.5;
+	conf.SaveSolutionSnapshotIterations = 0;
+	conf.ResidualOutputIterations = 10;
+	conf.IsUnifromAccelerationRequared = true;
+
+	//init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM(&argc, &argv));
+	};
+	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
+		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
+	};
+	kernel->Init(conf);
+	
+	auto initD = [ro_top, ro_bottom, pressure0, perturbation_amplitude, &conf](Vector r) {
+		std::vector<double> res(5);
+
+		double ro = 0;
+		if(r.y <= 0.5 * conf.LY) ro = ro_bottom;
+		else ro = ro_top;
+
+		double v = (1.0 - cos(2.0 * PI * r.x / conf.LX)) * (1.0 - cos(2.0 * PI * r.y / conf.LY));
+		v *= 0.25 * perturbation_amplitude;
+
+		double P = pressure0 - ro_bottom * conf.UniformAcceleration.y * conf.LY + ro * conf.UniformAcceleration.y * r.y; 
+		double roe = P / (conf.Gamma - 1.0);
+		res[0] = ro;
+		res[1] = 0;
+		res[2] = ro * v;
+		res[3] = 0;
+		res[4] = roe + 0.5 * ro * v * v;
 		return res; 
 	};
 	kernel->SetInitialConditions(initD);

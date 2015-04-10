@@ -21,7 +21,7 @@ public:
 	//Prepare right eigenvectors matrix R, inverse to it - Rinv (has left eigenvectors rows) and eigenvalues
 	void PrepareEigenMatrix(std::vector<double> &UL, std::vector<double> &UR, Matrix &R, Matrix &Rinv, std::vector<double> &eigenvals) override  {
 		//accuracy of computer
-		double eps = 1.0e-13;
+		double eps = 1.0e-11;
 		
 		//Left cell
 		double rol = UL[0];
@@ -47,7 +47,7 @@ public:
 		double pr  = eos->GetPressure(ror, er);
 		double hr = Er + pr/ror;	//total entalpy
 
-		//compute 
+		//compute averaged values
 
 		//values avaraged on faces
 		double roa = sqrt(rol*ror);

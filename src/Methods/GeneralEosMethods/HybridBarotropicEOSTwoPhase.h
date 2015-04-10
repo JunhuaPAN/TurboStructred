@@ -18,11 +18,47 @@ public:
 		eos = _eos;
 	};
 
+	virtual void ProcessExternalForces() {
+		double volume = hx * hy * hz;
+
+		//right handside part - mass foces
+		for (int i = iMin; i <= iMax; i++) {
+			for (int j = jMin; j <= jMax; j++) {
+				for (int k = kMin; k <= kMax; k++) {
+					int idx = getSerialIndexLocal(i, j, k);
+
+					//Compute total residual
+					residual[idx * nVariables + 1] += volume * Sigma.x;				//rou
+					residual[idx * nVariables + 2] += volume * Sigma.y;				//rov
+					residual[idx * nVariables + 3] += volume * Sigma.z;				//row
+				};
+			};
+		}; //end right hand side part
+	};
+	virtual void ProcessExternalAcceleration() {
+		double volume = hx * hy * hz;
+
+		//right handside part - mass foces
+		for (int i = iMin; i <= iMax; i++) {
+			for (int j = jMin; j <= jMax; j++) {
+				for (int k = kMin; k <= kMax; k++) {
+					int idx = getSerialIndexLocal(i, j, k);
+					double ro = values[idx * nVariables];
+
+					//Mass forces represents body accelerations (per unit mass)
+					residual[idx * nVariables + 1] += ro * volume * UniformAcceleration.x;				//rou
+					residual[idx * nVariables + 2] += ro * volume * UniformAcceleration.y;				//rov
+					residual[idx * nVariables + 3] += ro * volume * UniformAcceleration.z;				//row
+				};
+			};
+		};
+	};
+
 	//Prepare conservative variables form left and right (relatively edge) cells
 	//Prepare right eigenvectors matrix R, inverse to it - Rinv (has left eigenvectors rows) and eigenvalues
 	void PrepareEigenMatrix(std::vector<double> &UL, std::vector<double> &UR, Matrix &R, Matrix &Rinv, std::vector<double> &eigenvals) override  {
 		//accuracy of computer
-		double eps = 1.0e-13;
+		double eps = 1.0e-10;
 		
 		//Left cell
 		double rol = UL[0];
@@ -36,7 +72,7 @@ public:
 		double ur  = UR[1]/ror;
 		double vr = UR[2]/ror;
 		double wr  = UR[3]/ror;
-		double alphar = UL[4]/rol;
+		double alphar = UR[4]/rol;
 
 		//Values averaged on faces
 		double roa = sqrt(rol*ror);
@@ -57,7 +93,7 @@ public:
 			//Use Glaister exrpessions of approximate derivations
 			//Derivative by energy
 			double delta_alpha = alphar - alphal;
-			if(delta_alpha < eps) {
+			if(abs(delta_alpha) < eps) {
 				dpdalpha = 0.5*(eos->GetPressureVolumeFractionDerivative(rol, alphal) + eos->GetPressureVolumeFractionDerivative(ror, alphar));
 			} else {
 				double prr = eos->GetPressure(ror, alphar);
@@ -69,7 +105,7 @@ public:
 			};
 			//Derivative by density
 			double delta_ro = ror - rol;
-			if(delta_ro < eps) {
+			if(abs(delta_ro) < eps) {
 				dpdro = 0.5*(eos->GetPressureDensityDerivative(rol, alphal) + eos->GetPressureDensityDerivative(ror, alphar));
 			} else {
 				double prr = eos->GetPressure(ror, alphar);
@@ -77,7 +113,7 @@ public:
 				double plr = eos->GetPressure(rol, alphar);
 				double pll = eos->GetPressure(rol, alphal);
 				dpdro = 0.5*(prr + prl - plr - pll);
-				dpdalpha /= delta_ro;
+				dpdro /= delta_ro;
 			};
 		};
 		double c2 = dpdro;
@@ -156,7 +192,7 @@ public:
 
 		Matrix test = R*Rinv;
 	};
-	 
+	
 	//compute full tine step
 	virtual void ComputeTimeStep() override {
 		//variables to collect maximum values
@@ -210,7 +246,7 @@ public:
 		if(stepInfo.NextSnapshotTime>0) dt = std::min(stepInfo.NextSnapshotTime - stepInfo.Time, dt);
 		stepInfo.TimeStep = dt;
 	};
-	 
+	
 	//Constuctor inherited
 	HybridBarotropicEOSTwoPhase(int* argc, char **argv[]) : HybridFVM(argc, argv) {};
 
