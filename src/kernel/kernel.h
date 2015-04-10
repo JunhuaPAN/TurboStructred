@@ -134,7 +134,9 @@ public:
 	bool DebugOutputEnabled; //
 
 	//Constructor
-	Kernel(int* argc, char **argv[]) : pManager(new ParallelManager(argc, argv)) { };
+	Kernel(int* argc, char **argv[]) : pManager(new ParallelManager(argc, argv)) {
+			nVariables = 5;	//default value
+	};
 
 	//Set initial conditions
 	void SetInitialConditions(std::function<std::vector<double>(Vector r)> initF) {		
@@ -280,7 +282,6 @@ public:
 
 		//Initialize gas model parameters and Riemann solver
 		gamma = config.Gamma;
-		nVariables = config.nVariables;	
 		viscosity = config.Viscosity;
 		thermalConductivity = config.ThermalConductivity;
 		if(config.IsViscousFlow == true) {

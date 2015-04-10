@@ -47,7 +47,7 @@ public:
 		double pr  = eos->GetPressure(ror, er);
 		double hr = Er + pr/ror;	//total entalpy
 
-		//compute 
+		//compute averaged values
 
 		//values avaraged on faces
 		double roa = sqrt(rol*ror);

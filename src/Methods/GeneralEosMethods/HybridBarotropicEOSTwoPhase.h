@@ -18,6 +18,42 @@ public:
 		eos = _eos;
 	};
 
+	virtual void ProcessExternalForces() {
+		double volume = hx * hy * hz;
+
+		//right handside part - mass foces
+		for (int i = iMin; i <= iMax; i++) {
+			for (int j = jMin; j <= jMax; j++) {
+				for (int k = kMin; k <= kMax; k++) {
+					int idx = getSerialIndexLocal(i, j, k);
+
+					//Compute total residual
+					residual[idx * nVariables + 1] += volume * Sigma.x;				//rou
+					residual[idx * nVariables + 2] += volume * Sigma.y;				//rov
+					residual[idx * nVariables + 3] += volume * Sigma.z;				//row
+				};
+			};
+		}; //end right hand side part
+	};
+	virtual void ProcessExternalAcceleration() {
+		double volume = hx * hy * hz;
+
+		//right handside part - mass foces
+		for (int i = iMin; i <= iMax; i++) {
+			for (int j = jMin; j <= jMax; j++) {
+				for (int k = kMin; k <= kMax; k++) {
+					int idx = getSerialIndexLocal(i, j, k);
+					double ro = values[idx * nVariables];
+
+					//Mass forces represents body accelerations (per unit mass)
+					residual[idx * nVariables + 1] += ro * volume * UniformAcceleration.x;				//rou
+					residual[idx * nVariables + 2] += ro * volume * UniformAcceleration.y;				//rov
+					residual[idx * nVariables + 3] += ro * volume * UniformAcceleration.z;				//row
+				};
+			};
+		};
+	};
+
 	//Prepare conservative variables form left and right (relatively edge) cells
 	//Prepare right eigenvectors matrix R, inverse to it - Rinv (has left eigenvectors rows) and eigenvalues
 	void PrepareEigenMatrix(std::vector<double> &UL, std::vector<double> &UR, Matrix &R, Matrix &Rinv, std::vector<double> &eigenvals) override  {

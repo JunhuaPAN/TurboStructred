@@ -37,7 +37,6 @@ public:
 	double LZ; //Z size
 
 	//Gas model parameters
-	int nVariables;
 	double Gamma;
 	double Viscosity;
 	double ThermalConductivity;
