@@ -881,8 +881,8 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	conf.MaxTime = 0.5;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionSnapshotTime = 0.01;
-	conf.SaveSolutionSnapshotIterations = 0;
-	conf.ResidualOutputIterations = 50;
+	conf.SaveSolutionSnapshotIterations = 10;
+	conf.ResidualOutputIterations = 1;
 
 	conf.Viscosity = viscosity;
 	conf.Sigma = Vector(-sigma, 0, 0);
