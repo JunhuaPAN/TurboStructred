@@ -166,6 +166,8 @@ public:
 	virtual void Init(KernelConfiguration& config) {
 		//Initialize MPI		
 		nDims = config.nDims;
+		//Output settings
+		DebugOutputEnabled = config.DebugOutputEnabled;
 
 		//Initialize local grid
 		int dummyCellLayers = GetDummyCellLayerSize(); //number of dummy cell layers				
@@ -322,9 +324,6 @@ public:
 		//External forces
 		Sigma = config.Sigma;
 		UniformAcceleration = config.UniformAcceleration;
-		
-		//Output settings
-		DebugOutputEnabled = config.DebugOutputEnabled;
 		
 		if (DebugOutputEnabled) {
 			std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";
@@ -644,6 +643,17 @@ public:
 		//Determine neighbours' ranks
 		rankL = pManager->GetRankByCartesianIndexShift(0, 0, -1);
 		rankR = pManager->GetRankByCartesianIndexShift(0, 0, +1);
+		//rankL = pManager->GetRankByCartesianIndex(0, 0, -1);
+		//rankR = pManager->GetRankByCartesianIndex(0, 0, 1);
+
+		if (DebugOutputEnabled) {
+			std::cout<<"Exchange Z-direction started"<<std::endl<<std::flush;
+			std::cout<<"rank = "<<rank<<
+				"; rankL = "<<rankL<<
+				"; rankR = "<<rankR<<
+				std::endl<<std::flush;
+		};
+		
 
 		for (int layer = 1; layer <= dummyCellLayersZ; layer++) {
 			// Minus direction exchange
@@ -662,6 +672,13 @@ public:
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
 					};
 				};
+			};
+
+			if (DebugOutputEnabled) {
+				std::cout<<"rank = "<<rank<<
+				"; kSend = "<<kSend<<
+				"; kRecv = "<<kRecv<<
+				std::endl<<std::flush;
 			};
 
 			//Determine recive number
@@ -686,6 +703,13 @@ public:
 			nRecv = 0; //
 			kSend = kMax - layer + 1; // layer index to send
 			kRecv = kMin - layer; // layer index to recv
+
+			if (DebugOutputEnabled) {
+				std::cout<<"rank = "<<rank<<
+				"; kSend = "<<kSend<<
+				"; kRecv = "<<kRecv<<
+				std::endl<<std::flush;
+			};
 
 			// Prepare values to send
 			if (rankR != -1) {
@@ -722,8 +746,14 @@ public:
 			std::cout<<"rank = "<<pManager->getRank()<<", Exchange values Z-direction executed\n";
 			std::cout.flush();
 		};
+
 		//Sync
 		pManager->Barrier();
+
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<rank<<"Exchange values finished."<<			
+			std::endl<<std::flush;
+		};
 
 	}; // function
 
@@ -736,6 +766,11 @@ public:
 
 		//Interprocessor exchange
 		ExchangeValues();
+
+		if (DebugOutputEnabled) {
+			std::cout<<"rank = "<<rank<<"Dummy cell processing started."<<			
+			std::endl<<std::flush;
+		};
 
 		//Current face and cell information
 		Vector faceNormalL;
@@ -756,6 +791,13 @@ public:
 					//And face
 					faceCenter.y = CoordinateY[j];
 					faceCenter.z = CoordinateZ[k];
+
+					if (DebugOutputEnabled) {
+						std::cout<<"rank = "<<rank<<
+						"; f.y = "<<faceCenter.y<<
+						"; f.z = "<<faceCenter.z<<
+						std::endl<<std::flush;
+					};
 
 					for (int layer = 1; layer <= dummyCellLayersX; layer++) {		
 						if (pManager->rankCart[0] == 0) {
@@ -913,7 +955,7 @@ public:
 		}; //Z direction
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Dummy values Y-direction computed\n";
+			std::cout<<"rank = "<<pManager->getRank()<<", Dummy values Z-direction computed\n";
 			std::cout.flush();
 		};
 		//Sync

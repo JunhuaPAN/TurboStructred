@@ -11,6 +11,7 @@
 #include "Methods\GeneralEosMethods\HybridBarotropicEOSOnePhase.h"
 #include "Methods\GeneralEosMethods\HybridBarotropicEOSTwoPhase.h"
 
+
 #define PI 3.14159265359
 
 //collect here all tests now
@@ -852,8 +853,8 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 
 	KernelConfiguration conf;
 	conf.nDims = 3;
-	conf.nX = 100;
-	conf.nY = 100;
+	conf.nX = 10;
+	conf.nY = 10;
 	conf.nZ = 4;
 	conf.LX = 0.2;
 	conf.LY = 0.1;
@@ -872,6 +873,10 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	conf.yLeftBoundary.Gamma = 1.4;
 	conf.yRightBoundary.BCType = BoundaryConditionType::Wall;
 	conf.yRightBoundary.Gamma = 1.4;
+	conf.zLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.zLeftBoundary.Gamma = 1.4;
+	conf.zRightBoundary.BCType = BoundaryConditionType::Wall;
+	conf.zRightBoundary.Gamma = 1.4;
 
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 	conf.methodConfiguration.CFL = 0.5;
@@ -883,6 +888,7 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	conf.SaveSolutionSnapshotTime = 0.01;
 	conf.SaveSolutionSnapshotIterations = 10;
 	conf.ResidualOutputIterations = 1;
+	conf.DebugOutputEnabled = false;
 
 	conf.Viscosity = viscosity;
 	conf.Sigma = Vector(-sigma, 0, 0);
@@ -922,16 +928,18 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 };
 
 void RunShearFlow2D(int argc, char *argv[]) {
-	double viscosity = 1.73e-5;	//Air
-	double sigma = 0.0;		// dPdx
+	//double viscosity = 1.73e-5;	//Air
+	double viscosity = 1.0e-5;	
+	double sigma = 0.0;			// dPdx
 	double ro_init = 1.225;		//Air
 	double Pave = 1.0e5;		//average pressure
-	double Utop = 1.0;
+	double Utop = 5.0;	
+	double dispertion = 0.01;	//standart deviation
 
 	KernelConfiguration conf;
 	conf.nDims = 2;
-	conf.nX = 10;
-	conf.nY = 40;
+	conf.nX = 60;
+	conf.nY = 300;
 	conf.LX = 0.2;
 	conf.LY = 0.1;	
 	conf.isPeriodicX = true;
@@ -950,20 +958,15 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	conf.yRightBoundary.Gamma = 1.4;
 	conf.yRightBoundary.Velocity = Vector(Utop, 0, 0);
 
-	//Example of moving wall BC
-	//conf.yLeftBoundary.BCType = BoundaryConditionType::MovingWall;
-	//conf.yLeftBoundary.Gamma = 1.4;
-	//conf.yLeftBoundary.Velocity = Vector(5, 0, 0);
-
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 
-	conf.MaxTime = 1.0;
+	conf.MaxTime = 0.5;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionSnapshotTime = 0.01;
-	conf.SaveSolutionSnapshotIterations = 1000;
-	conf.ResidualOutputIterations = 50;
+	conf.SaveSolutionSnapshotIterations = 5000;
+	conf.ResidualOutputIterations = 10;
 
 	conf.Viscosity = viscosity;
 	conf.Sigma = Vector(sigma, 0, 0);
@@ -978,23 +981,31 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	};	
 	kernel->Init(conf);
 
+	double sdv = dispertion;
+	std::random_device rd;
+    std::mt19937 mt(rd());
+	std::normal_distribution<double> normal_dist(0.0, sdv);  // N(mean, stddeviation)
 	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
-	auto initD = [ro_init, Pave, Utop, &conf](Vector r) {
-		double u = r.y * Utop / conf.LY;
+	auto initD = [ro_init, Pave, Utop, &conf, &normal_dist, &mt](Vector r) {
+
+		double rnd = normal_dist(mt);
+		double u = r.y * Utop * (1.0 + rnd) / conf.LY;
+		rnd = normal_dist(mt);
+		double v = r.y * Utop * rnd / conf.LY;
 		//u = 0;
-		double roe = Pave/(conf.Gamma - 1);
+		double roe = Pave / (conf.Gamma - 1);
 		std::vector<double> res(5);
 		res[0] = ro_init;
-		res[1] = ro_init*u;
-		res[2] = 0.0;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
 		res[3] = 0.0;
-		res[4] =  roe + 0.5*ro_init*u*u;
+		res[4] =  roe + 0.5 * ro_init * (u * u + v * v);
 		return res; 
 	};
 	kernel->SetInitialConditions(initD);
 
 	//save solution
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionSega("init.dat");
 	
 	//run computation
 	kernel->Run();		

@@ -4,7 +4,8 @@
 int main(int argc, char *argv[])
 {
 	//main function
-	RunPoiseuille3D(argc, argv);
+	RunShearFlow2D(argc, argv);
+	//RunPoiseuille3D(argc, argv);
 
 	//RunSODTestRoe1D(argc, argv);
 	//RunSODTestHybrid1DGeneral(argc, argv);
@@ -21,7 +22,6 @@ int main(int argc, char *argv[])
 	//RunSODTestHybrid2D(argc, argv);
 	//RunDemchenkoTest3D(argc, argv);
 	//RunSODTestHybrid1D(argc, argv);
-	//RunShearFlow2D(argc, argv);
 	//RunReleighTaylor2D(argc, argv);
 	//RunDoludenko2D(argc, argv);
 

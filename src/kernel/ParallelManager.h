@@ -66,7 +66,7 @@ public:
 		if (!periodic[2] && ((coords[2] < 0) || (coords[2] >= dimsCart[2]))) return rank;
 		coords[0] = (coords[0] + dimsCart[0]) % dimsCart[0];
 		coords[1] = (coords[1] + dimsCart[1]) % dimsCart[1];
-		coords[2] %= dimsCart[2];
+		coords[2] = (coords[2] + dimsCart[2]) % dimsCart[2];
 		int MPIResult = MPI_Cart_rank(_commCart, coords, &rank);
 		if (MPIResult == MPI_PROC_NULL) rank = -1;
 		return rank;
