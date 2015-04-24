@@ -77,6 +77,10 @@ public:
 	Vector Sigma;			//dP/dn
 	Vector UniformAcceleration;		// g acceleration
 
+	//Computation continuation regime
+	std::string fileToLoad;
+	bool ContinueComputation;
+
 	//Default values
 	KernelConfiguration() {
 		Viscosity = 0;
@@ -86,6 +90,7 @@ public:
 		IsExternalForceRequared = false;
 		IsUnifromAccelerationRequared = false;
 		DebugOutputEnabled = false;
+		ContinueComputation = false;
 	};
 };
 

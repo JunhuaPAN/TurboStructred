@@ -501,8 +501,7 @@ public:
 		double dmax  = 0;
 		double ccmax = 0;	//maximum of speed of sound (not used yet)
 
-		//conservative variable temporal container
-		std::vector<double> U;
+		//conservative variable temporal container		
 	
 		for (int ix = iMin; ix <= iMax; ix++)
 		{
@@ -511,7 +510,7 @@ public:
 				for (int iz = kMin; iz <= kMax; iz++)
 				{
 					int sBegin = getSerialIndexLocal(ix, iy, iz) * nVariables;
-					U =  std::vector<double>(values.begin() + sBegin, values.begin() + sBegin + nVariables);
+					std::valarray<double>&& U = values[std::slice(sBegin, nVariables, 1)];
 					double ro = U[0];
 					double rou = U[1];
 					double rov = U[2];
