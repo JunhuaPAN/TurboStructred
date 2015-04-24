@@ -938,9 +938,9 @@ void RunShearFlow2D(int argc, char *argv[]) {
 
 	KernelConfiguration conf;
 	conf.nDims = 2;
-	conf.nX = 60;
-	conf.nY = 300;
-	conf.LX = 0.2;
+	conf.nX = 20;
+	conf.nY = 400;
+	conf.LX = 0.5;
 	conf.LY = 0.1;	
 	conf.isPeriodicX = true;
 	conf.isPeriodicY = false;
@@ -962,10 +962,10 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 
-	conf.MaxTime = 0.5;
-	conf.MaxIteration = 1000000;
+	conf.MaxTime = 1.0;
+	conf.MaxIteration = 10000000;
 	conf.SaveSolutionSnapshotTime = 0.01;
-	conf.SaveSolutionSnapshotIterations = 5000;
+	conf.SaveSolutionSnapshotIterations = 0;
 	conf.ResidualOutputIterations = 10;
 
 	conf.Viscosity = viscosity;
@@ -1006,7 +1006,25 @@ void RunShearFlow2D(int argc, char *argv[]) {
 
 	//save solution
 	kernel->SaveSolutionSega("init.dat");
-	
+
+	//Set sensors
+	auto GetXVel = [](std::valarray<double> vals) {
+		return vals[1] / vals[0];
+	};
+	kernel->isSensorEnable = true;
+	std::shared_ptr<CellSensor> sen1 = std::make_shared<CellSensor>("Ysensor(0.5, 0.75).dat", GetXVel, kernel->nVariables);
+	sen1->SetIndex(kernel->getSerialIndexGlobal((int)(conf.nX * 0.5), (int)(conf.nY * 0.75), 0));
+
+	std::shared_ptr<CellSensor> sen2 = std::make_shared<CellSensor>("Ysensor(0.5, 0.5).dat", GetXVel, kernel->nVariables);
+	sen2->SetIndex(kernel->getSerialIndexGlobal((int)(conf.nX * 0.5), (int)(conf.nY * 0.5), 0));
+
+	std::shared_ptr<CellSensor> sen3 = std::make_shared<CellSensor>("Ysensor(0.5, 0.25).dat", GetXVel, kernel->nVariables);
+	sen3->SetIndex(kernel->getSerialIndexGlobal((int)(conf.nX * 0.5), (int)(conf.nY * 0.25), 0));
+	kernel->Sensors.push_back(sen1);
+	kernel->Sensors.push_back(sen2);
+	kernel->Sensors.push_back(sen3);
+	for(auto& r : kernel->Sensors) r->Process(kernel->values);		//initial recording
+
 	//run computation
 	kernel->Run();		
 

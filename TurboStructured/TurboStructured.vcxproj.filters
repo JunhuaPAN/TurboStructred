@@ -37,6 +37,9 @@
     <Filter Include="Header Files\EquationsOfState\VOFMixture">
       <UniqueIdentifier>{bf1236cd-51d9-4951-994c-58eed3c49a36}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Sensors">
+      <UniqueIdentifier>{b9c6dcee-e4c8-4b21-b568-776f2d2da65c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -118,6 +121,15 @@
     </ClInclude>
     <ClInclude Include="..\src\Methods\GeneralEosMethods\HybridBarotropicEOSTwoPhase.h">
       <Filter>Header Files\Methods\GeneralEosMethods</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Sensors\Sensor.h">
+      <Filter>Header Files\Sensors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Sensors\CellSensor.h">
+      <Filter>Header Files\Sensors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Sensors\Sensors.h">
+      <Filter>Header Files\Sensors</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

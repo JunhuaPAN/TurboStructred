@@ -9,6 +9,7 @@
 #include <sstream>
 #include <cassert>
 #include <fstream>
+#include <valarray>
 
 #include "KernelConfiguration.h"
 #include "ParallelManager.h"
@@ -17,6 +18,7 @@
 #include "utility\Timer.h"
 #include "RiemannSolvers\RoeSolverPerfectGasEOS.h"
 #include "BoundaryConditions\BCGeneral.h"
+#include "Sensors\Sensors.h"
 
 #include "cgnslib.h"
 
@@ -91,6 +93,9 @@ public:
 	bool isExternalAccelaration;
 	bool isExternalForce;
 
+	//sensors operating
+	bool isSensorEnable;
+
 	//External forces
 	Vector Sigma; //Potential force like presure gradient
 	Vector UniformAcceleration;	//external uniform acceleration
@@ -104,8 +109,8 @@ public:
 	std::unique_ptr<BoundaryConditions::BCGeneral> zRightBC;
 
 	//Solution data
-	std::vector<double> values;	
-	std::vector<double> residual;
+	std::valarray<double> values;	
+	std::valarray<double> residual;
 
 	//Get serial index for cell
 	inline int getSerialIndexGlobal(int i, int j, int k) {
@@ -130,8 +135,11 @@ public:
 	double SaveSolutionSnapshotTime;
 	int SaveSolutionSnapshotIterations;
 	int ResidualOutputIterations;
+	bool ContinueComputation;
 
 	bool DebugOutputEnabled; //
+
+	std::vector<std::shared_ptr<Sensor>> Sensors;
 
 	//Constructor
 	Kernel(int* argc, char **argv[]) : pManager(new ParallelManager(argc, argv)) {
@@ -303,6 +311,7 @@ public:
 		} else {
 			isExternalAccelaration = false;
 		};
+		ContinueComputation = config.ContinueComputation;
 
 		//Allocate data structures
 		values.resize(nVariables * nlocalXAll * nlocalYAll * nlocalZAll);	
@@ -324,6 +333,8 @@ public:
 		//External forces
 		Sigma = config.Sigma;
 		UniformAcceleration = config.UniformAcceleration;
+
+		isSensorEnable = false;	//by default
 		
 		if (DebugOutputEnabled) {
 			std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";
@@ -1617,7 +1628,7 @@ public:
 		//Send solution to master from slave nodes
 		int masterRank = 0;
 		if (!pManager->IsMasterCart()) {	
-			MPI_Send(&values.front(), values.size(), MPI_LONG_DOUBLE, masterRank, 0, pManager->_commCart);
+			MPI_Send(&values[0], values.size(), MPI_LONG_DOUBLE, masterRank, 0, pManager->_commCart);
 		};		
 	
 
@@ -1656,7 +1667,7 @@ public:
 						//Get values into buffer
 						if (rank == masterRank) {
 							//Do not recieve
-							recvBuff = std::vector<double>(values.begin(), values.end());								
+							recvBuff = std::vector<double>(std::begin(values), std::end(values));								
 						} else {
 							//Recieve
 							recvBuff.resize(size * nVariables);								
@@ -1971,7 +1982,17 @@ public:
 					"; RMSrou = "<<stepInfo.Residual[1]<<
 					"; avgIterTime = "<<iterationsPackTimeAverage<<" ms"<<
 					std::endl;
-			};			
+			};		
+
+			//Sensors recording
+			if(isSensorEnable == true)
+			{
+				for(auto &r : Sensors) {
+					r->NewRecord();
+					r->UpdateTimer(stepInfo.Time);
+					r->Process(values);
+				};
+			};
 
 			//Solution snapshots
 			//Every few iterations

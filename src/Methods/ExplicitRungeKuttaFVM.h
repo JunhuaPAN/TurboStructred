@@ -728,7 +728,7 @@ public:
 	};
 
 	//Compute residual
-	void ComputeResidual(const std::vector<double> values, std::vector<double>& residual, std::vector<double>& spectralRadius) {
+	void ComputeResidual(const std::valarray<double>& values, std::valarray<double>& residual, std::vector<double>& spectralRadius) {
 		//  init spectral radius storage for each cell
 		for (double& sr : spectralRadius) sr = 0; //Nullify
 		for (double& r : residual) r = 0; //Nullify residual
