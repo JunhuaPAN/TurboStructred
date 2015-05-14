@@ -90,18 +90,20 @@ std::vector<double> SODinitialDistributionY(Vector r, double yI, ShockTubeParame
 void RunSODTestRoe1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 10;
-	conf.nY = 10;
+	conf.nX = 200;
+	//conf.nY = 10;
 	conf.LX = 1.0;
-	conf.LY = 1.0;	
+	//conf.LY = 1.0;	
 	conf.isPeriodicX = false;
-	conf.isPeriodicY = false;
+	//conf.isPeriodicY = false;
+	conf.isUniformAlongX = false;
+	conf.qx = 1.05;
 
 	conf.Gamma = 1.4;
 
-	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
 	conf.xLeftBoundary.Gamma = 1.4;
-	conf.xRightBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
 	conf.xRightBoundary.Gamma = 1.4;
 
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
@@ -754,20 +756,16 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	double ro_init = 1.225;		//Air
 	double Pave = 1.0e5;		//average pressure		
 
-	//Test
-	ro_init = 1.0;
-	Pave = 20.0;
-	sigma = 1.0;
-	viscosity = 0.000025;	
-
 	KernelConfiguration conf;
 	conf.nDims = 2;
-	conf.nX = 100;
-	conf.nY = 100;
+	conf.nX = 20;
+	conf.nY = 80;
 	conf.LX = 0.2;
 	conf.LY = 0.1;	
 	conf.isPeriodicX = true;
 	conf.isPeriodicY = false;
+	conf.isUniformAlongY = false;
+	conf.qy = 1.01;
 
 	conf.Gamma = 1.4;
 	conf.IsViscousFlow = true;
@@ -781,11 +779,6 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	conf.yRightBoundary.BCType = BoundaryConditionType::Wall;
 	conf.yRightBoundary.Gamma = 1.4;
 
-	//Example of moving wall BC
-	//conf.yLeftBoundary.BCType = BoundaryConditionType::MovingWall;
-	//conf.yLeftBoundary.Gamma = 1.4;
-	//conf.yLeftBoundary.Velocity = Vector(5, 0, 0);
-
 	double uShear = std::sqrt(sigma * conf.LY);
 	double Re = uShear * conf.LY * ro_init / viscosity;
 	std::cout<<"Reynolds Number = "<<Re<<std::endl;
@@ -794,13 +787,14 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 
-	conf.MaxTime = 0.01;
+	conf.MaxTime = 1.0;
 	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 1;
-	conf.SaveSolutionSnapshotIterations = 100;
+	conf.SaveSolutionSnapshotTime = 0.01;
+	conf.SaveSolutionSnapshotIterations = 0;
 	conf.ResidualOutputIterations = 10;
 
 	conf.Viscosity = viscosity;
+	conf.IsExternalForceRequared = true;
 	conf.Sigma = Vector(sigma, 0, 0);
 
 	//init kernel
@@ -821,9 +815,9 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	
 	auto initD = [ro_init, Pave, &conf, &normal_dist, &mt](Vector r) {
 		double u = 0.5*conf.Sigma.x*r.y*(conf.LY - r.y)/conf.Viscosity;
-		double v = 0.0 + normal_dist(mt);
+		double v = 0.0;// + normal_dist(mt);
 		double w = 0.0;
-		//u = 0.01;
+
 		double roe = Pave/(conf.Gamma - 1);
 		std::vector<double> res(5);
 		res[0] = ro_init;
@@ -836,7 +830,7 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	kernel->SetInitialConditions(initD);
 
 	//save solution
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionSega("init.dat");
 	
 	//run computation
 	kernel->Run();		
@@ -939,11 +933,14 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 2;
 	conf.nX = 20;
-	conf.nY = 400;
+	conf.nY = 100;
 	conf.LX = 0.5;
 	conf.LY = 0.1;	
+	//conf.LY = 6.0;
 	conf.isPeriodicX = true;
 	conf.isPeriodicY = false;
+	conf.isUniformAlongY = false;
+	conf.qy = 1.01;
 
 	conf.Gamma = 1.4;
 	conf.IsViscousFlow = true;

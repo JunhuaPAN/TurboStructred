@@ -182,11 +182,11 @@ public:
 
 		//Compute face square
 		double fS = 0;
-		if (nDims == 1) fS = 1.0;
-		if (nDims == 2) fS = hy;
-		if (nDims == 3) fS = hy * hz;
+		if (nDims == 1) fS = 1.0;	//todo
+		if (nDims == 2) fS = hy[1];
+		if (nDims == 3) fS = hy[1] * hz[1];
 
-		double dx = dt/hx;			//need for local courant number
+		double dx = dt/hx[1];			//need for local courant number
 		for (int iz = kMin; iz <= kMax; iz++)
 		{
 			for (int iy = jMin; iy <= jMax; iy++)
@@ -291,10 +291,10 @@ public:
 
 		//Compute face square
 		double fS = 0;
-		if (nDims == 2) fS = hx;
-		if (nDims == 3) fS = hx * hz;
+		if (nDims == 2) fS = hx[1];		//todo
+		if (nDims == 3) fS = hx[1] * hz[1];
 
-		double dy = dt/hy;			//need for local courant number
+		double dy = dt/hy[1];			//need for local courant number
 		for (int ix = iMin; ix <= iMax; ix++)
 		{
 			for (int iz = kMin; iz <= kMax; iz++)
@@ -402,9 +402,9 @@ public:
 		Matrix Rinv(nVariables, nVariables);
 
 		//Compute face square
-		double fS = hx * hy;
+		double fS = hx[1] * hy[1];		//todo
 
-		double dz = dt/hz;			//need for local courant number
+		double dz = dt/hz[1];			//need for local courant number
 		for (int iy = jMin; iy <= jMax; iy++)
 		{
 			for (int ix = iMin; ix <= iMax; ix++)
@@ -529,18 +529,18 @@ public:
 
 					double um = fabs(uu) + c;
 					ccmax = std::max(ccmax, c);
-					um /= hx;
+					um /= hx[1];	//todo
 					if(um >= dmax) dmax = um;
           
 					if (nDims > 1) {
 						um = fabs(vv) + c;
-						um /= hy;
+						um /= hy[1];	//todo
 						if(um >= dmax) dmax = um;
 					};
 
 					if (nDims > 2) {
 						um = fabs(ww) + c;
-						um /= hz;
+						um /= hz[1];	//todo
 						if(um >= dmax) dmax = um; 
 					};
 				};
@@ -554,7 +554,7 @@ public:
 
 	//Update solution without reseting of residuals (for intermidiate step)
 	void RewriteDuringSolution(double dt) {
-		double volume = hx * hy * hz;
+		double volume = hx[1] * hy[1] * hz[1];		//todo
 		for (int i = iMin; i <= iMax; i++)
 		{
 			for (int j = jMin; j <= jMax; j++)

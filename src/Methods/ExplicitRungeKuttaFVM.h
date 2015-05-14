@@ -91,23 +91,42 @@ public:
 	Vector ComputeGradientUniformStructured(int i, int j, int k, std::function<double(double*)> func) {\
 		Vector grad(0,0,0);
 		double dux = func(getCellValues(i+1, j, k)) - func(getCellValues(i-1, j, k));
-		double dudx = dux / (2.0 * hx);
+		double dudx = dux / (2.0 * hx[0]);					
 		grad.x = dudx;
+
 		if (nDims > 1) {
 			double duy = func(getCellValues(i, j+1, k)) - func(getCellValues(i, j-1, k));
-			double dudy = duy / (2.0 * hy);
+			double dudy = duy / (2.0 * hy[0]);
 			grad.y = dudy;
 		};
 		if (nDims > 2) {
 			double duz = func(getCellValues(i, j, k+1)) - func(getCellValues(i, j, k-1));
-			double dudz = duz / (2.0 * hz);
+			double dudz = duz / (2.0 * hz[0]);
+			grad.z = dudz;
+		};
+		return grad;
+	};
+	Vector ComputeGradientNonUniformStructured(int i, int j, int k, std::function<double(double*)> func) {\
+		Vector grad(0,0,0);
+		double dux = func(getCellValues(i + 1, j, k)) - func(getCellValues(i - 1, j, k));
+		double dudx = dux / (CoordinateX[i + 1] - CoordinateX[i - 1]);					
+		grad.x = dudx;
+
+		if (nDims > 1) {
+			double duy = func(getCellValues(i, j + 1, k)) - func(getCellValues(i, j - 1, k));
+			double dudy = duy / (CoordinateY[j + 1] - CoordinateY[j - 1]);
+			grad.y = dudy;
+		};
+		if (nDims > 2) {
+			double duz = func(getCellValues(i, j, k + 1)) - func(getCellValues(i, j, k - 1));
+			double dudz = duz / (CoordinateZ[k + 1] - CoordinateZ[k - 1]);
 			grad.z = dudz;
 		};
 		return grad;
 	};
 
 	//Compute all required gradient in each inner cell
-	void ComputeGradients() {
+	void ComputeVelocityGradients() {
 		//Gradients required
 		auto getu = [](double *U) { return U[1]/U[0]; };
 		auto getv = [](double *U) { return U[2]/U[0]; };
@@ -126,14 +145,9 @@ public:
 					double *V = getCellValues(i, j, k);
 
 					//Gradients required
-
-					//gradientVelocityX[idx] = ComputeGradient(i, j, k, getu);
-					//gradientVelocityY[idx] = ComputeGradient(i, j, k, getv);
-					//gradientVelocityZ[idx] = ComputeGradient(i, j, k, getw);
-					
-					gradientVelocityX[idx] = ComputeGradientUniformStructured(i, j, k, getu);
-					gradientVelocityY[idx] = ComputeGradientUniformStructured(i, j, k, getv);
-					gradientVelocityZ[idx] = ComputeGradientUniformStructured(i, j, k, getw);
+					gradientVelocityX[idx] = ComputeGradientNonUniformStructured(i, j, k, getu);
+					gradientVelocityY[idx] = ComputeGradientNonUniformStructured(i, j, k, getv);
+					gradientVelocityZ[idx] = ComputeGradientNonUniformStructured(i, j, k, getw);
 				};
 			};
 		};
@@ -491,7 +505,7 @@ public:
 		};
 
 		//second viscosity
-		double s_viscosity = (-2.0/3.0)*viscosity;
+		double s_viscosity = (-2.0/3.0) * viscosity;
 		
 		//index of face
 		int faceInd = 0;
@@ -513,39 +527,41 @@ public:
 					double* UR = getCellValues(i, j, k);
 					int sL = getSerialIndexLocal(i - 1, j, k);
 					int sR = getSerialIndexLocal(i, j, k);
+					double dx = CoordinateX[i - 1] - CoordinateX[i];
 
 					//U component derivatives
 					Vector& graduL = gradientVelocityX[sL];
 					Vector& graduR = gradientVelocityX[sR];
 					Vector du = (graduL + graduR) / 2.0;
-					du.x = (getu(UR) - getu(UL)) / hx;
+					du.x = (getu(UR) - getu(UL)) / dx;
 
 					//V component derivatives
 					Vector& gradvL = gradientVelocityY[sL];
 					Vector& gradvR = gradientVelocityY[sR];
 					Vector dv = (gradvL + gradvR) / 2.0;
-					dv.x = (getv(UR) - getv(UL)) / hx;
+					dv.x = (getv(UR) - getv(UL)) / dx;
 
 					//W component derivatives
 					Vector& gradwL = gradientVelocityZ[sL];
 					Vector& gradwR = gradientVelocityZ[sR];
 					Vector dw = (gradwL + gradwR) / 2.0;
-					dw.x = (getw(UR) - getw(UL)) / hx;
+					dw.x = (getw(UR) - getw(UL)) / dx;
 
 					//compute average velocity vector
-					double u = 0.5 * (getu(UR) + getu(UL));
-					double v = 0.5 * (getv(UR) + getv(UL));
-					double w = 0.5 * (getw(UR) + getw(UL));
-
-
+					double l = 0.5 * hx[i - 1] / dx;	//weights
+					double r = 0.5 * hx[i] / dx;
+					double u = 0.5 * (l * getu(UR) + r * getu(UL));
+					double v = 0.5 * (l * getv(UR) + r * getv(UL));
+					double w = 0.5 * (l * getw(UR) + r * getw(UL));
+					
 					//compute stress tensor
-					double tau_diagonal = s_viscosity*(du.x + dv.y + dw.z);
-					double tau_xx = tau_diagonal + 2*viscosity*du.x;
-					double tau_xy = viscosity*(du.y + dv.x);
-					double tau_xz = viscosity*(du.z + dw.x);
+					double tau_diagonal = s_viscosity * (du.x + dv.y + dw.z);
+					double tau_xx = tau_diagonal + 2 * viscosity*du.x;
+					double tau_xy = viscosity * (du.y + dv.x);
+					double tau_xz = viscosity * (du.z + dw.x);
 
 					//work of viscous stresses and heat conduction (not implemented yet)
-					double ThettaX = u*tau_xx + v*tau_xy + w*tau_xz;
+					double ThettaX = u * tau_xx + v * tau_xy + w * tau_xz;
 
 					//write flux in left vertical face
 					std::vector<double> vflux(5, 0);
@@ -572,38 +588,41 @@ public:
 					double* UR = getCellValues(i, j, k);
 					int sL = getSerialIndexLocal(i , j - 1, k);
 					int sR = getSerialIndexLocal(i, j, k);
+					double dy = CoordinateY[j] - CoordinateY[j - 1];
 
 					//U component derivatives
 					Vector& graduL = gradientVelocityX[sL];
 					Vector& graduR = gradientVelocityX[sR];
 					Vector du = (graduL + graduR) / 2.0;
-					du.y = (getu(UR) - getu(UL)) / hy;
+					du.y = (getu(UR) - getu(UL)) / dy;
 
 					//V component derivatives
 					Vector& gradvL = gradientVelocityY[sL];
 					Vector& gradvR = gradientVelocityY[sR];
 					Vector dv = (gradvL + gradvR) / 2.0;
-					dv.y = (getv(UR) - getv(UL)) / hy;
+					dv.y = (getv(UR) - getv(UL)) / dy;
 
 					//W component derivatives
 					Vector& gradwL = gradientVelocityZ[sL];
 					Vector& gradwR = gradientVelocityZ[sR];
 					Vector dw = (gradwL + gradwR) / 2.0;
-					dw.y = (getw(UR) - getw(UL)) / hy;
+					dw.y = (getw(UR) - getw(UL)) / dy;
 
 					//compute average velocity vector
-					double u = 0.5 * (getu(UR) + getu(UL));
-					double v = 0.5 * (getv(UR) + getv(UL));
-					double w = 0.5 * (getw(UR) + getw(UL));
+					double l = 0.5 * hy[j - 1] / dy;
+					double r = 0.5 * hy[j] / dy;
+					double u = 0.5 * (l * getu(UR) + r * getu(UL));
+					double v = 0.5 * (l * getv(UR) + r * getv(UL));
+					double w = 0.5 * (l * getw(UR) + r * getw(UL));
 
 					//compute stress tensor
-					double tau_diagonal = s_viscosity*(du.x + dv.y + dw.z);
-					double tau_yy = tau_diagonal + 2*viscosity*dv.y;
-					double tau_xy = viscosity*(du.y + dv.x);
-					double tau_yz = viscosity*(dv.z + dw.y);
+					double tau_diagonal = s_viscosity * (du.x + dv.y + dw.z);
+					double tau_yy = tau_diagonal + 2 * viscosity*dv.y;
+					double tau_xy = viscosity * (du.y + dv.x);
+					double tau_yz = viscosity * (dv.z + dw.y);
 
 					//work of viscous stresses and heat conduction (not implemented yet)
-					double ThettaY = u*tau_xy + v*tau_yy + w*tau_yz;
+					double ThettaY = u * tau_xy + v * tau_yy + w * tau_yz;
 
 					//write flux in left vertical face
 					std::vector<double> vflux(5, 0);
@@ -630,29 +649,32 @@ public:
 					double* UR = getCellValues(i, j, k);
 					int sL = getSerialIndexLocal(i , j, k - 1);
 					int sR = getSerialIndexLocal(i, j, k);
+					double dz = CoordinateZ[k] - CoordinateZ[k - 1];
 
 					//U component derivatives
 					Vector& graduL = gradientVelocityX[sL];
 					Vector& graduR = gradientVelocityX[sR];
 					Vector du = (graduL + graduR) / 2.0;
-					du.z = (getu(UR) - getu(UL)) / hz;
+					du.z = (getu(UR) - getu(UL)) / dz;
 
 					//V component derivatives
 					Vector& gradvL = gradientVelocityY[sL];
 					Vector& gradvR = gradientVelocityY[sR];
 					Vector dv = (gradvL + gradvR) / 2.0;
-					dv.z = (getv(UR) - getv(UL)) / hz;
+					dv.z = (getv(UR) - getv(UL)) / dz;
 
 					//W component derivatives
 					Vector& gradwL = gradientVelocityZ[sL];
 					Vector& gradwR = gradientVelocityZ[sR];
 					Vector dw = (gradwL + gradwR) / 2.0;
-					dw.z = (getw(UR) - getw(UL)) / hz;
+					dw.z = (getw(UR) - getw(UL)) / dz;
 
 					//compute average velocity vector
-					double u = 0.5 * (getu(UR) + getu(UL));
-					double v = 0.5 * (getv(UR) + getv(UL));
-					double w = 0.5 * (getw(UR) + getw(UL));
+					double l = 0.5 * hz[k - 1] / dz;		//weights
+					double r = 0.5 * hz[k] / dz;
+					double u = 0.5 * (l * getu(UR) + r * getu(UL));
+					double v = 0.5 * (l * getv(UR) + r * getv(UL));
+					double w = 0.5 * (l * getw(UR) + r * getw(UL));
 
 					//compute stress tensor
 					double tau_diagonal = s_viscosity*(du.x + dv.y + dw.z);
@@ -678,55 +700,6 @@ public:
 		return;
 	};
 
-	std::vector<double> ComputeViscousFlux(int sL, int sR, double *UL, double *UR, Vector fn) {
-		std::vector<double> flux(5,0);
-
-		//Compute gradient average on face
-		double l = fn * Vector(hx, hy, hz);
-		Vector t = fn;
-
-		auto getu = [](double *U) { return U[1]/U[0]; };
-		double dudl = (getu(UR) - getu(UL)) / l;
-		Vector& graduL = gradientVelocityX[sL];
-		Vector& graduR = gradientVelocityX[sR];
-		Vector graduAvg = (graduL + graduR) / 2.0;
-		Vector gradu = graduAvg - (graduAvg * t - dudl) * t;
-
-		auto getv = [](double *U) { return U[2]/U[0]; };
-		double dvdl = (getv(UR) - getv(UL)) / l;
-		Vector& gradvL = gradientVelocityY[sL];
-		Vector& gradvR = gradientVelocityY[sR];
-		Vector gradvAvg = (gradvL + gradvR) / 2.0;
-		Vector gradv = gradvAvg - (gradvAvg * t - dvdl) * t;
-
-		Vector gradw = Vector(0,0,0);
-
-		//Compute face velocity
-		double u =  (getu(UR) + getu(UL)) / 2.0;
-		double v =  (getv(UR) + getv(UL)) / 2.0;
-		double w =  0; //(getw(UR) + getw(UL)) / 2.0;
-		Vector velocity = Vector(u, v, w); //Face velocity
-		
-		//Compute viscous stress tensor
-		double div = gradu.x + gradv.y;
-		Matrix Tau(3, 3);
-		Tau[0][0] = 2*viscosity*(gradu.x - div / 3.0); //xx
-		Tau[1][1] = 2*viscosity*(gradv.y - div / 3.0); //yy
-		Tau[2][2] = 2*viscosity*(gradw.z - div / 3.0); //yy
-		Tau[0][1] = Tau[1][0] = viscosity*(gradu.y - gradv.x); //xy yx
-		Tau[0][2] = Tau[2][0] = 0; //mu*(dudz - dwdx); //xz zx
-		Tau[1][2] = Tau[2][1] = 0; //mu*(dvdz - dwdy); //yz zy
-
-		//Compute flux
-		flux[0] = 0;
-		flux[1] = Tau[0] * fn;
-		flux[2] = Tau[1] * fn;
-		flux[3] = Tau[2] * fn;
-		flux[4] = (Tau * velocity) * fn;
-
-		return flux;
-	};
-
 	//Compute residual
 	void ComputeResidual(const std::valarray<double>& values, std::valarray<double>& residual, std::vector<double>& spectralRadius) {
 		//  init spectral radius storage for each cell
@@ -743,7 +716,7 @@ public:
 
 		//viscous part
 		int faceInd = 0;
-		if (isGradientRequired == true) ComputeGradients();
+		if (isGradientRequired == true) ComputeVelocityGradients();
 
 		std::vector<std::vector<double> > vfluxesX;
 		std::vector<std::vector<double> > vfluxesY;
@@ -751,7 +724,6 @@ public:
 		if (isViscousFlow == true) {
 			ComputeViscousFluxes(vfluxesX, vfluxesY, vfluxesZ);
 		};
-		double volume = hx * hy * hz;
 
 		// I step
 		faceInd = 0;
@@ -761,8 +733,8 @@ public:
 				//Compute face square
 				double fS = 0;
 				if (nDims == 1) fS = 1.0;
-				if (nDims == 2) fS = hy;
-				if (nDims == 3) fS = hy * hz;
+				if (nDims == 2) fS = hy[j];	//todo
+				if (nDims == 3) fS = hy[j] * hz[k];	//todo
 
 				//Initial load of values
 				U[0] = getCellValues(iMin - 1, j, k);
@@ -789,6 +761,9 @@ public:
 						//Fluxes difference equals residual
 						int idx = getSerialIndexLocal(i - 1, j, k);
 						for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += - (fr[nv] - fl[nv]) * fS;
+
+						//Compute volume of cell
+						double volume = fS * hx[i - 1];
 
 						//Add up spectral radius estimate
 						spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
@@ -822,8 +797,8 @@ public:
 				for (int i = iMin; i <= iMax; i++) {
 					//Compute face square
 					double fS = 0;
-					if (nDims == 2) fS = hx;
-					if (nDims == 3) fS = hx * hz;
+					if (nDims == 2) fS = hx[i];
+					if (nDims == 3) fS = hx[i] * hz[k];
 
 					//Initial load of values
 					U[0] = getCellValues(i, jMin - 1, k);
@@ -850,6 +825,9 @@ public:
 							//Fluxes difference equals residual
 							int idx = getSerialIndexLocal(i, j - 1, k);
 							for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += - (fr[nv] - fl[nv]) * fS;
+
+							//Compute volume of cell
+							double volume = fS * hy[j - 1]; // todo
 
 							//Add up spectral radius estimate
 							spectralRadius[idx] += fS * result.MaxEigenvalue;
@@ -879,11 +857,11 @@ public:
 		if (nDims > 2)
 		{
 			faceInd = 0;
-			fn = Vector(0.0, 0.0, 1.0); // z direction
+			fn = Vector(0.0, 0.0, 1.0); // y direction
 			for (int i = iMin; i <= iMax; i++) {
 				for (int j = jMin; j <= jMax; j++) {
-					//Face square
-					double fS = hx * hy;
+					//Compute face square
+					double fS = hx[i] * hy[j];
 
 					//Initial load of values
 					U[0] = getCellValues(i, j, kMin - 1);
@@ -893,6 +871,8 @@ public:
 						U[1] = getCellValues(i, j, k);
 
 						//Compute flux
+						std::vector<double> UL(U[0], U[0] + nVariables);
+						std::vector<double> UR(U[1], U[1] + nVariables);
 						RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
 						fr = result.Fluxes;
 
@@ -909,8 +889,20 @@ public:
 							int idx = getSerialIndexLocal(i, j, k - 1);
 							for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += - (fr[nv] - fl[nv]) * fS;
 
+							//Compute volume of cell
+							double volume = fS * hz[k - 1];
+
 							//Add up spectral radius estimate
 							spectralRadius[idx] += fS * result.MaxEigenvalue;
+							double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
+							double gammaFace = gamma;
+							double vsr = std::max(4.0 / (3.0 * roFace), gammaFace/roFace);
+							double viscosityFace = viscosity;
+							double PrandtlNumberFace = 1.0;
+							vsr *= viscosityFace / PrandtlNumberFace; 
+							vsr *= fS * fS;
+							vsr /= volume;
+							spectralRadius[idx] += vsr;
 						};
           
 						//Shift stencil
@@ -923,7 +915,7 @@ public:
 				};
 			};
 		};
-				
+		
 		//Source term treatment
 		if(isExternalForce == true) ProcessExternalForces();
 		if(isExternalAccelaration == true) ProcessExternalAcceleration();
@@ -931,12 +923,12 @@ public:
 
 	//Compute global time step
 	double ComputeTimeStep(std::vector<double>& spectralRadius) {
-		//Compute cell volume
-		double volume = hx * hy * hz;
 		double dt = std::numeric_limits<double>::max();
 		for (int i = iMin; i <= iMax; i++) {
 			for (int j = jMin; j <= jMax; j++) {
 				for (int k = kMin; k <= kMax; k++) {
+					//Compute cell volume
+					double volume = hx[i] * hy[j] * hz[k];
 					int idx = getSerialIndexLocal(i, j, k);
 					double sR = spectralRadius[idx];
 					double localdt = CFL * volume / sR; //Blazek f. 6.20

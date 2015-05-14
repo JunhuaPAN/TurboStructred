@@ -70,13 +70,13 @@ public:
 	int nlocalXAll;
 	int nlocalYAll;
 	int nlocalZAll;
-	double hx, hy, hz;	//cell sizes
+	std::valarray<double> hx, hy, hz;	//cell sizes
 	bool IsPeriodicX; //X periodicity
 	bool IsPeriodicY; //Y periodicity
 	bool IsPeriodicZ; //Z periodicity
-	std::vector<double> CoordinateX; //Cell center coordinates
-	std::vector<double> CoordinateY; //Cell center coordinates
-	std::vector<double> CoordinateZ; //Cell center coordinates
+	std::valarray<double> CoordinateX; //Cell center coordinates
+	std::valarray<double> CoordinateY; //Cell center coordinates
+	std::valarray<double> CoordinateZ; //Cell center coordinates
 
 	//int dummyCellLayers; //number of dummy cell layers
 	int dummyCellLayersX;
@@ -209,7 +209,21 @@ public:
 		gridInfo.IsPeriodicY = IsPeriodicY;
 		gridInfo.IsPeriodicZ = IsPeriodicZ;
 		pManager->InitCartesianTopology(gridInfo);
-		
+
+		//nullify compression if we have uniform grid
+		if(config.isUniformAlongX == false) {
+			gridInfo.qx = config.qx;
+			assert(gridInfo.IsPeriodicX == false);
+		} else gridInfo.qx = 1;
+		if(config.isUniformAlongY == false) {
+			gridInfo.qy = config.qy;
+			assert(gridInfo.IsPeriodicY == false);
+		} else gridInfo.qy = 1;		
+		if(config.isUniformAlongZ == false) {
+			gridInfo.qz = config.qz;
+			assert(gridInfo.IsPeriodicZ == false);
+		} else gridInfo.qz = 1;
+
 		nlocalX = nX / pManager->dimsCart[0];
 		nlocalY = nY / pManager->dimsCart[1];
 		nlocalZ = nZ / pManager->dimsCart[2];	
@@ -246,49 +260,82 @@ public:
 		CoordinateX.resize(nXAll);
 		CoordinateY.resize(nYAll);
 		CoordinateZ.resize(nZAll);
-		double dx = Lx / nX;
-		hx = dx;
-		double xMin = 0;
-		xMin = xMin - (dummyCellLayersX * dx) + 0.5 * dx;
-		double xMax = Lx;
-		xMax = xMax + (dummyCellLayersX * dx) - 0.5 * dx;
-		//for (int i = iMin - dummyCellLayersX; i < iMax + dummyCellLayersX; i++) {
-		for (int i = 0; i < nXAll; i++) {
-			double x = xMin + (xMax - xMin) * 1.0 * i / (nXAll - 1);
-			CoordinateX[i] = x;
-		};
-		CoordinateX[iMax + dummyCellLayersX] = xMax;
+		hx.resize(nXAll);
+		hy.resize(nYAll);
+		hz.resize(nZAll);
 
-		double dy = Ly / nY;
-		hy = dy;
-		double yMin = 0;
-		yMin = yMin - (dummyCellLayersY * dy) + 0.5 * dy;
-		double yMax = Ly;
-		yMax = yMax + (dummyCellLayersY * dy) - 0.5 * dy;
-		//for (int j = jMin - dummyCellLayersY; j < jMax + dummyCellLayersY; j++) {
-		for (int j = 0; j < nY + dummyCellLayersY; j++) {
-			double y = yMin + (yMax - yMin) * 1.0 * j / (nYAll - 1);					
-			CoordinateY[j] = y;
+		//fill cell centers positions and edges sizes
+		double h_x = Lx / nX;			//uniform grid case
+		if(gridInfo.qx != 1) h_x = 0.5 * Lx * (1.0 - gridInfo.qx) / (1.0 - pow(gridInfo.qx, 0.5 * nX));	//X step around the border
+		double xl = - (dummyCellLayersX * h_x) + 0.5 * h_x;				//left cell (global) position
+		double xr = Lx + dummyCellLayersX * h_x - 0.5 * h_x;			//right cell (global) position
+		for(int i = 0; i < dummyCellLayersX; i++) {
+			CoordinateX[i] = xl;
+			CoordinateX[nXAll - 1 - i] = xr;
+			hx[i] = h_x;
+			hx[nXAll - 1 - i] = h_x;
+			xl += h_x;
+			xr -= h_x;
 		};
-		CoordinateY[jMax + dummyCellLayersY] = yMax;
 
-		double dz = Lz / nZ;
-		double zMin = 0;
-		zMin = zMin - (dummyCellLayersZ * dz) + 0.5 * dz;
-		double zMax = Lz;
-		zMax = zMax + (dummyCellLayersZ * dz) - 0.5 * dz;
-		//for (int k = kMin - dummyCellLayersZ; k < kMax + dummyCellLayersZ; k++) {
-		for (int k = 0; k < kMax + dummyCellLayersZ; k++) {
-			double z = zMin + (zMax - zMin) * 1.0 * k / (nZAll - 1);
-			CoordinateZ[k] = z;
+		for (int i = iMin; i < 0.5 * (iMax + iMin + 1); i++) {
+			CoordinateX[i] = xl;
+			CoordinateX[nXAll - 1 - i] = xr;
+			hx[i] = h_x;
+			hx[nXAll - 1 - i] = h_x;
+			xl += 0.5 * h_x * (1.0 + gridInfo.qx);
+			xr -= 0.5 * h_x * (1.0 + gridInfo.qx);
+			h_x *= gridInfo.qx;
 		};
-		CoordinateZ[kMax + dummyCellLayersZ] = zMax;
 
-		//Cell linear sizes
-		hx = hy = hz = 1.0;
-		hx = dx;
-		if (nDims > 1) hy = dy;
-		if (nDims > 2) hz = dz;
+		double h_y = Ly / nY;			//uniform grid case
+		if(gridInfo.qy != 1) h_y = 0.5 * Ly * (1.0 - gridInfo.qy) / (1.0 - pow(gridInfo.qy, 0.5 * nY));	//Y step around the border
+		double yl = - (dummyCellLayersY * h_y) + 0.5 * h_y;			//	left cell (global) position
+		double yr = Ly + dummyCellLayersY * h_y - 0.5 * h_y;		//	right cell (global) position
+		for(int i = 0; i < dummyCellLayersY; i++) {
+			CoordinateY[i] = yl;
+			CoordinateY[nYAll - 1 - i] = yr;
+			hy[i] = h_y;
+			hy[nYAll - 1 - i] = h_y;
+			yl += h_y;
+			yr -= h_y;
+		};
+
+		for (int j = jMin; j < 0.5 * (jMax + jMin + 1); j++) {
+			CoordinateY[j] = yl;
+			CoordinateY[nYAll - 1 - j] = yr;
+			hy[j] = h_y;
+			hy[nYAll - 1 - j] = h_y;
+			yl += 0.5 * h_y * (1.0 + gridInfo.qy);
+			yr -= 0.5 * h_y * (1.0 + gridInfo.qy);
+			h_y *= gridInfo.qy;
+		};
+
+		double h_z = Lz / nZ;			//uniform grid case
+		if(gridInfo.qz != 1) h_z = 0.5 * Lz * (1.0 - gridInfo.qz) / (1.0 - pow(gridInfo.qz, 0.5 * nZ));	//Y step around the border
+		double zl = - (dummyCellLayersZ * h_z) + 0.5 * h_z;				//left cell (global) position
+		double zr = Lz + dummyCellLayersZ * h_z - 0.5 * h_z;			//right cell (global) position
+		for(int i = 0; i < dummyCellLayersZ; i++) {
+			CoordinateZ[i] = zl;
+			CoordinateZ[nZAll - 1 - i] = zr;
+			hz[i] = h_z;
+			hz[nZAll - 1 - i] = h_z;
+			zl += h_z;
+			zr -= h_z;
+		};
+
+		for (int k = kMin; k < 0.5 * (kMax + kMin + 1); k++) {
+			CoordinateZ[k] = zl;
+			CoordinateZ[nZAll - 1 - k] = zr;
+			hz[k] = h_z;
+			hz[nZAll - 1 - k] = h_z;
+			zl += 0.5 * h_z * (1.0 + gridInfo.qz);
+			zr -= 0.5 * h_z * (1.0 + gridInfo.qz);
+			h_z *= gridInfo.qz;
+		};
+
+		if (nDims < 2) hy[0] = 1.0;
+		if (nDims < 3) hz[0] = 1.0;
 
 		//Initialize gas model parameters and Riemann solver
 		gamma = config.Gamma;
@@ -368,8 +415,6 @@ public:
 
 	//Update solution
 	void UpdateSolution(double dt) {
-		//Compute cell volume
-		double volume = hx * hy * hz;
 		stepInfo.Residual.resize(nVariables);
 		for (int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = 0;
 		
@@ -380,7 +425,8 @@ public:
 				for (int k = kMin; k <= kMax; k++)
 				{
 					int idx = getSerialIndexLocal(i, j, k);
-
+					//Compute cell volume
+					double volume = hx[i] * hy[j] * hz[k];
 					//Update cell values
 					for(int nv = 0; nv < nVariables; nv++) {
 						values[idx * nVariables + nv] += residual[idx * nVariables + nv] * dt / volume;
@@ -397,8 +443,6 @@ public:
 
 	//Update Residual
 	void UpdateResiduals() {
-		//Compute cell volume
-		double volume = hx * hy * hz;
 		stepInfo.Residual.resize(nVariables);
 		for (int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = 0;
 		
@@ -409,7 +453,8 @@ public:
 				for (int k = kMin; k <= kMax; k++)
 				{
 					int idx = getSerialIndexLocal(i, j, k);
-
+					//Compute cell volume
+					double volume = hx[i - iMin + GetDummyCellLayerSize()] * hy[j - jMin + GetDummyCellLayerSize()] * hz[k - kMin + GetDummyCellLayerSize()];
 					//Update cell values
 					for(int nv = 0; nv < nVariables; nv++) {
 						//Compute total residual
@@ -858,24 +903,24 @@ public:
 		//Y direction		
 		faceNormalL = Vector(0.0, -1.0, 0.0);
 		faceNormalR = Vector(0.0, 1.0, 0.0);
-		for (i = iMin; i <= iMax; i++) {
-			for (k = kMin; k <= kMax; k++) {				
-				//Inner cell
-				cellCenter.x = CoordinateX[i];
-				cellCenter.z = CoordinateZ[k];
+		if (!IsPeriodicY) {
+			for (i = iMin; i <= iMax; i++) {
+				for (k = kMin; k <= kMax; k++) {				
+					//Inner cell
+					cellCenter.x = CoordinateX[i];
+					cellCenter.z = CoordinateZ[k];
 
-				//And face
-				faceCenter.x = CoordinateX[i];
-				faceCenter.z = CoordinateZ[k];
+					//And face
+					faceCenter.x = CoordinateX[i];
+					faceCenter.z = CoordinateZ[k];
 
-				for (int layer = 1; layer <= dummyCellLayersY; layer++) {
-					if (!IsPeriodicY) {
+					for (int layer = 1; layer <= dummyCellLayersY; layer++) {
 						if (pManager->rankCart[1] == 0) {
 							//Left border
 							j = jMin - layer; // layer index
 							int jIn = jMin + layer - 1; // opposite index
 							cellCenter.y = CoordinateY[jIn];
-							faceCenter.y = (CoordinateY[jIn] + CoordinateY[j]) / 2.0;
+							faceCenter.y = (CoordinateY[jIn] + CoordinateY[j]) / 2.0;	//for uniform dummy cells
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(i, jIn, k);
 					
@@ -917,18 +962,19 @@ public:
 		//Z direction		
 		faceNormalL = Vector(0.0, 0.0, -1.0);
 		faceNormalR = Vector(0.0, 0.0, 1.0);
-		for (i = iMin; i <= iMax; i++) {
-			for (j = jMin; j <= jMax; j++) {				
-				//Inner cell
-				cellCenter.x = CoordinateX[i];
-				cellCenter.y = CoordinateY[j];
+		if (!IsPeriodicZ) {
+			for (i = iMin; i <= iMax; i++) {
+				for (j = jMin; j <= jMax; j++) {				
+					//Inner cell
+					cellCenter.x = CoordinateX[i];
+					cellCenter.y = CoordinateY[j];
 
-				//And face
-				faceCenter.x = CoordinateX[i];
-				faceCenter.y = CoordinateY[j];
+					//And face
+					faceCenter.x = CoordinateX[i];
+					faceCenter.y = CoordinateY[j];
 
-				for (int layer = 1; layer <= dummyCellLayersY; layer++) {
-					if (!IsPeriodicZ) {
+					for (int layer = 1; layer <= dummyCellLayersY; layer++) {
+
 						if (pManager->rankCart[2] == 0) {
 							//Left border
 							k = kMin - layer; // layer index
@@ -975,13 +1021,13 @@ public:
 
 	//compute source terms
 	virtual void ProcessExternalForces() {
-		double volume = hx * hy * hz;
-
 		//right handside part - mass foces
 		for (int i = iMin; i <= iMax; i++) {
 			for (int j = jMin; j <= jMax; j++) {
 				for (int k = kMin; k <= kMax; k++) {
 					int idx = getSerialIndexLocal(i, j, k);
+					//Compute cell volume
+					double volume = hx[i] * hy[j] * hz[k];
 
 					double *V = getCellValues(i, j, k);
 					double u = V[1]/V[0];
@@ -1000,14 +1046,13 @@ public:
 		}; //end right hand side part
 	};
 	virtual void ProcessExternalAcceleration() {
-		double volume = hx * hy * hz;
-
 		//right handside part - mass foces
 		for (int i = iMin; i <= iMax; i++) {
 			for (int j = jMin; j <= jMax; j++) {
 				for (int k = kMin; k <= kMax; k++) {
 					int idx = getSerialIndexLocal(i, j, k);
-
+					//Compute cell volume
+					double volume = hx[i] * hy[j] * hz[k];
 					double *V = getCellValues(i, j, k);
 					double u = V[1]/V[0];
 					double v = V[2]/V[0];
@@ -1959,7 +2004,6 @@ public:
 				", jMax = "<<jMax
 				<<std::endl;
 			};
-		//std::cout<<"rank : "<<rank<<" }"<<std::endl<<std::flush;
 		if (!pManager->IsLastNode()) pManager->Signal(rank + 1);
 		pManager->Barrier();
 
