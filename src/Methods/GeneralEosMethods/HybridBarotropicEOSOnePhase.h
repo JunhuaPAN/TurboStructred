@@ -118,18 +118,18 @@ public:
 
 					double um = fabs(uu) + c;
 					ccmax = std::max(ccmax, c);
-					um /= hx;
+					um /= hx[1];	//todo
 					if(um >= dmax) dmax = um;
           
 					if (nDims > 1) {
 						um = fabs(vv) + c;
-						um /= hy;
+						um /= hy[1];	//todo
 						if(um >= dmax) dmax = um;
 					};
 
 					if (nDims > 2) {
 						um = fabs(ww) + c;
-						um /= hz;
+						um /= hz[1];	//todo
 						if(um >= dmax) dmax = um; 
 					};
 				};

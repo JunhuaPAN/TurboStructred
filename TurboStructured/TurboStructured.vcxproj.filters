@@ -40,6 +40,9 @@
     <Filter Include="Header Files\Sensors">
       <UniqueIdentifier>{b9c6dcee-e4c8-4b21-b568-776f2d2da65c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Reconstruction">
+      <UniqueIdentifier>{cfb7e5ba-203f-4169-a346-488f9f9e576f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -130,6 +133,12 @@
     </ClInclude>
     <ClInclude Include="..\src\Sensors\Sensors.h">
       <Filter>Header Files\Sensors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Reconstruction\IReconstruction.h">
+      <Filter>Header Files\Reconstruction</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Reconstruction\PiecewiseConstant.h">
+      <Filter>Header Files\Reconstruction</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -23,6 +23,11 @@ struct StructuredGridInfo {
 	bool IsPeriodicX;
 	bool IsPeriodicY;
 	bool IsPeriodicZ;
+	
+	//compression coefficient of grid sizes towards the borders in X Y and Z directions (as geometric progression)
+	double qx;
+	double qy;
+	double qz;
 };
 
 class ParallelManager {
@@ -206,7 +211,7 @@ public:
 	//Constructor
 	ParallelManager(int *argc, char **argv[]) {
 		Init(argc, argv);
-		isInitilized = false;
+		isInitilized = false;		//TO DO WHY false??
 	};
 
 	//Initialize MPI programm

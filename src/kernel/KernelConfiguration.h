@@ -28,13 +28,19 @@ public:
 	int nDims; //Number of dimensions
 	int nX; //Number of cells in x dimension
 	int nY; //Number of cells in y dimension
-	int nZ; //Number of cells in z dimension	
+	int nZ; //Number of cells in z dimension
+	bool isUniformAlongX;
+	bool isUniformAlongY;
+	bool isUniformAlongZ;
 	bool isPeriodicX; //X periodicity
 	bool isPeriodicY; //Y periodicity
 	bool isPeriodicZ; //Z periodicity
 	double LX; //X size
 	double LY; //Y size
 	double LZ; //Z size
+	double qx; //grid compression coefficient
+	double qy;
+	double qz;
 
 	//Gas model parameters
 	double Gamma;
@@ -91,6 +97,10 @@ public:
 		IsUnifromAccelerationRequared = false;
 		DebugOutputEnabled = false;
 		ContinueComputation = false;
+
+		isUniformAlongX = true;
+		isUniformAlongY = true;
+		isUniformAlongZ = true;
 	};
 };
 
