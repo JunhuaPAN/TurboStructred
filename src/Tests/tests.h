@@ -754,18 +754,27 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	double viscosity = 1.73e-5;	//Air
 	double sigma = 0.14;		// -dPdx
 	double ro_init = 1.225;		//Air
-	double Pave = 1.0e5;		//average pressure		
+	double Pave = 1.0e5;		//average pressure
+
+	viscosity = 2.0e-5;
+	sigma = 0.16;
+
+	//Test parameters
+	//ro_init = 1.0;
+	//Pave = 20.0;
+	//sigma = 1.0;
+	//viscosity = 0.25;
 
 	KernelConfiguration conf;
 	conf.nDims = 2;
 	conf.nX = 20;
-	conf.nY = 80;
+	conf.nY = 40;
 	conf.LX = 0.2;
-	conf.LY = 0.1;	
+	conf.LY = 0.1;
 	conf.isPeriodicX = true;
 	conf.isPeriodicY = false;
-	conf.isUniformAlongY = false;
-	conf.qy = 1.01;
+	conf.isUniformAlongY = true;
+	conf.qy = 1.0;
 
 	conf.Gamma = 1.4;
 	conf.IsViscousFlow = true;
@@ -781,17 +790,18 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 
 	double uShear = std::sqrt(sigma * conf.LY);
 	double Re = uShear * conf.LY * ro_init / viscosity;
-	std::cout<<"Reynolds Number = "<<Re<<std::endl;
+	std::cout << "Reynolds Number = " << Re << std::endl;
 
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.1;
 
 	conf.MaxTime = 1.0;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionSnapshotTime = 0.01;
 	conf.SaveSolutionSnapshotIterations = 0;
-	conf.ResidualOutputIterations = 10;
+	conf.ResidualOutputIterations = 100;
 
 	conf.Viscosity = viscosity;
 	conf.IsExternalForceRequared = true;
@@ -814,7 +824,7 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	std::normal_distribution<double> normal_dist(0.0, sdv);  // N(mean, stddeviation)
 	
 	auto initD = [ro_init, Pave, &conf, &normal_dist, &mt](Vector r) {
-		double u = 0.5*conf.Sigma.x*r.y*(conf.LY - r.y)/conf.Viscosity;
+		double u = 0.5 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
 		double v = 0.0;// + normal_dist(mt);
 		double w = 0.0;
 

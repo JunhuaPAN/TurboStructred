@@ -42,7 +42,7 @@ public:
 
 		//Method specific part
 		MethodConfiguration config = kernelConfig.methodConfiguration;
-		_riemannSolver = (std::unique_ptr<RiemannSolver>)std::move(new RoeSolverPerfectGasEOS(kernelConfig.Gamma, 0.0, 0.0));
+		_riemannSolver = (std::unique_ptr<RiemannSolver>)std::move(new RoeSolverPerfectGasEOS(kernelConfig.Gamma, config.Eps, 0.0));
 		CFL = config.CFL;
 		RungeKuttaOrder = config.RungeKuttaOrder;
 		

@@ -7,6 +7,8 @@
 struct MethodConfiguration {
 	int RungeKuttaOrder;
 	double CFL;
+	double Eps;
+	double OperatingPresure;
 
 	//for general eos cases
 	bool UseExactPressureDerivative;
