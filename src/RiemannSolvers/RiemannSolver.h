@@ -2,6 +2,7 @@
 #define TurboStructured_RiemannSolvers_RiemannSolver
 
 #include <vector>
+#include <valarray>
 #include "utility\Vector.h"
 
 //Solution information structure
@@ -20,7 +21,7 @@ public:
 	virtual int GetDummyCellLayerSize() = 0;
 
 	//Compute flux given stencil values by reference
-	virtual RiemannProblemSolutionResult ComputeFlux(std::vector<double*> values, Vector faceNormal) = 0;
+	virtual RiemannProblemSolutionResult ComputeFlux(std::vector<std::valarray<double> > &values, Vector faceNormal) = 0;
 
 };
 

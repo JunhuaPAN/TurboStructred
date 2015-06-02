@@ -13,7 +13,7 @@ class RoeSolverPerfectGasEOS : public RiemannSolver {
 	double _operatingPressure; //Operating pressure (optional, 0 by default)
 
 	//Numerical flux
-	std::vector<double> F(double* U, Vector n)
+	std::vector<double> F(std::valarray<double> &U, Vector n)
 	{		
 		std::vector<double> res(nVariables,0);		
 		double ro = U[0];
@@ -51,13 +51,13 @@ public:
 	};
 
 	//Solve riemann problem
-	virtual RiemannProblemSolutionResult ComputeFlux(std::vector<double *> values, Vector fn) override {
+	virtual RiemannProblemSolutionResult ComputeFlux(std::vector<std::valarray<double> > &values, Vector fn) override {
 		RiemannProblemSolutionResult result;
 		result.Fluxes.resize(5);
 
 		// Obtain values
-		double *UL = values[0];
-		double *UR = values[1];
+		std::valarray<double> UL = values[0];
+		std::valarray<double> UR = values[1];
 
 		// Calculate symmetric flux part
 		std::vector<double> FL = F(UL, fn);
@@ -126,12 +126,10 @@ public:
 		double C2 = 1.0/(c*c);
 		double DN2= 1.0/(dn*dn);
 
-		double *ul = UL;
-		double *ur = UR;
 		for(int i=0; i<5; i++){
-				  result.Fluxes[i] +=(Eig1*ul[i] + Eiga*(R2*Qa[i]     +D2*Qb[i])
+				  result.Fluxes[i] +=(Eig1*UL[i] + Eiga*(R2*Qa[i]     +D2*Qb[i])
 									+ Eigb*(R2*Qb[i]*C2  +D2*Qa[i]*DN2)
-						-Eig1*ur[i] - Eiga*(R1*Qa[i]     +D1*Qb[i])
+						-Eig1*UR[i] - Eiga*(R1*Qa[i]     +D1*Qb[i])
 									- Eigb*(R1*Qb[i]*C2  +D1*Qa[i]*DN2));
 				  result.Fluxes[i] *= 0.5;
 		};	

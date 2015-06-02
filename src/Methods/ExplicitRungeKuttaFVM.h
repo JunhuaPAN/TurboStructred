@@ -8,8 +8,10 @@
 #include "utility\GeomFunctions.h"
 #include "RiemannSolvers\RoeSolverPerfectGasEOS.h"
 #include "kernel.h"
+#include "Reconstruction\ReconstructorsList.h"
 
 //Base class for all solution methods that desribe iterations process in detail
+template <typename ReconstructionType>
 class ExplicitRungeKuttaFVM : public Kernel {
 	//Current riemann problem solver
 	std::unique_ptr<RiemannSolver> _riemannSolver;
@@ -28,7 +30,7 @@ public:
 	std::vector<Vector> gradientVelocityX;  //array for storing gradients of u
 	std::vector<Vector> gradientVelocityY;  //array for storing gradients of v
 	std::vector<Vector> gradientVelocityZ;  //array for storing gradients of w
-
+	std::vector< std::vector< std::vector<ReconstructionType> > > reconstructions; //array for storing 
 
 	//Number of required dummy layers
 	virtual int GetDummyCellLayerSize() override {
@@ -47,7 +49,14 @@ public:
 		RungeKuttaOrder = config.RungeKuttaOrder;
 		
 		//Allocate memory for values and residual
-		spectralRadius.resize(nCellsLocalAll);	
+		spectralRadius.resize(nCellsLocalAll);
+
+		// Resize our reconstructions array
+		reconstructions.resize(nlocalX + 2 * dummyCellLayersX);
+		for(auto& r : reconstructions) r.resize(nlocalY + 2 * dummyCellLayersY);
+		for(auto& r : reconstructions) {
+			for(auto& s : r) s.resize(nlocalZ + 2 * dummyCellLayersZ);
+		};
 
 		if (DebugOutputEnabled) {
 			std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";
@@ -57,8 +66,9 @@ public:
 		pManager->Barrier();
 	};
 
-	//Viscous Part
-	//Compute gradient of given function in given cell
+	//=================================   Viscous Part  ======================================
+
+	//! Compute gradient of given function in given cell
 	Vector ComputeGradient(int i, int j, int k, std::function<double(double*)> func) {
 		std::vector<Vector> points;
 		std::vector<double> pointValues;
@@ -194,11 +204,7 @@ public:
 
 		//Buffers
 		std::vector<double> bufferToRecv;
-		std::vector<double> bufferToSend;		
-		int rankLeft; // if equals -1 no left neighbour
-		int rankRight; // if equals -1 no right neighbour
-		
-		//X direction exchange		
+		std::vector<double> bufferToSend;								
 
 		//Allocate buffers
 		int layerSizeX = nlocalYAll * nlocalZAll;
@@ -700,6 +706,24 @@ public:
 		return;
 	};
 
+	//================================ End of Viscous Part ====================================
+
+	//Update all reconstruction functions for each cell
+	void ComputeSolutionReconstruction() {
+		for(int i = iMin - dummyCellLayersX; i <= iMax + dummyCellLayersX; i++) {
+			for(int j = jMin - dummyCellLayersY; j <= jMax + dummyCellLayersY; j++) {
+				for(int k = kMin - dummyCellLayersZ; k <= kMax + dummyCellLayersZ; k++) {
+					std::vector<std::valarray<double> > stencil_values;
+					std::vector<Vector> points;
+					std::valarray<double> cell_values(getCellValues(i, j, k), nVariables);
+					reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ] = ComputeReconstruction(stencil_values, points, cell_values, Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[j]));
+				};
+			};
+		};
+
+		return;
+	};
+
 	//Compute residual
 	void ComputeResidual(const std::valarray<double>& values, std::valarray<double>& residual, std::vector<double>& spectralRadius) {
 		//  init spectral radius storage for each cell
@@ -707,14 +731,15 @@ public:
 		for (double& r : residual) r = 0; //Nullify residual
 
 		// array of pointers to cell values
-		std::vector<double*> U(2);
+		std::vector<std::valarray<double> > U(2);
 		
 		// Fluxes temporary storage
 		std::vector<double> fl(5,0); //left flux -1/2
 		std::vector<double> fr(5,0); //right flux +1/2
 		std::vector<double> fvisc(5,0); //right flux +1/2
+		
 
-		//viscous part
+		// Viscous part
 		int faceInd = 0;
 		if (isGradientRequired == true) ComputeVelocityGradients();
 
@@ -725,49 +750,51 @@ public:
 			ComputeViscousFluxes(vfluxesX, vfluxesY, vfluxesZ);
 		};
 
+		// Compute reconstruction functions for each inner cell and one extern layer
+		ComputeSolutionReconstruction();
+		Vector ToDoRemove(0, 0, 0);
+
 		// I step
 		faceInd = 0;
 		Vector fn = Vector(1.0, 0.0, 0.0); // x direction
 		for (int k = kMin; k <= kMax; k++) {
 			for (int j = jMin; j <= jMax; j++) {
-				//Compute face square
+				// Compute face square
 				double fS = 0;
 				if (nDims == 1) fS = 1.0;
-				if (nDims == 2) fS = hy[j];	//todo
-				if (nDims == 3) fS = hy[j] * hz[k];	//todo
+				if (nDims == 2) fS = hy[j];
+				if (nDims == 3) fS = hy[j] * hz[k];
 
-				//Initial load of values
-				U[0] = getCellValues(iMin - 1, j, k);
+				// Initial load of values
+				U[0] = reconstructions[0][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(ToDoRemove);
 
 				for (int i = iMin; i <= iMax + 1; i++) {
-					//Update stencil values
-					U[1] = getCellValues(i, j, k);
+					// Update stencil values
+					U[1] = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(ToDoRemove);
 
-					//Compute convective flux		
-					std::vector<double> UL(U[0], U[0] + nVariables);
-					std::vector<double> UR(U[1], U[1] + nVariables);
+					// Compute convective flux		
 					RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
 					fr = result.Fluxes;
 
-					//Compute viscous flux
+					// Compute viscous flux
 					int sL = getSerialIndexLocal(i - 1, j, k);
 					int sR = getSerialIndexLocal(i, j, k);
 					if (isViscousFlow == true) fvisc = vfluxesX[faceInd];
 					for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
 	
-					//Update residuals
+					// Update residuals
 					if(i > iMin)
 					{
-						//Fluxes difference equals residual
+						// Fluxes difference equals residual
 						int idx = getSerialIndexLocal(i - 1, j, k);
 						for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += - (fr[nv] - fl[nv]) * fS;
 
-						//Compute volume of cell
+						// Compute volume of cell
 						double volume = fS * hx[i - 1];
 
-						//Add up spectral radius estimate
+						// Add up spectral radius estimate
 						spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
-						double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
+						double roFace = sqrt(U[0][0] * U[1][0]); // (Roe averaged) density
 						double gammaFace = gamma;
 						double vsr = std::max(4.0 / (3.0 * roFace), gammaFace/roFace);
 						double viscosityFace = viscosity;
@@ -778,11 +805,11 @@ public:
 						spectralRadius[idx] += vsr;
 					};
           
-					//Shift stencil
+					// Shift stencil
 					fl = fr;
 					U[0] = U[1];
 
-					//Increment face index
+					// Increment face index
 					faceInd++;
 				 };
 			};
@@ -801,15 +828,13 @@ public:
 					if (nDims == 3) fS = hx[i] * hz[k];
 
 					//Initial load of values
-					U[0] = getCellValues(i, jMin - 1, k);
+					U[0] = reconstructions[i - iMin + dummyCellLayersX][0][k - kMin + dummyCellLayersZ].SampleSolution(ToDoRemove);
 
 					for (int j = jMin; j <= jMax + 1; j++) {
 						//Update stencil values
-						U[1] = getCellValues(i, j, k);
+						U[1] = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(ToDoRemove);
 
 						//Compute flux
-						std::vector<double> UL(U[0], U[0] + nVariables);
-						std::vector<double> UR(U[1], U[1] + nVariables);
 						RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
 						fr = result.Fluxes;
 
@@ -831,7 +856,7 @@ public:
 
 							//Add up spectral radius estimate
 							spectralRadius[idx] += fS * result.MaxEigenvalue;
-							double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
+							double roFace = sqrt(U[0][0] * U[1][0]); // (Roe averaged) density
 							double gammaFace = gamma;
 							double vsr = std::max(4.0 / (3.0 * roFace), gammaFace/roFace);
 							double viscosityFace = viscosity;
@@ -864,15 +889,13 @@ public:
 					double fS = hx[i] * hy[j];
 
 					//Initial load of values
-					U[0] = getCellValues(i, j, kMin - 1);
+					U[0] = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][0].SampleSolution(ToDoRemove);
 
 					for (int k = kMin; k <= kMax + 1; k++) {
 						//Update stencil values
-						U[1] = getCellValues(i, j, k);
+						U[1] = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(ToDoRemove);
 
 						//Compute flux
-						std::vector<double> UL(U[0], U[0] + nVariables);
-						std::vector<double> UR(U[1], U[1] + nVariables);
 						RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
 						fr = result.Fluxes;
 
@@ -894,7 +917,7 @@ public:
 
 							//Add up spectral radius estimate
 							spectralRadius[idx] += fS * result.MaxEigenvalue;
-							double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
+							double roFace = sqrt(U[0][0] * U[1][0]); // (Roe averaged) density
 							double gammaFace = gamma;
 							double vsr = std::max(4.0 / (3.0 * roFace), gammaFace/roFace);
 							double viscosityFace = viscosity;

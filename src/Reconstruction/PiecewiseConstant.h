@@ -6,10 +6,11 @@
 #include "utility\Vector.h"
 #include <Reconstruction\IReconstruction.h>
 
+
 //Reconstruction by piecewise constant approximation
 class PiecewiseConstant : public IReconstruction {
-protected:
-	const std::valarray<double>& values_;
+protected:	
+	std::valarray<double> values_; 
 public:
 	//Piecewise reconstruction
 	virtual inline std::valarray<double> SampleSolution(Vector const& point) {
@@ -17,10 +18,23 @@ public:
 	};
 
 	//constructor
-	PiecewiseConstant(std::valarray<double> const& _values) : values_ (_values) { };
+	PiecewiseConstant() { };
+	PiecewiseConstant(std::valarray<double>& _values) : values_ (_values) { };
+
+	//copy semantics
+	//PiecewiseConstant(const PiecewiseConstant& element) : values_ (element.values_) {}; // copy constructor 	
+	//PiecewiseConstant& operator=(const PiecewiseConstant& element) { //copy assignment operator
+	//	values_ = element.values_;
+	//	return *this;
+	//};
+
+	//move semantics
+	//PiecewiseConstant& operator=(PiecewiseConstant&& element) { //move assignment operator
+	//	return *element;
+	//};	
 };
 
-PiecewiseConstant ComputeReconstruction(std::vector<std::valarray<double>& > const& values, std::vector<Vector> const& points, std::valarray<double> const& value, Vector const& point) {
+PiecewiseConstant ComputeReconstruction(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector point) {
 	return std::move(PiecewiseConstant(value));
 };
 

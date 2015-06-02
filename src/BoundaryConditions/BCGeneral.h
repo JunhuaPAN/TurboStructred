@@ -20,6 +20,27 @@ enum class BoundaryVariableType {
 	VolumeFraction
 };
 
+//Compressible Grid scheme
+//
+//	_|________|_________|_
+//	 |        |         |
+//	 |        |         |
+//	 |        |         |
+//	 |        |         |					Second layer of Inner cells
+//	 |        |         |
+//	_|________|_________|_
+//	 |        |         |		)
+//	 |        |         |		> H			First layer of Inner cells
+//	_|________|_________|_		)	
+//	______________________		<-- Border is Here
+//	 |        |         |		)
+//	 |        |         |		> H			First lauer of Fictious cells
+//	_|________|_________|_		)
+//	 |        |         |		)
+//	 |        |         |		> H			Second layer of Fictious cells
+//	_|________|_________|_		)
+//	 |		  |			|
+
 class CompositeBoundaryConditionInfo {
 public:
 	double CValue;
@@ -49,27 +70,30 @@ public:
 	};
 
 	//Interpolate
-	double GetDummyValue(const double inV, const Vector& faceNormal, const Vector& faceCenter, const Vector& cellCenter) {
-		double dn = -(cellCenter - faceCenter) * faceNormal;
-		double a = (Value - CValue * inV) / (CValue + CGradient / dn);
-		double b = inV + a;
-		double value = a + b;
-		return value;
+	inline double GetDummyValue(const double inV, const Vector& faceNormal, const Vector& faceCenter, const Vector& cellCenter) {
+		double dn = (faceCenter - cellCenter) * faceNormal;
+		return inV * (CGradient - CValue) + 2.0 * Value * (CGradient * dn + CValue);
 	};
 
 	//Interpolate
 	Vector GetDummyGradient(const double inV, const Vector inGrad, const Vector& faceNormal, const Vector& faceCenter, const Vector& cellCenter) {
-		double dn = -(cellCenter - faceCenter) * faceNormal;
-		double a = (Value - CValue * inV) / (CValue + CGradient / dn);
-		double b = inV + a;
-		double value = a + b;
+		Vector res = inGrad;
+		Vector GradNormal = (inGrad * faceNormal) * faceNormal;		//normal part of value gradient in inner cell
+		Vector GradTangential = res - GradNormal;					//tangential to border part of value gradient vector
 
-		Vector outGrad = inGrad;
-		double dudnIn = inGrad * faceNormal;
-		double dudnOut = a/dn;
-		outGrad = inGrad + (dudnOut - dudnIn) * faceNormal;
+		//if we know normal part of value (inV) gradient
+		if(CGradient != 0)
+		{
+			int sign = (faceNormal * Vector(1, 1, 1));
+			res = GradTangential + (2.0 * sign * Value - GradNormal.mod()) * faceNormal;
+		};
 
-		return outGrad;
+		//if we know value on the border
+		if(CValue != 0) {
+			res = GradNormal - GradTangential;
+		};
+
+		return res;
 	};
 };
 
@@ -85,11 +109,11 @@ public:
 	virtual std::vector<double> getDummyValues(double* values, Vector& faceNormal, Vector& faceCenter, Vector& cellCenter) {		
 		//Compute dummy values
 		double ro = values[0];
-		double u = values[1]/values[0];
-		double v = values[2]/values[0];
-		double w = values[3]/values[0];
-		double E = values[4]/values[0];
-		double roe = ro*E - ro*(u*u + v*v + w*w)/2.0;
+		double u = values[1] / values[0];
+		double v = values[2] / values[0];
+		double w = values[3] / values[0];
+		double E = values[4] / values[0];
+		double roe = ro * E - ro * (u*u + v*v + w*w) / 2.0;
 
 		//Get pressure and interpolate internal energy and other variables
 		double P = (gamma - 1.0) * roe;
@@ -100,12 +124,12 @@ public:
 		double wDummy = boundaryConditions[BoundaryVariableType::VelocityZ].GetDummyValue(w, faceNormal, faceCenter, cellCenter);
 		double roeDummy = PDummy / (gamma - 1);
 
-		std::vector<double> res(5);	
+		std::vector<double> res(5);
 		res[0] = roDummy;
 		res[1] = roDummy * uDummy;
 		res[2] = roDummy * vDummy;
 		res[3] = roDummy * wDummy;
-		res[4] = roeDummy + roDummy*(uDummy*uDummy + vDummy*vDummy + wDummy*wDummy)/2.0;
+		res[4] = roeDummy + roDummy * (uDummy*uDummy + vDummy*vDummy + wDummy*wDummy)/2.0;
 		return res;
 	};
  

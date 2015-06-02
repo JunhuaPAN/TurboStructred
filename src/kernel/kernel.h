@@ -920,7 +920,7 @@ public:
 							j = jMin - layer; // layer index
 							int jIn = jMin + layer - 1; // opposite index
 							cellCenter.y = CoordinateY[jIn];
-							faceCenter.y = (CoordinateY[jIn] + CoordinateY[j]) / 2.0;	//for uniform dummy cells
+							faceCenter.y = (CoordinateY[jIn] + CoordinateY[j]) / 2.0;	//for uniform dummy cells		TO DO MODIFY
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(i, jIn, k);
 					

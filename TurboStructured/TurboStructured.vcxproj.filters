@@ -140,6 +140,9 @@
     <ClInclude Include="..\src\Reconstruction\PiecewiseConstant.h">
       <Filter>Header Files\Reconstruction</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\Reconstruction\ReconstructorsList.h">
+      <Filter>Header Files\Reconstruction</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
