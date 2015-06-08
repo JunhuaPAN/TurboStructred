@@ -12,4 +12,9 @@ public:
 	virtual std::valarray<double> SampleSolution(Vector const& point) = 0;
 };
 
+template<typename T>
+T ComputeReconstruction(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector point, int nDim) {
+	static_assert(false, "We dont have required function.")
+};
+
 #endif

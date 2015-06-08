@@ -137,7 +137,7 @@ public:
 	int ResidualOutputIterations;
 	bool ContinueComputation;
 
-	bool DebugOutputEnabled; //
+	bool DebugOutputEnabled;
 
 	std::vector<std::shared_ptr<Sensor>> Sensors;
 

@@ -713,10 +713,38 @@ public:
 		for(int i = iMin - dummyCellLayersX; i <= iMax + dummyCellLayersX; i++) {
 			for(int j = jMin - dummyCellLayersY; j <= jMax + dummyCellLayersY; j++) {
 				for(int k = kMin - dummyCellLayersZ; k <= kMax + dummyCellLayersZ; k++) {
-					std::vector<std::valarray<double> > stencil_values;
-					std::vector<Vector> points;
-					std::valarray<double> cell_values(getCellValues(i, j, k), nVariables);
-					reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ] = ComputeReconstruction(stencil_values, points, cell_values, Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[j]));
+					std::vector<std::valarray<double> > stencil_values;		//vector of stencil values
+					std::vector<Vector> points;								//vector of stencil points
+					std::valarray<double> cell_values(getCellValues(i, j, k), nVariables);	//vector of cells in our 
+
+					//X direction stencil
+					for (int iStencil = -dummyCellLayersX; iStencil <= dummyCellLayersX; iStencil++) {
+						if (iStencil == 0) continue;
+						stencil_values.push_back(std::move(std::valarray<double>(getCellValues(i + iStencil, j, k), nVariables)));
+						points.push_back(std::move(Vector(CoordinateX[i + iStencil], CoordinateY[j], CoordinateZ[k])));
+					};
+
+					//Y direction stencil
+					for (int jStencil = -dummyCellLayersY; jStencil <= dummyCellLayersY; jStencil++) {
+						if (jStencil == 0) continue;
+						stencil_values.push_back(std::move(std::valarray<double>(getCellValues(i, j + jStencil, k), nVariables)));
+						points.push_back(std::move(Vector(CoordinateX[i], CoordinateY[j + jStencil], CoordinateZ[k])));
+					};
+
+					//Z direction stencil
+					for (int kStencil = -dummyCellLayersZ; kStencil <= dummyCellLayersZ; kStencil++) {
+						if (kStencil == 0) continue;
+						stencil_values.push_back(std::move(std::valarray<double>(getCellValues(i, j, k + kStencil), nVariables)));
+						points.push_back(std::move(Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k + kStencil])));
+					};
+
+					reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ] = ComputeReconstruction<ReconstructionType>(
+						stencil_values,
+						points,
+						cell_values,
+						Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[j]),
+						1
+						);
 				};
 			};
 		};
@@ -730,9 +758,6 @@ public:
 		for (double& sr : spectralRadius) sr = 0; //Nullify
 		for (double& r : residual) r = 0; //Nullify residual
 
-		// array of pointers to cell values
-		std::vector<std::valarray<double> > U(2);
-		
 		// Fluxes temporary storage
 		std::vector<double> fl(5,0); //left flux -1/2
 		std::vector<double> fr(5,0); //right flux +1/2
@@ -750,9 +775,15 @@ public:
 			ComputeViscousFluxes(vfluxesX, vfluxesY, vfluxesZ);
 		};
 
+		// arrays of left and right reconstructions
+		std::valarray<double> UL;
+		std::valarray<double> UR;
+
+		// array of pointers to cell values TO DO REMOVE
+		std::vector<std::valarray<double> > U(2);
+
 		// Compute reconstruction functions for each inner cell and one extern layer
 		ComputeSolutionReconstruction();
-		Vector ToDoRemove(0, 0, 0);
 
 		// I step
 		faceInd = 0;
@@ -765,15 +796,15 @@ public:
 				if (nDims == 2) fS = hy[j];
 				if (nDims == 3) fS = hy[j] * hz[k];
 
-				// Initial load of values
-				U[0] = reconstructions[0][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(ToDoRemove);
-
 				for (int i = iMin; i <= iMax + 1; i++) {
-					// Update stencil values
-					U[1] = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(ToDoRemove);
 
-					// Compute convective flux		
-					RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
+					// Set Riemann Problem arguments
+					Vector&& faceCenter = Vector(CoordinateX[i] - 0.5 * hx[i], CoordinateY[j], CoordinateZ[k]);
+					UL = reconstructions[i - iMin + dummyCellLayersX - 1][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(faceCenter);
+					UR = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(faceCenter);
+
+					// Compute convective flux
+					RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(UL, UR, fn);
 					fr = result.Fluxes;
 
 					// Compute viscous flux
@@ -781,7 +812,7 @@ public:
 					int sR = getSerialIndexLocal(i, j, k);
 					if (isViscousFlow == true) fvisc = vfluxesX[faceInd];
 					for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
-	
+
 					// Update residuals
 					if(i > iMin)
 					{
@@ -794,7 +825,7 @@ public:
 
 						// Add up spectral radius estimate
 						spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
-						double roFace = sqrt(U[0][0] * U[1][0]); // (Roe averaged) density
+						double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
 						double gammaFace = gamma;
 						double vsr = std::max(4.0 / (3.0 * roFace), gammaFace/roFace);
 						double viscosityFace = viscosity;
@@ -807,7 +838,6 @@ public:
           
 					// Shift stencil
 					fl = fr;
-					U[0] = U[1];
 
 					// Increment face index
 					faceInd++;
@@ -828,11 +858,11 @@ public:
 					if (nDims == 3) fS = hx[i] * hz[k];
 
 					//Initial load of values
-					U[0] = reconstructions[i - iMin + dummyCellLayersX][0][k - kMin + dummyCellLayersZ].SampleSolution(ToDoRemove);
+					U[0] = reconstructions[i - iMin + dummyCellLayersX][0][k - kMin + dummyCellLayersZ].SampleSolution(Vector(0, 0, 0));
 
 					for (int j = jMin; j <= jMax + 1; j++) {
 						//Update stencil values
-						U[1] = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(ToDoRemove);
+						U[1] = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(Vector(0, 0, 0));
 
 						//Compute flux
 						RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
@@ -889,11 +919,11 @@ public:
 					double fS = hx[i] * hy[j];
 
 					//Initial load of values
-					U[0] = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][0].SampleSolution(ToDoRemove);
+					U[0] = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][0].SampleSolution(Vector(0, 0, 0));
 
 					for (int k = kMin; k <= kMax + 1; k++) {
 						//Update stencil values
-						U[1] = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(ToDoRemove);
+						U[1] = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(Vector(0, 0, 0));
 
 						//Compute flux
 						RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);

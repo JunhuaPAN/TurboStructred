@@ -23,6 +23,8 @@ public:
 	//Compute flux given stencil values by reference
 	virtual RiemannProblemSolutionResult ComputeFlux(std::vector<std::valarray<double> > &values, Vector faceNormal) = 0;
 
+	virtual RiemannProblemSolutionResult ComputeFlux(std::valarray<double> &valueL, std::valarray<double> &valueR, Vector faceNormal) = 0;
+
 };
 
 #endif

@@ -90,14 +90,14 @@ std::vector<double> SODinitialDistributionY(Vector r, double yI, ShockTubeParame
 void RunSODTestRoe1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 200;
+	conf.nX = 100;
 	//conf.nY = 10;
 	conf.LX = 1.0;
 	//conf.LY = 1.0;	
 	conf.isPeriodicX = false;
 	//conf.isPeriodicY = false;
 	conf.isUniformAlongX = false;
-	conf.qx = 1.05;
+	conf.qx = 1.00;
 
 	conf.Gamma = 1.4;
 
@@ -109,6 +109,7 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.05;
 
 	conf.MaxTime = 0.2;
 	conf.MaxIteration = 1000000;
@@ -119,7 +120,8 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO3Order>(&argc, &argv));
+		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
@@ -175,7 +177,7 @@ void RunSODTestHybrid1D(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO3Order>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
@@ -238,7 +240,7 @@ void RunSODTestHybrid1DY(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO3Order>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
@@ -301,7 +303,7 @@ void RunSODTestHybrid1DX(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO3Order>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
@@ -366,7 +368,7 @@ void RunCollisionHybrid1DBaratropic(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO3Order>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
@@ -508,7 +510,7 @@ void RunSODTestHybrid1DGeneral(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO3Order>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
@@ -575,7 +577,7 @@ void RunSODTestHybrid2D(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO3Order>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
@@ -639,7 +641,7 @@ void RunSODTestRoe2DX(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO3Order>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
@@ -716,7 +718,7 @@ void RunFluxesTest2D(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO3Order>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
@@ -756,8 +758,8 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	double ro_init = 1.225;		//Air
 	double Pave = 1.0e5;		//average pressure
 
-	viscosity = 2.0e-5;
-	sigma = 0.16;
+	//viscosity = 2.0e-5;
+	//sigma = 0.16;
 
 	//Test parameters
 	ro_init = 1.0;
@@ -798,8 +800,8 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	conf.methodConfiguration.Eps = 0.1;
 
 	conf.MaxTime = 10.1;
-	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 1.0;
+	conf.MaxIteration = 10000000;
+	conf.SaveSolutionSnapshotTime = 0.1;
 	conf.SaveSolutionSnapshotIterations = 0;
 	conf.ResidualOutputIterations = 100;
 
@@ -810,7 +812,7 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO3Order>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
@@ -900,7 +902,7 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO3Order>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
@@ -981,7 +983,7 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO3Order>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
@@ -1086,7 +1088,7 @@ void RunDemchenkoTest2D(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO3Order>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
@@ -1180,7 +1182,7 @@ void RunDemchenkoTest2DGeneralEOS(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO3Order>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
@@ -1275,7 +1277,7 @@ void RunDemchenkoTestBaratropicEOS(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO3Order>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
@@ -1470,7 +1472,7 @@ void RunDemchenkoTest3D(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO3Order>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));
@@ -1639,7 +1641,7 @@ void RunReleighTaylor2D(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO3Order>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));

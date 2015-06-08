@@ -143,6 +143,9 @@
     <ClInclude Include="..\src\Reconstruction\ReconstructorsList.h">
       <Filter>Header Files\Reconstruction</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\Reconstruction\WENO3Order.h">
+      <Filter>Header Files\Reconstruction</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
