@@ -804,7 +804,7 @@ public:
 					UR = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(faceCenter);
 
 					// Compute convective flux
-					RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(UL, UR, fn);
+					RiemannProblemSolutionResult result;// = _riemannSolver->ComputeFlux(UL, UR, fn);
 					fr = result.Fluxes;
 
 					// Compute viscous flux

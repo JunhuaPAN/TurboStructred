@@ -42,7 +42,7 @@
     <ClInclude Include="..\src\Reconstruction\IReconstruction.h" />
     <ClInclude Include="..\src\Reconstruction\PiecewiseConstant.h" />
     <ClInclude Include="..\src\Reconstruction\ReconstructorsList.h" />
-    <ClInclude Include="..\src\Reconstruction\WENO3Order.h" />
+    <ClInclude Include="..\src\Reconstruction\ENO2PointsStencil.h" />
     <ClInclude Include="..\src\RiemannSolvers\RiemannSolversList.h" />
     <ClInclude Include="..\src\RiemannSolvers\RoeSolverPerfectGasEOS.h" />
     <ClInclude Include="..\src\RiemannSolvers\RiemannSolver.h" />

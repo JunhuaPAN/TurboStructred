@@ -1,5 +1,5 @@
-#ifndef TurboStructured_Reconstruction_WENO3Order
-#define TurboStructured_Reconstruction_WENO3Order
+#ifndef TurboStructured_Reconstruction_ENO2PointsStencil
+#define TurboStructured_Reconstruction_ENO2PointsStencil
 
 #include <valarray>
 #include <vector>
@@ -8,7 +8,7 @@
 
 
 //Reconstruction by piecewise constant approximation
-class WENO3Order : public IReconstruction {
+class ENO2PointsStencil : public IReconstruction {
 protected:
 	std::valarray<double> values_;
 	Vector center_;
@@ -26,8 +26,8 @@ public:
 	};
 
 	//constructor
-	WENO3Order() { };
-	WENO3Order(std::valarray<double>& _values, Vector& _center, std::valarray< Vector >& _gradients):
+	ENO2PointsStencil() { };
+	ENO2PointsStencil(std::valarray<double>& _values, Vector& _center, std::valarray< Vector >& _gradients):
 		values_(_values),
 		center_(_center),
 		gradients_(_gradients)
@@ -47,7 +47,7 @@ public:
 };
 
 template<>
-WENO3Order ComputeReconstruction<WENO3Order>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector point, int nDim) {
+ENO2PointsStencil ComputeReconstruction<ENO2PointsStencil>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector point, int nDim) {
 	//compute Gradients
 	int&& size = value.size();
 	std::valarray< Vector > gradients(size);
@@ -69,8 +69,8 @@ WENO3Order ComputeReconstruction<WENO3Order>(std::vector<std::valarray<double> >
 
 	//3D case
 	
-	//WENO3Order res = WENO3Order(value, point, gradients);
-	return std::move(WENO3Order(value, point, gradients));
+	//ENO2PointsStencil res = ENO2PointsStencil(value, point, gradients);
+	return std::move(ENO2PointsStencil(value, point, gradients));
 };
 
 
