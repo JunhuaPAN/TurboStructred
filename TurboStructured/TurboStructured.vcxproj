@@ -39,6 +39,7 @@
     <ClInclude Include="..\src\Methods\GeneralEosMethods\HybridGeneralEOSOnePhase.h" />
     <ClInclude Include="..\src\Methods\HybridFVM.h" />
     <ClInclude Include="..\src\Methods\MethodConfiguration.h" />
+    <ClInclude Include="..\src\Reconstruction\ENO3PointsStencil.h" />
     <ClInclude Include="..\src\Reconstruction\IReconstruction.h" />
     <ClInclude Include="..\src\Reconstruction\PiecewiseConstant.h" />
     <ClInclude Include="..\src\Reconstruction\ReconstructorsList.h" />

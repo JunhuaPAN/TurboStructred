@@ -710,9 +710,9 @@ public:
 
 	//Update all reconstruction functions for each cell
 	void ComputeSolutionReconstruction() {
-		for(int i = iMin - dummyCellLayersX; i <= iMax + dummyCellLayersX; i++) {
-			for(int j = jMin - dummyCellLayersY; j <= jMax + dummyCellLayersY; j++) {
-				for(int k = kMin - dummyCellLayersZ; k <= kMax + dummyCellLayersZ; k++) {
+		for(int i = iMin; i <= iMax; i++) {
+			for(int j = jMin; j <= jMax; j++) {
+				for(int k = kMin; k <= kMax; k++) {
 					std::vector<std::valarray<double> > stencil_values;		//vector of stencil values
 					std::vector<Vector> points;								//vector of stencil points
 					std::valarray<double> cell_values(getCellValues(i, j, k), nVariables);	//vector of cells in our 
@@ -720,21 +720,21 @@ public:
 					//X direction stencil
 					for (int iStencil = -dummyCellLayersX; iStencil <= dummyCellLayersX; iStencil++) {
 						if (iStencil == 0) continue;
-						stencil_values.push_back(std::move(std::valarray<double>(getCellValues(i + iStencil, j, k), nVariables)));
+						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i + iStencil, j, k))));
 						points.push_back(std::move(Vector(CoordinateX[i + iStencil], CoordinateY[j], CoordinateZ[k])));
 					};
 
 					//Y direction stencil
 					for (int jStencil = -dummyCellLayersY; jStencil <= dummyCellLayersY; jStencil++) {
 						if (jStencil == 0) continue;
-						stencil_values.push_back(std::move(std::valarray<double>(getCellValues(i, j + jStencil, k), nVariables)));
+						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i, j + jStencil, k))));
 						points.push_back(std::move(Vector(CoordinateX[i], CoordinateY[j + jStencil], CoordinateZ[k])));
 					};
 
 					//Z direction stencil
 					for (int kStencil = -dummyCellLayersZ; kStencil <= dummyCellLayersZ; kStencil++) {
 						if (kStencil == 0) continue;
-						stencil_values.push_back(std::move(std::valarray<double>(getCellValues(i, j, k + kStencil), nVariables)));
+						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i, j, k + kStencil))));
 						points.push_back(std::move(Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k + kStencil])));
 					};
 
@@ -800,11 +800,13 @@ public:
 
 					// Set Riemann Problem arguments
 					Vector&& faceCenter = Vector(CoordinateX[i] - 0.5 * hx[i], CoordinateY[j], CoordinateZ[k]);
-					UL = reconstructions[i - iMin + dummyCellLayersX - 1][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(faceCenter);
-					UR = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(faceCenter);
+					UL = PrimitiveToConservative(
+						reconstructions[i - iMin + dummyCellLayersX - 1][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(faceCenter));
+					UR = PrimitiveToConservative(
+						reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(faceCenter));
 
 					// Compute convective flux
-					RiemannProblemSolutionResult result;// = _riemannSolver->ComputeFlux(UL, UR, fn);
+					RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(UL, UR, fn);
 					fr = result.Fluxes;
 
 					// Compute viscous flux

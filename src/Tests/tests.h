@@ -90,7 +90,7 @@ std::vector<double> SODinitialDistributionY(Vector r, double yI, ShockTubeParame
 void RunSODTestRoe1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 2000;
+	conf.nX = 2;
 	//conf.nY = 10;
 	conf.LX = 1.0;
 	//conf.LY = 1.0;

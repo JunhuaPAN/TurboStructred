@@ -129,6 +129,46 @@ public:
 		return &values[sBegin];
 	};
 
+	inline std::valarray<double> ConservativeToPrimitive(double* vals) {
+		std::valarray<double> res(nVariables);
+		double rho = vals[0];
+		double u = vals[1] / rho;
+		double v = vals[2] / rho;
+		double w = vals[3] / rho;
+		double rho_e = vals[4] - 0.5 * rho * (u * u + v * v + w * w);
+
+		// Pressure
+		res[0] = rho_e * (gamma - 1.0);
+
+		// Velosities
+		res[1] = u;
+		res[2] = v;
+		res[3] = w;
+
+		// Internal energy
+		res[4] = rho_e / rho;		
+
+		return std::move(res);
+	};
+	inline std::valarray<double> PrimitiveToConservative(std::valarray<double> &vals) {
+		std::valarray<double> res(nVariables);
+		double rho_e = vals[0] / (gamma - 1.0);
+		double rho = rho_e / vals[4];
+		double rho_u = rho * vals[1];
+		double rho_v = rho * vals[2];
+		double rho_w = rho * vals[3];
+		double rho_E = rho_e + 0.5 * (rho_u * rho_u + rho_v * rho_v + rho_w * rho_w) / rho;
+		
+		//fill conservative result array
+		res[0] = rho;
+		res[1] = rho_u;
+		res[2] = rho_v;
+		res[3] = rho_w;
+		res[4] = rho_E;
+
+		return std::move(res);
+	};
+
 	//Calculation parameters	
 	double MaxIteration;
 	double MaxTime;
