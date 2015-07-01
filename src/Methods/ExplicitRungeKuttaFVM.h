@@ -710,14 +710,14 @@ public:
 
 	//Update all reconstruction functions for each cell
 	void ComputeSolutionReconstruction() {
-		for(int i = iMin; i <= iMax; i++) {
-			for(int j = jMin; j <= jMax; j++) {
-				for(int k = kMin; k <= kMax; k++) {
-					std::vector<std::valarray<double> > stencil_values;		//vector of stencil values
-					std::vector<Vector> points;								//vector of stencil points
-					std::valarray<double> cell_values(getCellValues(i, j, k), nVariables);	//vector of cells in our 
+		for (int i = iMin - dummyCellLayersX; i <= iMax + dummyCellLayersX; i++) {
+			for (int j = jMin - dummyCellLayersY; j <= jMax + dummyCellLayersY; j++) {
+				for (int k = kMin - dummyCellLayersZ; k <= kMax + dummyCellLayersZ; k++) {
+					std::vector<std::valarray<double> > stencil_values;		// vector of stencil values
+					std::vector<Vector> points;								// vector of stencil points
+					std::valarray<double> cell_values(std::move(ConservativeToPrimitive(getCellValues(i, j, k))));	// primitive variables in our cell
 
-					//X direction stencil
+					// X direction stencil
 					for (int iStencil = -dummyCellLayersX; iStencil <= dummyCellLayersX; iStencil++) {
 						if (iStencil == 0) continue;
 						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i + iStencil, j, k))));
