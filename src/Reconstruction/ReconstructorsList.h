@@ -4,6 +4,6 @@
 #include "IReconstruction.h"
 #include "PiecewiseConstant.h"
 #include "ENO2PointsStencil.h"
-#include "ENO3PointsStencil.h"
+#include "WENO2PointsStencil.h"
 
 #endif

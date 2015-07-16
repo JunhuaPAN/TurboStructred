@@ -7,7 +7,7 @@
 #include <Reconstruction\IReconstruction.h>
 
 
-//Reconstruction by piecewise constant approximation
+//Reconstruction by ENO interpolation procedure for 2 points stencil
 class ENO2PointsStencil : public IReconstruction {
 protected:
 	std::valarray<double> values_;
@@ -15,7 +15,7 @@ protected:
 	std::valarray< Vector > gradients_;
 
 public:
-	//Piecewise reconstruction
+	//ENO second order reconstruction
 	virtual inline std::valarray<double> SampleSolution(Vector const& point) {
 		int&& size = gradients_.size();
 		std::valarray<double> res(size);
@@ -62,7 +62,6 @@ ENO2PointsStencil ComputeReconstruction<ENO2PointsStencil>(std::vector<std::vala
 			gradients[i] = Vector(std::min(std::abs(grad_l), std::abs(grad_r)), 0, 0);
 		};
 
-		//compute convex hull of gradients
 	};
 
 	//2D case
