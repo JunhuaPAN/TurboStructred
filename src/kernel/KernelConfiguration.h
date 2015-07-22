@@ -3,23 +3,8 @@
 
 #include "Methods\MethodConfiguration.h"
 #include "Vector.h"
+#include "BoundaryConditions\BoundaryConditionConfiguration.h"
 
-enum class BoundaryConditionType {
-	Wall,
-	SymmetryX,
-	SymmetryY,
-	SymmetryZ,
-	MovingWall,
-	General,
-	Natural
-};
-
-class BoundaryConditionConfiguration {
-public:
-	BoundaryConditionType BCType;
-	Vector Velocity;
-	double Gamma;
-};
 
 //Class that manages all configurable parameters
 class KernelConfiguration {
@@ -53,6 +38,7 @@ public:
 	bool IsUnifromAccelerationRequared;
 
 	//Solution method parameters
+	int DummyLayerSize;
 	enum class Method {
 		HybridFVM,
 		ExplicitRungeKuttaFVM,

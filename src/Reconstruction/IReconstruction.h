@@ -6,10 +6,18 @@
 
 //Basic class for all reconstruction classes
 class IReconstruction {
-
-
 public:
+	int nDimensions;
+	int nValues;
+
 	virtual std::valarray<double> SampleSolution(Vector const& point) = 0;
+
+	//Serialization primitives //TO DO implement
+
+	//! Return required
+	static std::size_t GetBufferLenght(int nDims, int nValues) { return 0; };
+	virtual std::valarray<double> Serialize() = 0;
+	virtual void Deserialize(const std::valarray<double>& ) = 0;
 };
 
 template<typename T>

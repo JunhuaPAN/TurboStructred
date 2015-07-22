@@ -27,23 +27,41 @@ public:
 
 	//constructor
 	ENO2PointsStencil() { };
-	ENO2PointsStencil(std::valarray<double>& _values, Vector& _center, std::valarray< Vector >& _gradients):
+	ENO2PointsStencil(std::valarray<double>& _values, Vector& _center, std::valarray< Vector >& _gradients, int _nDimensions, int _nValues) :
 		values_(_values),
 		center_(_center),
 		gradients_(_gradients)
-		{ };
+		{
+			nDimensions = _nDimensions;
+			nValues = _nValues;
+		};
 
-	//copy semantics
-	//PiecewiseConstant(const PiecewiseConstant& element) : values_ (element.values_) {}; // copy constructor 	
-	//PiecewiseConstant& operator=(const PiecewiseConstant& element) { //copy assignment operator
-	//	values_ = element.values_;
-	//	return *this;
-	//};
+	// Serrialization
+	static std::size_t GetBufferLenght(int nD, int nV) {
+		return nV + 3 + nV * 3;		// values.size + center.size + gradients.size
+	};
+	virtual std::valarray<double> Serialize() override {
+		std::vector<double> res;
+		for (auto& r : values_) res.push_back(r);
+		for (auto& r : static_cast<std::valarray<double>> (center_)) res.push_back(r);
+		for (auto& r : gradients_) {
+			res.push_back(r.x);
+			res.push_back(r.y);
+			res.push_back(r.z);
+		};
+		return std::valarray<double> {res.data(), res.size()};
+	};
+	virtual void Deserialize(const std::valarray<double>& _values) {
+		values_ = {&_values[0], (size_t)nValues};
+		center_ = Vector(_values[nValues], _values[nValues + 1], _values[nValues + 2]);
 
-	//move semantics
-	//PiecewiseConstant& operator=(PiecewiseConstant&& element) { //move assignment operator
-	//	return *element;
-	//};	
+		gradients_.resize(nValues);
+		for (int i = 0; i < gradients_.size(); i++) {
+			gradients_[i] = Vector(_values[nValues + 3 * (i + 1)], _values[nValues + 3 * (i + 1) + 1], _values[nValues + 3 * (i + 1) + 2]);
+		};
+
+		return;
+	};
 };
 
 template<>
@@ -69,7 +87,7 @@ ENO2PointsStencil ComputeReconstruction<ENO2PointsStencil>(std::vector<std::vala
 	//3D case
 	
 	//ENO2PointsStencil res = ENO2PointsStencil(value, point, gradients);
-	return std::move(ENO2PointsStencil(value, point, gradients));
+	return std::move(ENO2PointsStencil(value, point, gradients, nDim, size));
 };
 
 

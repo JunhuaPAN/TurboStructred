@@ -1,7 +1,7 @@
 #ifndef TurboStructured_BoundaryConditions_BCGeneral
 #define TurboStructured_BoundaryConditions_BCGeneral
 
-#include "BoundaryCondition.h"
+#include "IBoundaryCondition.h"
 #include <map>
 #include <vector>
 #include "utility/Vector.h"
@@ -97,7 +97,7 @@ public:
 	};
 };
 
-class BCGeneral : public BoundaryCondition {
+class BCGeneral : public IBoundaryCondition {
 public:
 	//Gas model parameters
 	double gamma;
@@ -106,7 +106,7 @@ public:
 	std::map<BoundaryVariableType, CompositeBoundaryConditionInfo> boundaryConditions;
 
 	//Get dummy cell values
-	virtual std::vector<double> getDummyValues(double* values, Vector& faceNormal, Vector& faceCenter, Vector& cellCenter) {		
+	virtual std::valarray<double> getDummyValues(double* values, Vector& faceNormal, Vector& faceCenter, Vector& cellCenter) {		
 		//Compute dummy values
 		double ro = values[0];
 		double u = values[1] / values[0];
@@ -124,7 +124,7 @@ public:
 		double wDummy = boundaryConditions[BoundaryVariableType::VelocityZ].GetDummyValue(w, faceNormal, faceCenter, cellCenter);
 		double roeDummy = PDummy / (gamma - 1);
 
-		std::vector<double> res(5);
+		std::valarray<double> res(5);
 		res[0] = roDummy;
 		res[1] = roDummy * uDummy;
 		res[2] = roDummy * vDummy;

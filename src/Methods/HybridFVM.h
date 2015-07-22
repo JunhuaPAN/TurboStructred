@@ -586,11 +586,6 @@ public:
 		CFL = config.methodConfiguration.CFL;
 	};
 
-	//Number of required dummy layers
-	virtual int GetDummyCellLayerSize() override {
-		return 2;
-	};
-
 	//one iteration for spatial splitting scheme accuracy by time (Update solution and write residuals)
 	void CompleteOneIteration() {
 		stepInfo.Residual.resize(nVariables);

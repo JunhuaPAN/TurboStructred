@@ -2,6 +2,7 @@
 #define TurboStructured_utility_Vector
 
 #include <cmath>
+#include <valarray>
 
 //Implementation of simple 3D vector and related operations
 //Vector type
@@ -58,6 +59,8 @@ public:
 		z /= a;
 		return *this;
 	};
+
+	operator std::valarray<double>() const { return{ x, y, z }; };
 };
 
 inline double operator*(const Vector& a, const Vector& b)

@@ -36,7 +36,7 @@ public:
 class Kernel {
 public:
 	//Interface part  TO DO REMOVE GetDummyCellLayerSize
-	virtual int GetDummyCellLayerSize() = 0; // request as much dummy cell layers as required
+	//virtual int GetDummyCellLayerSize() = 0; // request as much dummy cell layers as required
 	virtual void IterationStep() = 0; // main function
 
 	//Parallel run information
@@ -218,7 +218,7 @@ public:
 		DebugOutputEnabled = config.DebugOutputEnabled;
 
 		//Initialize local grid
-		int dummyCellLayers = GetDummyCellLayerSize(); //number of dummy cell layers				
+		int dummyCellLayers = config.DummyLayerSize; //number of dummy cell layers				
 		nX = config.nX;
 		IsPeriodicX = config.isPeriodicX;
 		dummyCellLayersX = dummyCellLayers;
@@ -466,7 +466,7 @@ public:
 				{
 					int idx = getSerialIndexLocal(i, j, k);
 					//Compute cell volume
-					double volume = hx[i] * hy[j] * hz[k];
+					double volume { hx[i] * hy[j] * hz[k] };
 					//Update cell values
 					for(int nv = 0; nv < nVariables; nv++) {
 						values[idx * nVariables + nv] += residual[idx * nVariables + nv] * dt / volume;
@@ -494,7 +494,7 @@ public:
 				{
 					int idx = getSerialIndexLocal(i, j, k);
 					//Compute cell volume
-					double volume = hx[i - iMin + GetDummyCellLayerSize()] * hy[j - jMin + GetDummyCellLayerSize()] * hz[k - kMin + GetDummyCellLayerSize()];
+					double volume = hx[i - iMin + dummyCellLayersX] * hy[j - jMin + dummyCellLayersY] * hz[k - kMin + dummyCellLayersZ];
 					//Update cell values
 					for(int nv = 0; nv < nVariables; nv++) {
 						//Compute total residual
@@ -906,7 +906,7 @@ public:
 							int idxIn = getSerialIndexLocal(iIn, j, k);
 					
 							//Apply left boundary conditions						
-							std::vector<double> dValues = xLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
+							std::valarray<double> dValues = xLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
 							};
@@ -922,7 +922,7 @@ public:
 							int idxIn = getSerialIndexLocal(iIn, j, k);
 					
 							//Apply right boundary conditions						
-							std::vector<double> dValues = xRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
+							std::valarray<double> dValues = xRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
 							};		
@@ -965,7 +965,7 @@ public:
 							int idxIn = getSerialIndexLocal(i, jIn, k);
 					
 							//Apply left boundary conditions						
-							std::vector<double> dValues = yLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
+							std::valarray<double> dValues = yLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
 							};
@@ -981,7 +981,7 @@ public:
 							int idxIn = getSerialIndexLocal(i, jIn, k);
 					
 							//Apply right boundary conditions						
-							std::vector<double> dValues = yRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
+							std::valarray<double> dValues = yRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
 							};
@@ -1025,7 +1025,7 @@ public:
 							int idxIn = getSerialIndexLocal(i, j, kIn);
 					
 							//Apply left boundary conditions						
-							std::vector<double> dValues = zLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
+							std::valarray<double> dValues = zLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
 							};
@@ -1041,7 +1041,7 @@ public:
 							int idxIn = getSerialIndexLocal(i, j, kIn);
 					
 							//Apply right boundary conditions						
-							std::vector<double> dValues = zRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
+							std::valarray<double> dValues = zRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
 							};
@@ -2048,9 +2048,6 @@ public:
 		pManager->Barrier();
 
 		for (int iteration = 0; iteration <= MaxIteration; iteration++) {
-			//Exchange and boundary conditions
-			ComputeDummyCellValues();
-
 			//Calculate one time step
 			IterationStep();
 

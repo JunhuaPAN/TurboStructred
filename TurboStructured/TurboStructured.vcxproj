@@ -24,7 +24,8 @@
   <ItemGroup>
     <ClInclude Include="..\src\BoundaryConditions\BCGeneral.h" />
     <ClInclude Include="..\src\BoundaryConditions\BCGeneralBarotropic.h" />
-    <ClInclude Include="..\src\BoundaryConditions\BoundaryCondition.h" />
+    <ClInclude Include="..\src\BoundaryConditions\IBoundaryCondition.h" />
+    <ClInclude Include="..\src\BoundaryConditions\BoundaryConditionConfiguration.h" />
     <ClInclude Include="..\src\EquationsOfState\BarotropicEOS.h" />
     <ClInclude Include="..\src\EquationsOfState\EquationsOfState.h" />
     <ClInclude Include="..\src\EquationsOfState\generalEOS.h" />
