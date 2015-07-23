@@ -949,7 +949,7 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
 		kernel = std::unique_ptr<Kernel>(new HybridFVM(&argc, &argv));

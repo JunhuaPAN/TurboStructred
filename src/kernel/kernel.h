@@ -860,9 +860,6 @@ public:
 		int j = 0;
 		int k = 0;
 
-		//Interprocessor exchange
-		ExchangeValues();
-
 		if (DebugOutputEnabled) {
 			std::cout<<"rank = "<<rank<<"Dummy cell processing started."<<			
 			std::endl<<std::flush;

@@ -19,7 +19,11 @@ public:
 
 	//constructor
 	PiecewiseConstant() { };
-	PiecewiseConstant(std::valarray<double>& _values) : values_ (_values) { };
+	PiecewiseConstant(std::valarray<double>& _values, int _nDimensions) : values_ (_values)
+	{
+		nDimensions = _nDimensions;
+		nValues = _values.size();
+	};
 
 	// Serrialization
 	static std::size_t GetBufferLenght(int nD, int nV) { return nV; };
@@ -45,7 +49,7 @@ public:
 
 template<>
 PiecewiseConstant ComputeReconstruction<PiecewiseConstant>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector point, int nDims) {
-	return std::move(PiecewiseConstant(value));
+	return std::move(PiecewiseConstant(value, nDims));
 };
 
 

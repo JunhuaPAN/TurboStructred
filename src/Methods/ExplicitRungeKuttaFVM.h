@@ -707,6 +707,13 @@ public:
 
 	//Update all reconstruction functions for each cell
 	void ComputeSolutionReconstruction() {
+		//dummy reconstructions layers number
+		int yLayer = 0;
+		int zLayer = 0;
+		if (nDims > 1) yLayer = 1;
+		if (nDims > 2) zLayer = 1;
+
+		// Obtain all inner cells
 		for (int i = iMin; i <= iMax; i++) {
 			for (int j = jMin; j <= jMax; j++) {
 				for (int k = kMin; k <= kMax; k++) {
@@ -735,8 +742,8 @@ public:
 						points.push_back(std::move(Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k + kStencil])));
 					};
 
-					//we have only one external layer of cells reconstructions
-					reconstructions[i - iMin + 1][j - jMin + 1][k - kMin + 1] = ComputeReconstruction<ReconstructionType>(stencil_values, points, cell_values, Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[j]), nDims);
+					//we have only one or no external layer of cells reconstructions
+					reconstructions[i - iMin + 1][j - jMin + yLayer][k - kMin + zLayer] = ComputeReconstruction<ReconstructionType>(stencil_values, points, cell_values, Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[j]), nDims);
 				};
 			};
 		};
@@ -751,6 +758,12 @@ public:
 		int j = 0;
 		int k = 0;
 
+		//layers number for dummy reconstructions
+		int yLayer = 0;
+		int zLayer = 0;
+		if (nDims > 1) yLayer = 1;
+		if (nDims > 2) zLayer = 1;
+
 		//Get parallel run info
 		MPI_Comm comm = pManager->getComm();
 
@@ -759,7 +772,7 @@ public:
 		std::vector<double> bufferToSend;
 
 		//Allocate buffers
-		int msgLen = ReconstructionType::GetBufferLenght(nDims);
+		int msgLen = ReconstructionType::GetBufferLenght(nDims, nVariables);
 		int layerSizeX = nlocalYAll * nlocalZAll;
 		int layerSizeY = nlocalXAll * nlocalZAll;
 		int layerSizeZ = nlocalXAll * nlocalYAll;
@@ -767,7 +780,7 @@ public:
 		bufferToSend.resize(bufferSize);
 		bufferToRecv.resize(bufferSize);
 
-		SubDirection subDirection = SubDirection::Left;
+		//SubDirection subDirection = SubDirection::Left;
 
 
 		//! Main layer exchanging procedure //TO DO lift from lambda to member
@@ -775,30 +788,28 @@ public:
 			int nRecv = 0;
 			int nSend = 0;
 
-			//Fill buffer with gradient values
+			//Fill buffer with reconstructions
 			int idxBuffer = 0;
-			for (i = iMin - std::min(1, dummyCellLayersX); i <= iMax + std::min(1, dummyCellLayersX); i++) {
-				if ((direction == Direction::XDirection) && (i != iSend)) continue; //skip
-				for (j = jMin - std::min(1, dummyCellLayersY); j <= jMax + std::min(1, dummyCellLayersY); j++) {
-					if ((direction == Direction::YDirection) && (j != iSend)) continue; //skip
-					for (k = kMin - std::min(1, dummyCellLayersZ); k <= kMax + std::min(1, dummyCellLayersZ); k++) {
-						if ((direction == Direction::ZDirection) && (k != iSend)) continue; //skip	
+			for (i = iMin - 1; i <= iMax + 1; i++) {
+				if ((direction == Direction::XDirection) && (i != iRecv)) continue; //skip
+				for (j = jMin - yLayer; j <= jMax + yLayer; j++) {
+					if ((direction == Direction::YDirection) && (j != iRecv)) continue; //skip
+					for (k = kMin - zLayer; k <= kMax + zLayer; k++) {
+						if ((direction == Direction::ZDirection) && (k != iRecv)) continue; //skip
 
 						//Increase aticipating buffer size
 						nRecv += msgLen;
 
-						//If destination not set we dont send
+						//If destination not set we don't send
 						if (rankDest == -1) continue;
 
 						//Get indexes to send reconstruction
 						int iRec = i - iMin + 1;
-						int jRec = 0;
-						if (nDims > 1) jRec = j - jMin + 1;
-						int kRec = 0;
-						if (nDims > 2) kRec = k - kMin + 1;
+						int jRec = j - jMin + yLayer;
+						int kRec = k - kMin + zLayer;
 						
 						//Serialize to string of doubles
-						std::vector<double> msg = reconstructions[iRec][jRec][kRec].Serialize();
+						std::valarray<double> msg = reconstructions[iRec][jRec][kRec].Serialize();
 
 						//Write message to buffer
 						for (int i = 0; i < msgLen; i++) bufferToSend[idxBuffer * msgLen] = msg[i];						
@@ -822,22 +833,23 @@ public:
 
 			//Write recieved values back
 			idxBuffer = 0;
-			for (i = iMin - std::min(1, dummyCellLayersX); i <= iMax + std::min(1, dummyCellLayersX); i++) {
+			for (i = iMin - 1; i <= iMax + 1; i++) {
 				if ((direction == Direction::XDirection) && (i != iRecv)) continue; //skip
-				for (j = jMin - std::min(1, dummyCellLayersY); j <= jMax + std::min(1, dummyCellLayersY); j++) {
+				for (j = jMin - yLayer; j <= jMax + yLayer; j++) {
 					if ((direction == Direction::YDirection) && (j != iRecv)) continue; //skip
-					for (k = kMin - std::min(1, dummyCellLayersZ); k <= kMax + std::min(1, dummyCellLayersZ); k++) {
+					for (k = kMin - zLayer; k <= kMax + zLayer; k++) {
 						if ((direction == Direction::ZDirection) && (k != iRecv)) continue; //skip
+
+
 						
 						//Get indexes to recv reconstruction
 						int iRec = i - iMin + 1;
-						int jRec = 0;
-						if (nDims > 1) jRec = j - jMin + 1;
-						int kRec = 0;
-						if (nDims > 2) kRec = k - kMin + 1;
+						int jRec = j - jMin + yLayer;
+						int kRec = k - kMin + zLayer;
 
 						//Exctract message from bufer
-						std::vector<double> msg(&bufferToRecv[idxBuffer * msgLen], &bufferToRecv[idxBuffer * msgLen] + msgLen);
+						std::valarray<double> msg(msgLen);
+						for (int i = 0; i < msgLen; i++) msg[i] = bufferToRecv[idxBuffer * msgLen + i];
 
 						//Deserialize from string of doubles
 						reconstructions[iRec][jRec][kRec].Deserialize(msg);
@@ -863,13 +875,13 @@ public:
 		};
 	
 		// Minus direction exchange
-		int iSend = iMin + layer - 1; // layer index to send
-		int iRecv = iMax + layer; // layer index to recv
+		int iSend = iMin; // layer index to send
+		int iRecv = iMax + 1; // layer index to recv
 		exchangeLayers(Direction::XDirection, iSend, rankL, iRecv, rankR);
 
 		// Plus direction exchange
-		iSend = iMax - layer + 1; // layer index to send
-		iRecv = iMin - layer; // layer index to recv
+		iSend = iMax; // layer index to send
+		iRecv = iMin - 1; // layer index to recv
 		exchangeLayers(Direction::XDirection, iSend, rankR, iRecv, rankL);
 
 		if (DebugOutputEnabled) {
@@ -893,13 +905,13 @@ public:
 		};
 		
 		// Minus direction exchange
-		int iSend = jMin + layer - 1; // layer index to send
-		int iRecv = jMax + layer; // layer index to recv
+		iSend = jMin; // layer index to send
+		iRecv = jMax + 1; // layer index to recv
 		exchangeLayers(Direction::YDirection, iSend, rankL, iRecv, rankR);
 
 		// Plus direction exchange
-		iSend = jMax - layer + 1; // layer index to send
-		iRecv = jMin - layer; // layer index to recv
+		iSend = jMax; // layer index to send
+		iRecv = jMin - 1; // layer index to recv
 		exchangeLayers(Direction::YDirection, iSend, rankR, iRecv, rankL);		
 
 		if (DebugOutputEnabled) {
@@ -910,8 +922,27 @@ public:
 		pManager->Barrier();
 
 		if (nDims < 3) return;
-		//Z direction exchange //TO DO exchanges Z-direction
+		//Z direction exchange
 
+		//Determine neighbours' ranks
+		rankL = pManager->GetRankByCartesianIndexShift(0, 0, -1);
+		rankR = pManager->GetRankByCartesianIndexShift(0, 0, +1);
+		if (DebugOutputEnabled) {
+			std::cout << "rank = " << rank <<
+				"; rankL = " << rankL <<
+				"; rankR = " << rankR <<
+				std::endl << std::flush;
+		};
+
+		// Minus direction exchange
+		iSend = kMin; // layer index to send
+		iRecv = kMax + 1; // layer index to recv
+		exchangeLayers(Direction::ZDirection, iSend, rankL, iRecv, rankR);
+
+		// Plus direction exchange
+		iSend = kMax; // layer index to send
+		iRecv = kMin - 1; // layer index to recv
+		exchangeLayers(Direction::ZDirection, iSend, rankR, iRecv, rankL);
 		if (DebugOutputEnabled) {
 			std::cout << "rank = " << pManager->getRank() << ", Exchange recontructions Z-direction executed\n";
 			std::cout.flush();
@@ -1175,11 +1206,18 @@ public:
 		pManager->Barrier();
 
 		// Prepare to compute residuals
-		// Exchange of values and apply boundary conditions for dummy cells
+
+		//Exchange values between processors
+		ExchangeValues();
+
+		// Apply boundary conditions for dummy cells
 		ComputeDummyCellValues();
 
 		// Compute reconstruction functions for each inner cell and one extern layer
 		ComputeSolutionReconstruction();
+
+		//Exchange reconstructions objects between processors
+		//ExchangeReconstructions();
 
 		//Compute residual TO DO second argument remove
 		ComputeResidual(values, residual, spectralRadius);
