@@ -99,7 +99,7 @@ public:
 };
 
 template<>
-WENO2PointsStencil ComputeReconstruction<WENO2PointsStencil>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector point, int nDim) {
+WENO2PointsStencil ComputeReconstruction<WENO2PointsStencil>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
 	//compute Gradients
 	int size = value.size();
 	std::valarray< Vector > gradientsL(size), gradientsR(size);		//for 1D case only
@@ -115,7 +115,6 @@ WENO2PointsStencil ComputeReconstruction<WENO2PointsStencil>(std::vector<std::va
 		weights.resize(4);
 		for (auto& r : weights) r.resize(size);
 
-		double grad_l, grad_r;
 		for (int i = 0; i < size; i++) {
 			// compute smothness coefficients
 			double betta0 = 0.5 * (points[1].x - points[0].x) * (values[1][i] - value[i]) / (points[1].x - point.x);

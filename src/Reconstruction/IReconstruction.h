@@ -25,7 +25,7 @@ public:
 };
 
 template<typename T>
-T ComputeReconstruction(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector point, int nDim) {
+T ComputeReconstruction(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
 	static_assert(false, "We dont have required function.")
 };
 

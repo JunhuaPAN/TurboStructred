@@ -720,6 +720,7 @@ public:
 					std::vector<std::valarray<double> > stencil_values;		// vector of stencil values
 					std::vector<Vector> points;								// vector of stencil points
 					std::valarray<double> cell_values(std::move(ConservativeToPrimitive(getCellValues(i, j, k))));	// primitive variables in our cell
+					Vector cell_center = Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k]);
 
 					// X direction stencil
 					for (int iStencil = -dummyCellLayersX; iStencil <= dummyCellLayersX; iStencil++) {
@@ -743,7 +744,7 @@ public:
 					};
 
 					//we have only one or no external layer of cells reconstructions
-					reconstructions[i - iMin + 1][j - jMin + yLayer][k - kMin + zLayer] = ComputeReconstruction<ReconstructionType>(stencil_values, points, cell_values, Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[j]), nDims);
+					reconstructions[i - iMin + 1][j - jMin + yLayer][k - kMin + zLayer] = ComputeReconstruction<ReconstructionType>(stencil_values, points, cell_values, cell_center, nDims);
 				};
 			};
 		};

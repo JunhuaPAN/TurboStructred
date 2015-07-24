@@ -153,13 +153,13 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 void RunSODTestReconstruction(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 4;
+	conf.nX = 2;
 	//conf.nY = 10;
-	conf.LX = 8.0;
+	conf.LX = 1.0;
 	//conf.LY = 1.0;
 	conf.isPeriodicX = false;
 	//conf.isPeriodicY = false;
-	conf.isUniformAlongX = false;
+	conf.isUniformAlongX = true;
 	conf.qx = 1.00;
 
 	conf.Gamma = 1.4;
@@ -173,6 +173,7 @@ void RunSODTestReconstruction(int argc, char *argv[]) {
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
+	conf.DummyLayerSize = 1;
 
 	conf.MaxTime = 0.2;
 	conf.MaxIteration = 1000000;
@@ -183,7 +184,7 @@ void RunSODTestReconstruction(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
 		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 	};
 	if (conf.SolutionMethod == KernelConfiguration::Method::HybridFVM) {
@@ -191,25 +192,19 @@ void RunSODTestReconstruction(int argc, char *argv[]) {
 	};
 	kernel->Init(conf);
 
-	// initial conditions
-	ShockTubeParameters params;
-	params.gammaL = params.gammaR = 1.4;
-	params.roL = 1.0;
-	params.PL = 1.0;
-	params.uL = 0.75;
-	params.roR = 0.125;
-	params.PR = 0.1;
-	params.uR = 0.0;
+	// Initial Conditions
 	auto initD = [&conf](Vector r) {
 		double ro, u, p;
 		if (r.x < 0.5 * conf.LX) {
-			ro = r.x;
+			ro = 1.0;
 			u = 1.0;
 		}
 		else {
 			ro = 2 * r.x;
 			u = 2.0;
 		};
+		p = 1.0;
+
 		std::vector<double> res(5);
 		res[0] = ro;
 		res[1] = ro * u;
@@ -222,6 +217,64 @@ void RunSODTestReconstruction(int argc, char *argv[]) {
 
 	//save solution
 	kernel->SaveSolution("init.dat");
+
+	//run computation
+	kernel->Run();
+
+	//finalize kernel
+	kernel->Finilaze();
+};
+
+void RunContactDisconTest1D(int argc, char *argv[]) {
+	KernelConfiguration conf;
+	conf.nDims = 1;
+	conf.nX = 200;
+	conf.LX = 1.0;
+	conf.isPeriodicX = false;
+	conf.isUniformAlongX = true;
+	conf.qx = 1.00;
+
+	conf.Gamma = 1.4;
+
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.DummyLayerSize = 1;
+	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.05;
+
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xLeftBoundary.Gamma = 1.4;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xRightBoundary.Gamma = 1.4;
+
+	conf.MaxTime = 0.2;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 0.1;
+	conf.SaveSolutionSnapshotIterations = 0;
+	conf.ResidualOutputIterations = 10;
+
+	//init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
+		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	kernel->Init(conf);
+
+	// initial conditions
+	ShockTubeParameters params;
+	params.gammaL = params.gammaR = 1.4;
+	params.roL = 2.0;
+	params.PL = 1.0;
+	params.uL = 1.0;
+	params.roR = 1.0;
+	params.PR = params.PL;
+	params.uR = params.uL;
+	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.3, params);
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolutionSega("init.dat");
 
 	//run computation
 	kernel->Run();
@@ -280,6 +333,66 @@ void RunShockWaves1D(int argc, char *argv[]) {
 
 	//save solution
 	kernel->SaveSolution("init.dat");
+
+	//run computation
+	kernel->Run();
+
+	//finalize kernel
+	kernel->Finilaze();
+};
+
+// Just one shock wave TO DO compute correct IC
+void RunShockWave1D(int argc, char *argv[]) {
+	KernelConfiguration conf;
+	conf.nDims = 1;
+	conf.nX = 100;
+	conf.LX = 1.0;
+	conf.isPeriodicX = false;
+	conf.isUniformAlongX = true;
+	conf.qx = 1.00;
+
+	conf.Gamma = 2.0;		// Specific Gamma
+
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.DummyLayerSize = 1;
+	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.05;
+
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xLeftBoundary.Gamma = 1.4;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xRightBoundary.Gamma = 1.4;
+
+	conf.MaxTime = 0.2;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 0.1;
+	conf.SaveSolutionSnapshotIterations = 5;
+	conf.ResidualOutputIterations = 10;
+
+	//init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	kernel->Init(conf);
+
+	// initial conditions
+	double shock_vel = 0.25 * (sqrt(33.0) + 1.0);
+	ShockTubeParameters params;
+	params.gammaL = params.gammaR = 2.0;
+	params.roL = 1.0;
+	params.PL = 1.0 + shock_vel;
+	params.uL = 0;
+	params.roR = shock_vel / (1.0 + shock_vel);
+	params.PR = 1.0;
+	params.uR = -1.0;
+	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.3, params);
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolutionSega("init.dat");
 
 	//run computation
 	kernel->Run();

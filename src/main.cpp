@@ -6,8 +6,10 @@ int main(int argc, char *argv[])
 {
 	//main function
 	//RunShockWaves1D(argc, argv);
+	RunShockWave1D(argc, argv);
 	//RunSODTestReconstruction(argc, argv);
-	RunSODTestRoe1D(argc, argv);
+	//RunContactDisconTest1D(argc, argv);
+	//RunSODTestRoe1D(argc, argv);
 	//RunShearFlow2D(argc, argv);
 	//RunPoiseuille3D(argc, argv);
 	//RunPoiseuille2DFVM(argc, argv);
