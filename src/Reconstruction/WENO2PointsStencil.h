@@ -38,7 +38,7 @@ public:
 	};
 
 	//constructor
-	WENO2PointsStencil() { };
+	WENO2PointsStencil() {	};
 	WENO2PointsStencil(std::valarray<double>& _values, Vector& _center, std::valarray< Vector >& _gradientsL, std::valarray< Vector >& _gradientsR,
 		std::vector< std::valarray <double> >& _weights, int _nDimensions, int _nValues) :
 		values_(_values),

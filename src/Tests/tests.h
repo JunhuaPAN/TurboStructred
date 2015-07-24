@@ -90,7 +90,7 @@ std::vector<double> SODinitialDistributionY(Vector r, double yI, ShockTubeParame
 void RunSODTestRoe1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 300;
+	conf.nX = 200;
 	//conf.nY = 10;
 	conf.LX = 1.0;
 	//conf.LY = 1.0;
@@ -110,6 +110,7 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
+	conf.DummyLayerSize = 1;
 
 	conf.MaxTime = 0.2;
 	conf.MaxIteration = 1000000;
@@ -232,7 +233,7 @@ void RunSODTestReconstruction(int argc, char *argv[]) {
 void RunShockWaves1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 300;
+	conf.nX = 100;
 	conf.LX = 1.0;
 	conf.isPeriodicX = false;
 	conf.isUniformAlongX = true;
@@ -254,7 +255,7 @@ void RunShockWaves1D(int argc, char *argv[]) {
 	conf.MaxTime = 0.2;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionSnapshotTime = 0.1;
-	conf.SaveSolutionSnapshotIterations = 0;
+	conf.SaveSolutionSnapshotIterations = 5;
 	conf.ResidualOutputIterations = 10;
 
 	//init kernel
@@ -274,7 +275,7 @@ void RunShockWaves1D(int argc, char *argv[]) {
 	params.roR = params.roL;
 	params.PR = params.PL;
 	params.uR = -params.uL;
-	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.3, params);
+	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
 	kernel->SetInitialConditions(initD);
 
 	//save solution

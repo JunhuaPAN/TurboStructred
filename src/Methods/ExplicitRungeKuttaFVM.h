@@ -981,6 +981,12 @@ public:
 		// array of pointers to cell values TO DO REMOVE
 		std::vector<std::valarray<double> > U(2);
 
+		//layers number for dummy reconstructions
+		int yLayer = 0;
+		int zLayer = 0;
+		if (nDims > 1) yLayer = 1;
+		if (nDims > 2) zLayer = 1;
+
 		// I step
 		faceInd = 0;
 		Vector fn = Vector(1.0, 0.0, 0.0); // x direction
@@ -995,11 +1001,23 @@ public:
 				for (int i = iMin; i <= iMax + 1; i++) {
 
 					// Set Riemann Problem arguments
-					Vector&& faceCenter = Vector(CoordinateX[i] - 0.5 * hx[i], CoordinateY[j], CoordinateZ[k]);
-					UL = PrimitiveToConservative(
-						reconstructions[i - iMin + dummyCellLayersX - 1][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(faceCenter));
-					UR = PrimitiveToConservative(
-						reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(faceCenter));
+					Vector faceCenter = Vector(CoordinateX[i] - 0.5 * hx[i], CoordinateY[j], CoordinateZ[k]);
+
+					// Apply boundary conditions
+					if ((pManager->rankCart[0] == 0) && (i == iMin))								// Left border
+					{
+						UR = PrimitiveToConservative(reconstructions[1][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
+						UL = xLeftBC->getDummyReconstructions(&UR[0]);
+					}
+					else if ((pManager->rankCart[0] == pManager->dimsCart[0] - 1) && ((i == iMax + 1)))		// Right border
+					{
+						UL = PrimitiveToConservative(reconstructions[iMax - iMin + 1][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
+						UR = xRightBC->getDummyReconstructions(&UL[0]);
+					} else
+					{
+						UL = PrimitiveToConservative(reconstructions[i - iMin][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
+						UR = PrimitiveToConservative(reconstructions[i - iMin + 1][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
+					};						
 
 					// Compute convective flux
 					RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(UL, UR, fn);

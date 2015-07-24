@@ -70,9 +70,10 @@ public:
 	};
 
 	//Interpolate
-	inline double GetDummyValue(const double inV, const Vector& faceNormal, const Vector& faceCenter, const Vector& cellCenter) {
+	inline double GetDummyValue(const double Vin, const Vector& faceNormal, const Vector& faceCenter, const Vector& cellCenter) {
 		double dn = (faceCenter - cellCenter) * faceNormal;
-		return inV * (CGradient - CValue) + 2.0 * Value * (CGradient * dn + CValue);
+		double Vout = Vin * (CGradient - CValue) + 2.0 * Value * (CGradient * dn + CValue);
+		return Vout;
 	};
 
 	//Interpolate
@@ -105,7 +106,7 @@ public:
 	//Boundary conditions in general form
 	std::map<BoundaryVariableType, CompositeBoundaryConditionInfo> boundaryConditions;
 
-	//Get dummy cell values
+	// Get dummy cell values
 	virtual std::valarray<double> getDummyValues(double* values, Vector& faceNormal, Vector& faceCenter, Vector& cellCenter) {		
 		//Compute dummy values
 		double ro = values[0];
@@ -131,6 +132,11 @@ public:
 		res[3] = roDummy * wDummy;
 		res[4] = roeDummy + roDummy * (uDummy*uDummy + vDummy*vDummy + wDummy*wDummy)/2.0;
 		return res;
+	};
+
+	// Get dummy reconstructions
+	virtual std::valarray<double> getDummyReconstructions(double* values) {
+		return getDummyValues(values, Vector(0, 0, 0), Vector(0, 0, 0), Vector(0, 0, 0));
 	};
  
 	virtual void loadConfiguration(BoundaryConditionConfiguration& bcConfig) {

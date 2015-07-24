@@ -12,7 +12,11 @@ public:
 
 	virtual std::valarray<double> SampleSolution(Vector const& point) = 0;
 
-	//Serialization primitives //TO DO implement
+	// Default constructor
+	IReconstruction() {
+		nDimensions = 0;
+		nValues = 0;
+	};
 
 	//! Return required
 	static std::size_t GetBufferLenght(int nDims, int nValues) { return 0; };
