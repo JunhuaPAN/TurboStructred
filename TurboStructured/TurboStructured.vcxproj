@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -24,7 +24,8 @@
   <ItemGroup>
     <ClInclude Include="..\src\BoundaryConditions\BCGeneral.h" />
     <ClInclude Include="..\src\BoundaryConditions\BCGeneralBarotropic.h" />
-    <ClInclude Include="..\src\BoundaryConditions\BoundaryCondition.h" />
+    <ClInclude Include="..\src\BoundaryConditions\IBoundaryCondition.h" />
+    <ClInclude Include="..\src\BoundaryConditions\BoundaryConditionConfiguration.h" />
     <ClInclude Include="..\src\EquationsOfState\BarotropicEOS.h" />
     <ClInclude Include="..\src\EquationsOfState\EquationsOfState.h" />
     <ClInclude Include="..\src\EquationsOfState\generalEOS.h" />
@@ -39,8 +40,12 @@
     <ClInclude Include="..\src\Methods\GeneralEosMethods\HybridGeneralEOSOnePhase.h" />
     <ClInclude Include="..\src\Methods\HybridFVM.h" />
     <ClInclude Include="..\src\Methods\MethodConfiguration.h" />
+    <ClInclude Include="..\src\Reconstruction\ENO3PointsStencil.h" />
     <ClInclude Include="..\src\Reconstruction\IReconstruction.h" />
     <ClInclude Include="..\src\Reconstruction\PiecewiseConstant.h" />
+    <ClInclude Include="..\src\Reconstruction\ReconstructorsList.h" />
+    <ClInclude Include="..\src\Reconstruction\ENO2PointsStencil.h" />
+    <ClInclude Include="..\src\Reconstruction\WENO2PointsStencil.h" />
     <ClInclude Include="..\src\RiemannSolvers\RiemannSolversList.h" />
     <ClInclude Include="..\src\RiemannSolvers\RoeSolverPerfectGasEOS.h" />
     <ClInclude Include="..\src\RiemannSolvers\RiemannSolver.h" />
@@ -64,26 +69,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -118,11 +123,11 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\libs\MicrosoftMPI\Inc;..\libs\cgnslib_3.1.4\src;..\src;..\src\kernel;..\src\utility;..\src\BoundaryConditions;..\src\RiemannSolvers;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\libs\MicrosoftMPI\Inc;..\libs\cgnslib_3.1.4\src;..\src;..\src\kernel;..\src\utility;..\src\BoundaryConditions;..\src\RiemannSolvers;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\libs\cgnslib_3.1.4\build\src\Release;..\libs\MicrosoftMPI\Lib\amd64;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\lib\intel64;D:\Projects\Lib\cgnslib_3.1.4\build\src\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\libs\cgnslib_3.1.4\build\src\Release;..\libs\MicrosoftMPI\Lib\amd64;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\lib\intel64;D:\Projects\Lib\cgnslib_3.1.4\build\src\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>cgns.lib;msmpi.lib;mkl_core.lib;mkl_sequential.lib;mkl_intel_lp64.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -146,13 +151,13 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\libs\MicrosoftMPI\Inc;..\libs\cgnslib_3.1.4\src;..\src;..\src\kernel;..\src\utility;..\src\BoundaryConditions;..\src\RiemannSolvers;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\libs\MicrosoftMPI\Inc;..\libs\cgnslib_3.1.4\src;..\src;..\src\kernel;..\src\utility;..\src\BoundaryConditions;..\src\RiemannSolvers;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>..\libs\cgnslib_3.1.4\build\src\Release;..\libs\MicrosoftMPI\Lib\amd64;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\lib\intel64;D:\Projects\Lib\cgnslib_3.1.4\build\src\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\libs\cgnslib_3.1.4\build\src\Release;..\libs\MicrosoftMPI\Lib\amd64;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\lib\intel64;D:\Projects\Lib\cgnslib_3.1.4\build\src\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>cgns.lib;msmpi.lib;mkl_core.lib;mkl_sequential.lib;mkl_intel_lp64.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>

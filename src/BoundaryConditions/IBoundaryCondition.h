@@ -6,7 +6,7 @@
 #include "KernelConfiguration.h"
 
 //Base class for all boundary conditions
-class BoundaryCondition {
+class IBoundaryCondition {
 	
 };
 

@@ -13,7 +13,7 @@ class RoeSolverPerfectGasEOS : public RiemannSolver {
 	double _operatingPressure; //Operating pressure (optional, 0 by default)
 
 	//Numerical flux
-	std::vector<double> F(double* U, Vector n)
+	std::vector<double> F(std::valarray<double> &U, Vector n)
 	{		
 		std::vector<double> res(nVariables,0);		
 		double ro = U[0];
@@ -51,13 +51,105 @@ public:
 	};
 
 	//Solve riemann problem
-	virtual RiemannProblemSolutionResult ComputeFlux(std::vector<double *> values, Vector fn) override {
+	virtual RiemannProblemSolutionResult ComputeFlux(std::vector<std::valarray<double> > &values, Vector fn) override {
 		RiemannProblemSolutionResult result;
 		result.Fluxes.resize(5);
 
 		// Obtain values
-		double *UL = values[0];
-		double *UR = values[1];
+		std::valarray<double> UL = values[0];
+		std::valarray<double> UR = values[1];
+
+		// Calculate symmetric flux part
+		std::vector<double> FL = F(UL, fn);
+		std::vector<double> FR = F(UR, fn);
+		for (int i = 0; i < nVariables; i++) result.Fluxes[i] = FL[i] + FR[i];
+
+		// Calculates stabilization term which is a part of numerical
+		// flux vector i.e. |A|(Q{R}-Q{L})
+		// Roe type averaging procedure first
+		double ro_l = UL[0];
+		double ro_r = UR[0];
+		Vector velocity_l, velocity_r;
+		velocity_l.x = UL[1] / ro_l;
+		velocity_l.y = UL[2] / ro_l;
+		velocity_l.z = UL[3] / ro_l;
+		velocity_r.x = UR[1] / ro_r;
+		velocity_r.y = UR[2] / ro_r;
+		velocity_r.z = UR[3] / ro_r;
+		double e_l = UL[4] / ro_l;
+		double e_r = UR[4] / ro_r;
+		double k;
+		k = 0.5*(velocity_l*velocity_l);		//kinetik energy
+		double h_l = (e_l - k)*_gamma + k;	//enthalpy
+		k = 0.5*(velocity_r*velocity_r);		//kinetik energy
+		double h_r = (e_r - k)*_gamma + k;	//enthalpy
+		double ro = sqrt(ro_l*ro_r);          // (Roe averaged) density		
+		double ql = sqrt(ro_l) / (sqrt(ro_l) + sqrt(ro_r));
+		double qr = sqrt(ro_r) / (sqrt(ro_l) + sqrt(ro_r));
+		Vector velocity = ql*velocity_l + qr*velocity_r;	// (Roe averaged) velocity	
+		double h = ql*h_l + qr*h_r;  // (Roe averaged) total enthalpy
+									 //Proceed to solution
+		double phi2 = 0.5*(_gamma - 1)*(velocity*velocity);
+		double dn = 1.0;
+		double c = sqrt((_gamma - 1)*h - phi2);	//acoustic velocity
+		assert(c>0);
+		//Debug	
+		double uw = velocity * fn;
+		double eig_max = fabs(uw) + c*dn;
+		double AA1 = Harten(uw, _eps*eig_max);       // AA1, AA3, AA1 -
+		double AA3 = Harten(uw + c*dn, _eps*eig_max);  // eigenvalues of a flux vector
+		double AA4 = Harten(uw - c*dn, _eps*eig_max);  // Jacobian matrix
+		double Eig1 = AA1;
+		double Eiga = (AA3 - AA4)*0.5 / (dn*c);
+		double Eigb = (AA3 + AA4)*0.5 - AA1;
+		//parametrs vectors Qa and Qb (i guess)
+		std::vector<double> Qa(5, 0);
+		std::vector<double> Qb(5, 0);
+		Qa[0] = 0;
+		Qa[1] = fn.x;
+		Qa[2] = fn.y;
+		Qa[3] = fn.z;
+		Qa[4] = uw;
+		Qb[0] = 1;
+		Qb[1] = velocity.x;
+		Qb[2] = velocity.y;
+		Qb[3] = velocity.z;
+		Qb[4] = h;
+		//Calculate solution
+		//Some quotients
+		double R1 = phi2*ro_r - (_gamma - 1)*ro_r*(velocity*velocity_r - e_r);	//PR =R1
+		double D1 = ro_r*fn*(velocity_r - velocity);				//DR =D1
+
+		double R2 = phi2*ro_l - (_gamma - 1)*ro_l*(velocity*velocity_l - e_l);	//PR =R1
+		double D2 = ro_l*fn*(velocity_l - velocity);
+
+		double C2 = 1.0 / (c*c);
+		double DN2 = 1.0 / (dn*dn);
+
+		for (int i = 0; i<5; i++) {
+			result.Fluxes[i] += (Eig1*UL[i] + Eiga*(R2*Qa[i] + D2*Qb[i])
+				+ Eigb*(R2*Qb[i] * C2 + D2*Qa[i] * DN2)
+				- Eig1*UR[i] - Eiga*(R1*Qa[i] + D1*Qb[i])
+				- Eigb*(R1*Qb[i] * C2 + D1*Qa[i] * DN2));
+			result.Fluxes[i] *= 0.5;
+		};
+
+		//Estimate for maximum eigenvalue
+		result.MaxEigenvalue = eig_max;
+
+		//Estimate for velocity
+		result.Velocity = velocity;
+
+		//Estimate for pressure
+		result.Pressure = _operatingPressure;
+
+		return result;
+	};
+
+	//Solve riemann problem
+	virtual RiemannProblemSolutionResult ComputeFlux(std::valarray<double> &UL, std::valarray<double> &UR, Vector fn) override {
+		RiemannProblemSolutionResult result;
+		result.Fluxes.resize(5);
 
 		// Calculate symmetric flux part
 		std::vector<double> FL = F(UL, fn);
@@ -126,12 +218,10 @@ public:
 		double C2 = 1.0/(c*c);
 		double DN2= 1.0/(dn*dn);
 
-		double *ul = UL;
-		double *ur = UR;
 		for(int i=0; i<5; i++){
-				  result.Fluxes[i] +=(Eig1*ul[i] + Eiga*(R2*Qa[i]     +D2*Qb[i])
+				  result.Fluxes[i] +=(Eig1*UL[i] + Eiga*(R2*Qa[i]     +D2*Qb[i])
 									+ Eigb*(R2*Qb[i]*C2  +D2*Qa[i]*DN2)
-						-Eig1*ur[i] - Eiga*(R1*Qa[i]     +D1*Qb[i])
+						-Eig1*UR[i] - Eiga*(R1*Qa[i]     +D1*Qb[i])
 									- Eigb*(R1*Qb[i]*C2  +D1*Qa[i]*DN2));
 				  result.Fluxes[i] *= 0.5;
 		};	

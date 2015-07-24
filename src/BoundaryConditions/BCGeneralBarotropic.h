@@ -11,7 +11,7 @@ namespace BoundaryConditions {
 class BCGeneralBarotropic : public BCGeneral {
 public:
 	//Get dummy cell values
-	virtual std::vector<double> getDummyValues(double* values, Vector& faceNormal, Vector& faceCenter, Vector& cellCenter) override {		
+	virtual std::valarray<double> getDummyValues(double* values, Vector& faceNormal, Vector& faceCenter, Vector& cellCenter) override {		
 		//Compute dummy values
 		double ro = values[0];
 		double u = values[1]/values[0];
@@ -24,7 +24,7 @@ public:
 		double vDummy = boundaryConditions[BoundaryVariableType::VelocityY].GetDummyValue(v, faceNormal, faceCenter, cellCenter);
 		double wDummy = boundaryConditions[BoundaryVariableType::VelocityZ].GetDummyValue(w, faceNormal, faceCenter, cellCenter);		
 
-		std::vector<double> res(4);	
+		std::valarray<double> res(4);	
 		res[0] = roDummy;
 		res[1] = roDummy * uDummy;
 		res[2] = roDummy * vDummy;
@@ -97,7 +97,7 @@ public:
 class BCGeneralBarotropicTwoPhase : public BCGeneral {
 public:
 	//Get dummy cell values
-	virtual std::vector<double> getDummyValues(double* values, Vector& faceNormal, Vector& faceCenter, Vector& cellCenter) override {		
+	virtual std::valarray<double> getDummyValues(double* values, Vector& faceNormal, Vector& faceCenter, Vector& cellCenter) override {		
 		//Compute dummy values
 		double ro = values[0];
 		double u = values[1]/values[0];
@@ -112,7 +112,7 @@ public:
 		double wDummy = boundaryConditions[BoundaryVariableType::VelocityZ].GetDummyValue(w, faceNormal, faceCenter, cellCenter);
 		double alphaDummy = boundaryConditions[BoundaryVariableType::VolumeFraction].GetDummyValue(alpha, faceNormal, faceCenter, cellCenter);
 		
-		std::vector<double> res(5);	
+		std::valarray<double> res(5);	
 		res[0] = roDummy;
 		res[1] = roDummy * uDummy;
 		res[2] = roDummy * vDummy;

@@ -83,9 +83,6 @@
     <ClInclude Include="..\src\Methods\MethodConfiguration.h">
       <Filter>Header Files\Methods</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\BoundaryConditions\BoundaryCondition.h">
-      <Filter>Header Files\BoundaryConditions</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\kernel\ParallelManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -139,6 +136,24 @@
     </ClInclude>
     <ClInclude Include="..\src\Reconstruction\PiecewiseConstant.h">
       <Filter>Header Files\Reconstruction</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Reconstruction\ReconstructorsList.h">
+      <Filter>Header Files\Reconstruction</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Reconstruction\ENO2PointsStencil.h">
+      <Filter>Header Files\Reconstruction</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Reconstruction\ENO3PointsStencil.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Reconstruction\WENO2PointsStencil.h">
+      <Filter>Header Files\Reconstruction</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\BoundaryConditions\BoundaryConditionConfiguration.h">
+      <Filter>Header Files\BoundaryConditions</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\BoundaryConditions\IBoundaryCondition.h">
+      <Filter>Header Files\BoundaryConditions</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

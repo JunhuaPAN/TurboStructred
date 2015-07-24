@@ -8,19 +8,23 @@
 #include "utility\GeomFunctions.h"
 #include "RiemannSolvers\RoeSolverPerfectGasEOS.h"
 #include "kernel.h"
+#include "Reconstruction\ReconstructorsList.h"
 
 //Base class for all solution methods that desribe iterations process in detail
+template <typename ReconstructionType>
 class ExplicitRungeKuttaFVM : public Kernel {
+
 	//Current riemann problem solver
 	std::unique_ptr<RiemannSolver> _riemannSolver;
+
+	//Method parameters
+	int RungeKuttaOrder;
+	double CFL;
+
 public:
 	//Inherit constructor
 	//using Kernel::Kernel;
 	ExplicitRungeKuttaFVM(int* argc, char **argv[]) : Kernel(argc, argv) {};
-
-	//Method parameters
-	int RungeKuttaOrder;
-	double CFL;	
 
 	//Additional data
 	std::vector<double> spectralRadius;		//array for storing spectral radiuses
@@ -28,12 +32,7 @@ public:
 	std::vector<Vector> gradientVelocityX;  //array for storing gradients of u
 	std::vector<Vector> gradientVelocityY;  //array for storing gradients of v
 	std::vector<Vector> gradientVelocityZ;  //array for storing gradients of w
-
-
-	//Number of required dummy layers
-	virtual int GetDummyCellLayerSize() override {
-		return 1;
-	};
+	std::vector< std::vector< std::vector<ReconstructionType> > > reconstructions; //array for storing 
 
 	//Initizalization
 	void Init(KernelConfiguration& kernelConfig) {
@@ -47,7 +46,14 @@ public:
 		RungeKuttaOrder = config.RungeKuttaOrder;
 		
 		//Allocate memory for values and residual
-		spectralRadius.resize(nCellsLocalAll);	
+		spectralRadius.resize(nCellsLocalAll);
+
+		// Resize our reconstructions array
+		reconstructions.resize(nlocalX + 2 * dummyCellLayersX);
+		for(auto& r : reconstructions) r.resize(nlocalY + 2 * dummyCellLayersY);
+		for(auto& r : reconstructions) {
+			for(auto& s : r) s.resize(nlocalZ + 2 * dummyCellLayersZ);
+		};
 
 		if (DebugOutputEnabled) {
 			std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";
@@ -57,8 +63,9 @@ public:
 		pManager->Barrier();
 	};
 
-	//Viscous Part
-	//Compute gradient of given function in given cell
+	//=================================   Viscous Part  ======================================
+
+	//! Compute gradient of given function in given cell
 	Vector ComputeGradient(int i, int j, int k, std::function<double(double*)> func) {
 		std::vector<Vector> points;
 		std::vector<double> pointValues;
@@ -194,11 +201,7 @@ public:
 
 		//Buffers
 		std::vector<double> bufferToRecv;
-		std::vector<double> bufferToSend;		
-		int rankLeft; // if equals -1 no left neighbour
-		int rankRight; // if equals -1 no right neighbour
-		
-		//X direction exchange		
+		std::vector<double> bufferToSend;								
 
 		//Allocate buffers
 		int layerSizeX = nlocalYAll * nlocalZAll;
@@ -700,21 +703,268 @@ public:
 		return;
 	};
 
+	//================================ End of Viscous Part ====================================
+
+	//Update all reconstruction functions for each cell
+	void ComputeSolutionReconstruction() {
+		//dummy reconstructions layers number
+		int yLayer = 0;
+		int zLayer = 0;
+		if (nDims > 1) yLayer = 1;
+		if (nDims > 2) zLayer = 1;
+
+		// Obtain all inner cells
+		for (int i = iMin; i <= iMax; i++) {
+			for (int j = jMin; j <= jMax; j++) {
+				for (int k = kMin; k <= kMax; k++) {
+					std::vector<std::valarray<double> > stencil_values;		// vector of stencil values
+					std::vector<Vector> points;								// vector of stencil points
+					std::valarray<double> cell_values(std::move(ConservativeToPrimitive(getCellValues(i, j, k))));	// primitive variables in our cell
+					Vector cell_center = Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k]);
+
+					// X direction stencil
+					for (int iStencil = -dummyCellLayersX; iStencil <= dummyCellLayersX; iStencil++) {
+						if (iStencil == 0) continue;
+						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i + iStencil, j, k))));
+						points.push_back(std::move(Vector(CoordinateX[i + iStencil], CoordinateY[j], CoordinateZ[k])));
+					};
+
+					//Y direction stencil
+					for (int jStencil = -dummyCellLayersY; jStencil <= dummyCellLayersY; jStencil++) {
+						if (jStencil == 0) continue;
+						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i, j + jStencil, k))));
+						points.push_back(std::move(Vector(CoordinateX[i], CoordinateY[j + jStencil], CoordinateZ[k])));
+					};
+
+					//Z direction stencil
+					for (int kStencil = -dummyCellLayersZ; kStencil <= dummyCellLayersZ; kStencil++) {
+						if (kStencil == 0) continue;
+						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i, j, k + kStencil))));
+						points.push_back(std::move(Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k + kStencil])));
+					};
+
+					//we have only one or no external layer of cells reconstructions
+					reconstructions[i - iMin + 1][j - jMin + yLayer][k - kMin + zLayer] = ComputeReconstruction<ReconstructionType>(stencil_values, points, cell_values, cell_center, nDims);
+				};
+			};
+		};
+
+		return;
+	};
+
+	//Exchange reconstructions objects between processors and apply boundary conditions
+	void ExchangeReconstructions() {
+		//Index variables
+		int i = 0;
+		int j = 0;
+		int k = 0;
+
+		//layers number for dummy reconstructions
+		int yLayer = 0;
+		int zLayer = 0;
+		if (nDims > 1) yLayer = 1;
+		if (nDims > 2) zLayer = 1;
+
+		//Get parallel run info
+		MPI_Comm comm = pManager->getComm();
+
+		//Declare buffers
+		std::vector<double> bufferToRecv;
+		std::vector<double> bufferToSend;
+
+		//Allocate buffers
+		int msgLen = ReconstructionType::GetBufferLenght(nDims, nVariables);
+		int layerSizeX = nlocalYAll * nlocalZAll;
+		int layerSizeY = nlocalXAll * nlocalZAll;
+		int layerSizeZ = nlocalXAll * nlocalYAll;
+		int bufferSize = std::max(layerSizeX, layerSizeY, layerSizeZ) * msgLen;
+		bufferToSend.resize(bufferSize);
+		bufferToRecv.resize(bufferSize);
+
+		//SubDirection subDirection = SubDirection::Left;
+
+
+		//! Main layer exchanging procedure //TO DO lift from lambda to member
+		auto exchangeLayers = [&](Direction direction, int iSend, int rankDest, int iRecv, int rankSource) {
+			int nRecv = 0;
+			int nSend = 0;
+
+			//Fill buffer with reconstructions
+			int idxBuffer = 0;
+			for (i = iMin - 1; i <= iMax + 1; i++) {
+				if ((direction == Direction::XDirection) && (i != iRecv)) continue; //skip
+				for (j = jMin - yLayer; j <= jMax + yLayer; j++) {
+					if ((direction == Direction::YDirection) && (j != iRecv)) continue; //skip
+					for (k = kMin - zLayer; k <= kMax + zLayer; k++) {
+						if ((direction == Direction::ZDirection) && (k != iRecv)) continue; //skip
+
+						//Increase aticipating buffer size
+						nRecv += msgLen;
+
+						//If destination not set we don't send
+						if (rankDest == -1) continue;
+
+						//Get indexes to send reconstruction
+						int iRec = i - iMin + 1;
+						int jRec = j - jMin + yLayer;
+						int kRec = k - kMin + zLayer;
+						
+						//Serialize to string of doubles
+						std::valarray<double> msg = reconstructions[iRec][jRec][kRec].Serialize();
+
+						//Write message to buffer
+						for (int i = 0; i < msgLen; i++) bufferToSend[idxBuffer * msgLen] = msg[i];						
+
+						//Increase object counter
+						idxBuffer++;
+					};
+				};
+			};
+
+			//Determine number of doubles to send
+			if (rankDest != -1) nSend = idxBuffer * msgLen;			
+
+			//Determine recive number											  
+			if (rankSource == -1) {
+				nRecv = 0;
+			};
+
+			//Make exchange
+			pManager->SendRecvDouble(comm, rankDest, rankSource, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
+
+			//Write recieved values back
+			idxBuffer = 0;
+			for (i = iMin - 1; i <= iMax + 1; i++) {
+				if ((direction == Direction::XDirection) && (i != iRecv)) continue; //skip
+				for (j = jMin - yLayer; j <= jMax + yLayer; j++) {
+					if ((direction == Direction::YDirection) && (j != iRecv)) continue; //skip
+					for (k = kMin - zLayer; k <= kMax + zLayer; k++) {
+						if ((direction == Direction::ZDirection) && (k != iRecv)) continue; //skip
+
+
+						
+						//Get indexes to recv reconstruction
+						int iRec = i - iMin + 1;
+						int jRec = j - jMin + yLayer;
+						int kRec = k - kMin + zLayer;
+
+						//Exctract message from bufer
+						std::valarray<double> msg(msgLen);
+						for (int i = 0; i < msgLen; i++) msg[i] = bufferToRecv[idxBuffer * msgLen + i];
+
+						//Deserialize from string of doubles
+						reconstructions[iRec][jRec][kRec].Deserialize(msg);
+
+						//Increase object counter
+						idxBuffer++;
+					};
+				};
+			};
+
+			//Syncronize
+			pManager->Barrier();
+		};
+
+		//Determine neighbours' ranks
+		int rankL = pManager->GetRankByCartesianIndexShift(-1, 0, 0);
+		int rankR = pManager->GetRankByCartesianIndexShift(+1, 0, 0);
+		if (DebugOutputEnabled) {
+			std::cout << "rank = " << rank <<
+				"; rankL = " << rankL <<
+				"; rankR = " << rankR <<
+				std::endl << std::flush;
+		};
+	
+		// Minus direction exchange
+		int iSend = iMin; // layer index to send
+		int iRecv = iMax + 1; // layer index to recv
+		exchangeLayers(Direction::XDirection, iSend, rankL, iRecv, rankR);
+
+		// Plus direction exchange
+		iSend = iMax; // layer index to send
+		iRecv = iMin - 1; // layer index to recv
+		exchangeLayers(Direction::XDirection, iSend, rankR, iRecv, rankL);
+
+		if (DebugOutputEnabled) {
+			std::cout << "rank = " << pManager->getRank() << ", Exchange recontructions X-direction executed\n";
+		};
+
+		//Sync
+		pManager->Barrier();
+
+		//Skip Y direction exchange if not needed
+		if (nDims < 2) return;
+		
+		//Determine neighbours' ranks
+		rankL = pManager->GetRankByCartesianIndexShift(0, -1, 0);
+		rankR = pManager->GetRankByCartesianIndexShift(0, +1, 0);
+		if (DebugOutputEnabled) {
+			std::cout << "rank = " << rank <<
+				"; rankL = " << rankL <<
+				"; rankR = " << rankR <<
+				std::endl << std::flush;
+		};
+		
+		// Minus direction exchange
+		iSend = jMin; // layer index to send
+		iRecv = jMax + 1; // layer index to recv
+		exchangeLayers(Direction::YDirection, iSend, rankL, iRecv, rankR);
+
+		// Plus direction exchange
+		iSend = jMax; // layer index to send
+		iRecv = jMin - 1; // layer index to recv
+		exchangeLayers(Direction::YDirection, iSend, rankR, iRecv, rankL);		
+
+		if (DebugOutputEnabled) {
+			std::cout << "rank = " << pManager->getRank() << ", Exchange recontructions Y-direction executed\n";
+			std::cout.flush();
+		};
+		//Sync
+		pManager->Barrier();
+
+		if (nDims < 3) return;
+		//Z direction exchange
+
+		//Determine neighbours' ranks
+		rankL = pManager->GetRankByCartesianIndexShift(0, 0, -1);
+		rankR = pManager->GetRankByCartesianIndexShift(0, 0, +1);
+		if (DebugOutputEnabled) {
+			std::cout << "rank = " << rank <<
+				"; rankL = " << rankL <<
+				"; rankR = " << rankR <<
+				std::endl << std::flush;
+		};
+
+		// Minus direction exchange
+		iSend = kMin; // layer index to send
+		iRecv = kMax + 1; // layer index to recv
+		exchangeLayers(Direction::ZDirection, iSend, rankL, iRecv, rankR);
+
+		// Plus direction exchange
+		iSend = kMax; // layer index to send
+		iRecv = kMin - 1; // layer index to recv
+		exchangeLayers(Direction::ZDirection, iSend, rankR, iRecv, rankL);
+		if (DebugOutputEnabled) {
+			std::cout << "rank = " << pManager->getRank() << ", Exchange recontructions Z-direction executed\n";
+			std::cout.flush();
+		};
+		//Sync
+		pManager->Barrier();
+
+	}; // function
+
 	//Compute residual
 	void ComputeResidual(const std::valarray<double>& values, std::valarray<double>& residual, std::vector<double>& spectralRadius) {
 		//  init spectral radius storage for each cell
 		for (double& sr : spectralRadius) sr = 0; //Nullify
 		for (double& r : residual) r = 0; //Nullify residual
 
-		// array of pointers to cell values
-		std::vector<double*> U(2);
-		
 		// Fluxes temporary storage
 		std::vector<double> fl(5,0); //left flux -1/2
 		std::vector<double> fr(5,0); //right flux +1/2
-		std::vector<double> fvisc(5,0); //right flux +1/2
+		std::vector<double> fvisc(5,0); //right flux +1/2		
 
-		//viscous part
+		// Viscous part
 		int faceInd = 0;
 		if (isGradientRequired == true) ComputeVelocityGradients();
 
@@ -725,47 +975,72 @@ public:
 			ComputeViscousFluxes(vfluxesX, vfluxesY, vfluxesZ);
 		};
 
+		// arrays of left and right reconstructions
+		std::valarray<double> UL;
+		std::valarray<double> UR;
+
+		// array of pointers to cell values TO DO REMOVE
+		std::vector<std::valarray<double> > U(2);
+
+		//layers number for dummy reconstructions
+		int yLayer = 0;
+		int zLayer = 0;
+		if (nDims > 1) yLayer = 1;
+		if (nDims > 2) zLayer = 1;
+
 		// I step
 		faceInd = 0;
 		Vector fn = Vector(1.0, 0.0, 0.0); // x direction
 		for (int k = kMin; k <= kMax; k++) {
 			for (int j = jMin; j <= jMax; j++) {
-				//Compute face square
+				// Compute face square
 				double fS = 0;
 				if (nDims == 1) fS = 1.0;
-				if (nDims == 2) fS = hy[j];	//todo
-				if (nDims == 3) fS = hy[j] * hz[k];	//todo
-
-				//Initial load of values
-				U[0] = getCellValues(iMin - 1, j, k);
+				if (nDims == 2) fS = hy[j];
+				if (nDims == 3) fS = hy[j] * hz[k];
 
 				for (int i = iMin; i <= iMax + 1; i++) {
-					//Update stencil values
-					U[1] = getCellValues(i, j, k);
 
-					//Compute convective flux		
-					std::vector<double> UL(U[0], U[0] + nVariables);
-					std::vector<double> UR(U[1], U[1] + nVariables);
-					RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
+					// Set Riemann Problem arguments
+					Vector faceCenter = Vector(CoordinateX[i] - 0.5 * hx[i], CoordinateY[j], CoordinateZ[k]);
+
+					// Apply boundary conditions
+					if ((pManager->rankCart[0] == 0) && (i == iMin))								// Left border
+					{
+						UR = PrimitiveToConservative(reconstructions[1][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
+						UL = xLeftBC->getDummyReconstructions(&UR[0]);
+					}
+					else if ((pManager->rankCart[0] == pManager->dimsCart[0] - 1) && ((i == iMax + 1)))		// Right border
+					{
+						UL = PrimitiveToConservative(reconstructions[iMax - iMin + 1][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
+						UR = xRightBC->getDummyReconstructions(&UL[0]);
+					} else
+					{
+						UL = PrimitiveToConservative(reconstructions[i - iMin][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
+						UR = PrimitiveToConservative(reconstructions[i - iMin + 1][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
+					};						
+
+					// Compute convective flux
+					RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(UL, UR, fn);
 					fr = result.Fluxes;
 
-					//Compute viscous flux
+					// Compute viscous flux
 					int sL = getSerialIndexLocal(i - 1, j, k);
 					int sR = getSerialIndexLocal(i, j, k);
 					if (isViscousFlow == true) fvisc = vfluxesX[faceInd];
 					for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
-	
-					//Update residuals
+
+					// Update residuals
 					if(i > iMin)
 					{
-						//Fluxes difference equals residual
+						// Fluxes difference equals residual
 						int idx = getSerialIndexLocal(i - 1, j, k);
 						for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += - (fr[nv] - fl[nv]) * fS;
 
-						//Compute volume of cell
+						// Compute volume of cell
 						double volume = fS * hx[i - 1];
 
-						//Add up spectral radius estimate
+						// Add up spectral radius estimate
 						spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
 						double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
 						double gammaFace = gamma;
@@ -778,11 +1053,10 @@ public:
 						spectralRadius[idx] += vsr;
 					};
           
-					//Shift stencil
+					// Shift stencil
 					fl = fr;
-					U[0] = U[1];
 
-					//Increment face index
+					// Increment face index
 					faceInd++;
 				 };
 			};
@@ -801,15 +1075,13 @@ public:
 					if (nDims == 3) fS = hx[i] * hz[k];
 
 					//Initial load of values
-					U[0] = getCellValues(i, jMin - 1, k);
+					U[0] = reconstructions[i - iMin + dummyCellLayersX][0][k - kMin + dummyCellLayersZ].SampleSolution(Vector(0, 0, 0));
 
 					for (int j = jMin; j <= jMax + 1; j++) {
 						//Update stencil values
-						U[1] = getCellValues(i, j, k);
+						U[1] = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(Vector(0, 0, 0));
 
 						//Compute flux
-						std::vector<double> UL(U[0], U[0] + nVariables);
-						std::vector<double> UR(U[1], U[1] + nVariables);
 						RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
 						fr = result.Fluxes;
 
@@ -831,7 +1103,7 @@ public:
 
 							//Add up spectral radius estimate
 							spectralRadius[idx] += fS * result.MaxEigenvalue;
-							double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
+							double roFace = sqrt(U[0][0] * U[1][0]); // (Roe averaged) density
 							double gammaFace = gamma;
 							double vsr = std::max(4.0 / (3.0 * roFace), gammaFace/roFace);
 							double viscosityFace = viscosity;
@@ -864,15 +1136,13 @@ public:
 					double fS = hx[i] * hy[j];
 
 					//Initial load of values
-					U[0] = getCellValues(i, j, kMin - 1);
+					U[0] = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][0].SampleSolution(Vector(0, 0, 0));
 
 					for (int k = kMin; k <= kMax + 1; k++) {
 						//Update stencil values
-						U[1] = getCellValues(i, j, k);
+						U[1] = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(Vector(0, 0, 0));
 
 						//Compute flux
-						std::vector<double> UL(U[0], U[0] + nVariables);
-						std::vector<double> UR(U[1], U[1] + nVariables);
 						RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
 						fr = result.Fluxes;
 
@@ -894,7 +1164,7 @@ public:
 
 							//Add up spectral radius estimate
 							spectralRadius[idx] += fS * result.MaxEigenvalue;
-							double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
+							double roFace = sqrt(U[0][0] * U[1][0]); // (Roe averaged) density
 							double gammaFace = gamma;
 							double vsr = std::max(4.0 / (3.0 * roFace), gammaFace/roFace);
 							double viscosityFace = viscosity;
@@ -954,7 +1224,21 @@ public:
 		//Sync
 		pManager->Barrier();
 
-		//Compute residual   TO DO second argument remove
+		// Prepare to compute residuals
+
+		//Exchange values between processors
+		ExchangeValues();
+
+		// Apply boundary conditions for dummy cells
+		ComputeDummyCellValues();
+
+		// Compute reconstruction functions for each inner cell and one extern layer
+		ComputeSolutionReconstruction();
+
+		//Exchange reconstructions objects between processors
+		//ExchangeReconstructions();
+
+		//Compute residual TO DO second argument remove
 		ComputeResidual(values, residual, spectralRadius);
 
 		if (DebugOutputEnabled) {

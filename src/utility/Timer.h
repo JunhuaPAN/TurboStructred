@@ -27,21 +27,21 @@ public:
 
 	void Start() {
 		IsActive = true;
-		StartTime = std::chrono::system_clock::now();
+		StartTime = std::chrono::steady_clock::now();
 		_pauseTime = StartTime;
 		ElapsedTime = std::chrono::high_resolution_clock::duration(0);
 	};
 
 	void Resume() {
 		if (!IsActive) {
-			_pauseTime = std::chrono::system_clock::now();
+			_pauseTime = std::chrono::steady_clock::now();
 			IsActive = true;
 		};
 	};
 
 	void Pause() {
 		if (IsActive) {
-			ElapsedTime += std::chrono::system_clock::now() - _pauseTime;
+			ElapsedTime += std::chrono::steady_clock::now() - _pauseTime;
 			IsActive = false;
 		};
 	};
@@ -54,7 +54,7 @@ public:
 
 	void Stop() {
 		Pause();
-		EndTime = std::chrono::system_clock::now();
+		EndTime = std::chrono::steady_clock::now();
 	};
 };
 
