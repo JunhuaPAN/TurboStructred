@@ -19,9 +19,12 @@ public:
 	};
 
 	//! Return required
-	static std::size_t GetBufferLenght(int nDims, int nValues) { return 0; };
+	static std::size_t GetBufferLenght(int nD, int nV) { return 0; };
 	virtual std::valarray<double> Serialize() = 0;
 	virtual void Deserialize(const std::valarray<double>& ) = 0;
+
+	// Update reconstruction center
+	virtual void RefrashPosition(Vector point) = 0;
 };
 
 template<typename T>

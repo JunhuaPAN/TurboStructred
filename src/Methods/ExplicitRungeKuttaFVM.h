@@ -52,7 +52,13 @@ public:
 		reconstructions.resize(nlocalX + 2 * dummyCellLayersX);
 		for(auto& r : reconstructions) r.resize(nlocalY + 2 * dummyCellLayersY);
 		for(auto& r : reconstructions) {
-			for(auto& s : r) s.resize(nlocalZ + 2 * dummyCellLayersZ);
+			for (auto& s : r) {
+				s.resize(nlocalZ + 2 * dummyCellLayersZ);
+				for (auto& m : s) {
+					m.nDimensions = nDims;
+					m.nValues = nVariables;
+				};
+			};
 		};
 
 		if (DebugOutputEnabled) {
@@ -762,8 +768,14 @@ public:
 		//layers number for dummy reconstructions
 		int yLayer = 0;
 		int zLayer = 0;
+		int xLayer = 1;
 		if (nDims > 1) yLayer = 1;
 		if (nDims > 2) zLayer = 1;
+
+		// flags wich depend from the direction considered
+		int xDummyFlag = 0;
+		int yDummyFlag = 0;
+		int zDummyFlag = 0;
 
 		//Get parallel run info
 		MPI_Comm comm = pManager->getComm();
@@ -774,29 +786,31 @@ public:
 
 		//Allocate buffers
 		int msgLen = ReconstructionType::GetBufferLenght(nDims, nVariables);
-		int layerSizeX = nlocalYAll * nlocalZAll;
-		int layerSizeY = nlocalXAll * nlocalZAll;
-		int layerSizeZ = nlocalXAll * nlocalYAll;
-		int bufferSize = std::max(layerSizeX, layerSizeY, layerSizeZ) * msgLen;
+		int layerSizeX = nlocalY * nlocalZ;
+		int layerSizeY = nlocalX * nlocalZ;
+		int layerSizeZ = nlocalX * nlocalY;
+		int bufferSize = 0;
+		if(nDims < 2) bufferSize = msgLen;
+		else if (nDims < 3) bufferSize = std::max(layerSizeX, layerSizeY) * msgLen;
+		else bufferSize = std::max(std::max(layerSizeX, layerSizeY), layerSizeZ) * msgLen;
 		bufferToSend.resize(bufferSize);
 		bufferToRecv.resize(bufferSize);
 
 		//SubDirection subDirection = SubDirection::Left;
-
 
 		//! Main layer exchanging procedure //TO DO lift from lambda to member
 		auto exchangeLayers = [&](Direction direction, int iSend, int rankDest, int iRecv, int rankSource) {
 			int nRecv = 0;
 			int nSend = 0;
 
-			//Fill buffer with reconstructions
+			//Fill buffer with reconstructions only from inner cells (buffer to SEND reconstruction to another core)
 			int idxBuffer = 0;
-			for (i = iMin - 1; i <= iMax + 1; i++) {
-				if ((direction == Direction::XDirection) && (i != iRecv)) continue; //skip
-				for (j = jMin - yLayer; j <= jMax + yLayer; j++) {
-					if ((direction == Direction::YDirection) && (j != iRecv)) continue; //skip
-					for (k = kMin - zLayer; k <= kMax + zLayer; k++) {
-						if ((direction == Direction::ZDirection) && (k != iRecv)) continue; //skip
+			for (i = iMin; i <= iMax; i++) {
+				if ((direction == Direction::XDirection) && (i != iSend)) continue; //skip
+				for (j = jMin; j <= jMax; j++) {
+					if ((direction == Direction::YDirection) && (j != iSend)) continue; //skip
+					for (k = kMin; k <= kMax; k++) {
+						if ((direction == Direction::ZDirection) && (k != iSend)) continue; //skip
 
 						//Increase aticipating buffer size
 						nRecv += msgLen;
@@ -805,7 +819,7 @@ public:
 						if (rankDest == -1) continue;
 
 						//Get indexes to send reconstruction
-						int iRec = i - iMin + 1;
+						int iRec = i - iMin + xLayer;
 						int jRec = j - jMin + yLayer;
 						int kRec = k - kMin + zLayer;
 						
@@ -813,7 +827,7 @@ public:
 						std::valarray<double> msg = reconstructions[iRec][jRec][kRec].Serialize();
 
 						//Write message to buffer
-						for (int i = 0; i < msgLen; i++) bufferToSend[idxBuffer * msgLen] = msg[i];						
+						for (int i = 0; i < msgLen; i++) bufferToSend[idxBuffer * msgLen + i] = msg[i];						
 
 						//Increase object counter
 						idxBuffer++;
@@ -834,32 +848,48 @@ public:
 
 			//Write recieved values back
 			idxBuffer = 0;
-			for (i = iMin - 1; i <= iMax + 1; i++) {
+			switch (direction) {
+			case Direction::XDirection:
+				xDummyFlag = 1;
+				break;
+			case Direction::YDirection:
+				yDummyFlag = 1;
+				break;
+			default:
+				zDummyFlag = 1;
+				break;
+			};
+
+			for (i = iMin - xDummyFlag; i <= iMax + xDummyFlag; i++) {
 				if ((direction == Direction::XDirection) && (i != iRecv)) continue; //skip
-				for (j = jMin - yLayer; j <= jMax + yLayer; j++) {
+				for (j = jMin - yDummyFlag; j <= jMax + yDummyFlag; j++) {
 					if ((direction == Direction::YDirection) && (j != iRecv)) continue; //skip
-					for (k = kMin - zLayer; k <= kMax + zLayer; k++) {
+					for (k = kMin - zDummyFlag; k <= kMax + zDummyFlag; k++) {
 						if ((direction == Direction::ZDirection) && (k != iRecv)) continue; //skip
-
-
 						
 						//Get indexes to recv reconstruction
-						int iRec = i - iMin + 1;
+						int iRec = i - iMin + xLayer;
 						int jRec = j - jMin + yLayer;
 						int kRec = k - kMin + zLayer;
 
-						//Exctract message from bufer
+						//Extract message from bufer
 						std::valarray<double> msg(msgLen);
 						for (int i = 0; i < msgLen; i++) msg[i] = bufferToRecv[idxBuffer * msgLen + i];
 
 						//Deserialize from string of doubles
 						reconstructions[iRec][jRec][kRec].Deserialize(msg);
+						reconstructions[iRec][jRec][kRec].RefrashPosition({ CoordinateX[i], CoordinateY[j], CoordinateZ[k] });
 
 						//Increase object counter
 						idxBuffer++;
 					};
 				};
 			};
+
+			// Nullify dummy flags
+			xDummyFlag = 0;
+			yDummyFlag = 0;
+			zDummyFlag = 0;
 
 			//Syncronize
 			pManager->Barrier();
@@ -1005,12 +1035,12 @@ public:
 					Vector faceCenter = Vector(CoordinateX[i] - 0.5 * hx[i], CoordinateY[j], CoordinateZ[k]);
 
 					// Apply boundary conditions
-					if ((pManager->rankCart[0] == 0) && (i == iMin))								// Left border
+					if ((pManager->rankCart[0] == 0) && (i == iMin) && (IsPeriodicX != true))									// Left border
 					{
 						UR = PrimitiveToConservative(reconstructions[1][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
 						UL = xLeftBC->getDummyReconstructions(&UR[0]);
 					}
-					else if ((pManager->rankCart[0] == pManager->dimsCart[0] - 1) && ((i == iMax + 1)))		// Right border
+					else if ((pManager->rankCart[0] == pManager->dimsCart[0] - 1) && (i == iMax + 1) && (IsPeriodicX != true))	// Right border
 					{
 						UL = PrimitiveToConservative(reconstructions[iMax - iMin + 1][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
 						UR = xRightBC->getDummyReconstructions(&UL[0]);
@@ -1018,7 +1048,7 @@ public:
 					{
 						UL = PrimitiveToConservative(reconstructions[i - iMin][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
 						UR = PrimitiveToConservative(reconstructions[i - iMin + 1][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
-					};						
+					};
 
 					// Compute convective flux
 					RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(UL, UR, fn);
@@ -1066,64 +1096,78 @@ public:
 		if (nDims > 1)
 		{
 			faceInd = 0;
-			fn = Vector(0.0, 1.0, 0.0); // y direction
+			Vector fn = Vector(0.0, 1.0, 0.0); // y direction
 			for (int k = kMin; k <= kMax; k++) {
 				for (int i = iMin; i <= iMax; i++) {
-					//Compute face square
-					double fS = 0;
-					if (nDims == 2) fS = hx[i];
+					// Compute face square
+					double fS = hx[i];
 					if (nDims == 3) fS = hx[i] * hz[k];
 
-					//Initial load of values
-					U[0] = reconstructions[i - iMin + dummyCellLayersX][0][k - kMin + dummyCellLayersZ].SampleSolution(Vector(0, 0, 0));
-
 					for (int j = jMin; j <= jMax + 1; j++) {
-						//Update stencil values
-						U[1] = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(Vector(0, 0, 0));
 
-						//Compute flux
-						RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
+						// Set Riemann Problem arguments
+						Vector faceCenter = Vector(CoordinateX[i], CoordinateY[j] - 0.5 * hy[j], CoordinateZ[k]);
+
+						// Apply boundary conditions
+						if ((pManager->rankCart[1] == 0) && (j == jMin) && (IsPeriodicY != true))									// Left border
+						{
+							UR = PrimitiveToConservative(reconstructions[i - iMin + 1][1][k - kMin + zLayer].SampleSolution(faceCenter));
+							UL = yLeftBC->getDummyReconstructions(&UR[0]);
+						}
+						else if ((pManager->rankCart[1] == pManager->dimsCart[1] - 1) && (j == jMax + 1) && (IsPeriodicY != true))	// Right border
+						{
+							UL = PrimitiveToConservative(reconstructions[i - iMin + 1][jMax - jMin + 1][k - kMin + zLayer].SampleSolution(faceCenter));
+							UR = yRightBC->getDummyReconstructions(&UL[0]);
+						}
+						else
+						{
+							UL = PrimitiveToConservative(reconstructions[i - iMin + 1][j - jMin][k - kMin + zLayer].SampleSolution(faceCenter));
+							UR = PrimitiveToConservative(reconstructions[i - iMin + 1][j - jMin + 1][k - kMin + zLayer].SampleSolution(faceCenter));
+						};
+
+						// Compute convective flux
+						RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(UL, UR, fn);
 						fr = result.Fluxes;
 
-						//Compute viscous flux
+						// Compute viscous flux
 						int sL = getSerialIndexLocal(i, j - 1, k);
 						int sR = getSerialIndexLocal(i, j, k);
 						if (isViscousFlow == true) fvisc = vfluxesY[faceInd];
-						for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
-	
-						//Update residuals
-						if(j > jMin)
+						for (int nv = 0; nv < nVariables; nv++) fr[nv] -= fvisc[nv];
+
+						// Update residuals
+						if (j > jMin)
 						{
-							//Fluxes difference equals residual
+							// Fluxes difference equals residual
 							int idx = getSerialIndexLocal(i, j - 1, k);
-							for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += - (fr[nv] - fl[nv]) * fS;
+							for (int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += -(fr[nv] - fl[nv]) * fS;
 
-							//Compute volume of cell
-							double volume = fS * hy[j - 1]; // todo
+							// Compute volume of cell
+							double volume = fS * hy[i - 1];
 
-							//Add up spectral radius estimate
-							spectralRadius[idx] += fS * result.MaxEigenvalue;
-							double roFace = sqrt(U[0][0] * U[1][0]); // (Roe averaged) density
+							// Add up spectral radius estimate
+							spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
+							double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
 							double gammaFace = gamma;
-							double vsr = std::max(4.0 / (3.0 * roFace), gammaFace/roFace);
+							double vsr = std::max(4.0 / (3.0 * roFace), gammaFace / roFace);
 							double viscosityFace = viscosity;
 							double PrandtlNumberFace = 1.0;
-							vsr *= viscosityFace / PrandtlNumberFace; 
+							vsr *= viscosityFace / PrandtlNumberFace;
 							vsr *= fS*fS;
 							vsr /= volume;
 							spectralRadius[idx] += vsr;
 						};
-          
-						//Shift stencil
-						fl = fr;
-						U[0] = U[1];
 
-						//Increment face index
+						// Shift stencil
+						fl = fr;
+
+						// Increment face index
 						faceInd++;
 					};
 				};
 			};
 		};
+
 		
 		// K step
 		if (nDims > 2)
@@ -1236,7 +1280,7 @@ public:
 		ComputeSolutionReconstruction();
 
 		//Exchange reconstructions objects between processors
-		//ExchangeReconstructions();
+		ExchangeReconstructions();
 
 		//Compute residual TO DO second argument remove
 		ComputeResidual(values, residual, spectralRadius);
