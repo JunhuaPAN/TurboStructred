@@ -40,16 +40,12 @@ public:
 	//constructor
 	WENO2PointsStencil() {	};
 	WENO2PointsStencil(std::valarray<double>& _values, Vector& _center, std::valarray< Vector >& _gradientsL, std::valarray< Vector >& _gradientsR,
-		std::vector< std::valarray <double> >& _weights, int _nDimensions, int _nValues) :
+		std::vector< std::valarray <double> >& _weights) :
 		values_(_values),
 		center_(_center),
 		gradientsL_(_gradientsL),
 		gradientsR_(_gradientsR),
-		weights_(_weights)
-		{
-			nDimensions = _nDimensions;
-			nValues = _nValues;
-		};
+		weights_(_weights) { };
 
 	// Serrialization
 	static std::size_t GetBufferLenght(int nD, int nV) {
@@ -74,7 +70,7 @@ public:
 
 		return std::valarray<double> {res.data(), res.size()};
 	};
-	virtual void Deserialize(const std::valarray<double>& _values) {
+	virtual void Deserialize(const std::valarray<double>& _values) override {
 		values_ = { &_values[0], (size_t)nValues };
 		center_ = Vector(_values[nValues], _values[nValues + 1], _values[nValues + 2]);
 
@@ -96,6 +92,10 @@ public:
 		return;
 	};
 
+	// Update center of Reconstruction if needed
+	virtual void RefrashPosition(Vector point) override {
+		center_ = point;
+	};
 };
 
 template<>
@@ -152,7 +152,7 @@ WENO2PointsStencil ComputeReconstruction<WENO2PointsStencil>(std::vector<std::va
 
 	//3D case
 
-	return std::move(WENO2PointsStencil(value, point, gradientsL, gradientsR, weights, nDim, size));
+	return std::move(WENO2PointsStencil(value, point, gradientsL, gradientsR, weights));
 };
 
 

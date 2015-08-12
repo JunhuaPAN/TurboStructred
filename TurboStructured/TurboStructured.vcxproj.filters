@@ -143,9 +143,6 @@
     <ClInclude Include="..\src\Reconstruction\ENO2PointsStencil.h">
       <Filter>Header Files\Reconstruction</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Reconstruction\ENO3PointsStencil.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\Reconstruction\WENO2PointsStencil.h">
       <Filter>Header Files\Reconstruction</Filter>
     </ClInclude>
@@ -154,6 +151,9 @@
     </ClInclude>
     <ClInclude Include="..\src\BoundaryConditions\IBoundaryCondition.h">
       <Filter>Header Files\BoundaryConditions</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Reconstruction\ENO3PointsStencil.h">
+      <Filter>Header Files\Reconstruction</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

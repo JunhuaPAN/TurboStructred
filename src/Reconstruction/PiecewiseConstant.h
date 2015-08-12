@@ -19,20 +19,18 @@ public:
 
 	//constructor
 	PiecewiseConstant() { };
-	PiecewiseConstant(std::valarray<double>& _values, int _nDimensions) : values_ (_values)
-	{
-		nDimensions = _nDimensions;
-		nValues = _values.size();
-	};
+	PiecewiseConstant(std::valarray<double>& _values) : values_ (_values){};
 
 	// Serrialization
 	static std::size_t GetBufferLenght(int nD, int nV) { return nV; };
 	virtual std::valarray<double> Serialize() override {
 		return values_;
 	};
-	virtual void Deserialize(const std::valarray<double>& _values) {
+	virtual void Deserialize(const std::valarray<double>& _values) override {
 		values_ = _values;
 	};
+
+	virtual void RefrashPosition(Vector point) override {};
 
 	//copy semantics
 	//PiecewiseConstant(const PiecewiseConstant& element) : values_ (element.values_) {}; // copy constructor 	
@@ -48,8 +46,8 @@ public:
 };
 
 template<>
-PiecewiseConstant ComputeReconstruction<PiecewiseConstant>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDims) {
-	return std::move(PiecewiseConstant(value, nDims));
+PiecewiseConstant ComputeReconstruction<PiecewiseConstant>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
+	return std::move(PiecewiseConstant(value));
 };
 
 

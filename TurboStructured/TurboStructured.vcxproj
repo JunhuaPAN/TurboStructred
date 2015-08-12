@@ -123,7 +123,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\libs\MicrosoftMPI\Inc;..\libs\cgnslib_3.1.4\src;..\src;..\src\kernel;..\src\utility;..\src\BoundaryConditions;..\src\RiemannSolvers;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\libs\MicrosoftMPI\Inc;..\libs\eigen;..\libs\cgnslib_3.1.4\src;..\src;..\src\kernel;..\src\utility;..\src\BoundaryConditions;..\src\RiemannSolvers;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -151,7 +151,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\libs\MicrosoftMPI\Inc;..\libs\cgnslib_3.1.4\src;..\src;..\src\kernel;..\src\utility;..\src\BoundaryConditions;..\src\RiemannSolvers;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\libs\MicrosoftMPI\Inc;..\libs\eigen;..\libs\cgnslib_3.1.4\src;..\src;..\src\kernel;..\src\utility;..\src\BoundaryConditions;..\src\RiemannSolvers;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>

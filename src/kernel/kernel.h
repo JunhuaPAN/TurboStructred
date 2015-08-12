@@ -95,6 +95,7 @@ public:
 
 	//sensors operating
 	bool isSensorEnable;
+	int SaveSensorRecordIterations;
 
 	//External forces
 	Vector Sigma; //Potential force like presure gradient
@@ -214,7 +215,7 @@ public:
 	virtual void Init(KernelConfiguration& config) {
 		//Initialize MPI		
 		nDims = config.nDims;
-		//Output settings
+		//Output settings 
 		DebugOutputEnabled = config.DebugOutputEnabled;
 
 		//Initialize local grid
@@ -421,7 +422,8 @@ public:
 		Sigma = config.Sigma;
 		UniformAcceleration = config.UniformAcceleration;
 
-		isSensorEnable = false;	//by default
+		isSensorEnable = false;			//by default
+		SaveSensorRecordIterations = 1;	//by default
 		
 		if (DebugOutputEnabled) {
 			std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";
@@ -2063,7 +2065,7 @@ public:
 			};		
 
 			//Sensors recording
-			if(isSensorEnable == true)
+			if((isSensorEnable == true) && (iteration % SaveSensorRecordIterations == 0))
 			{
 				for(auto &r : Sensors) {
 					r->NewRecord();
