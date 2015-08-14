@@ -79,7 +79,6 @@ ENO2PointsStencil ComputeReconstruction<ENO2PointsStencil>(std::vector<std::vala
 			grad_r = (values[1][i] - value[i]) / (points[1].x - point.x);
 			if (std::abs(grad_l) < std::abs(grad_r)) gradients[i] = Vector(grad_l, 0, 0);
 			else gradients[i] = Vector(grad_r, 0, 0);
-			//gradients[i] = Vector(std::min(std::abs(grad_l), std::abs(grad_r)), 0, 0);
 		};
 	};
 

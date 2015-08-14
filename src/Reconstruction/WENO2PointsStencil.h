@@ -106,8 +106,8 @@ WENO2PointsStencil ComputeReconstruction<WENO2PointsStencil>(std::vector<std::va
 	std::vector< std::valarray < double> > weights;
 
 	// constant value
-	const double eps = 1.0e-6;
-	const double d0 = 2.0 / 3.0;		//constant values for UNIFORM grid
+	const double eps = 1.0e-16;
+	const double d0 = 2.0 / 3.0;		//constant values for UNIFORM grid 2/3
 	const double d1 = 1 - d0;
 
 	//1D case

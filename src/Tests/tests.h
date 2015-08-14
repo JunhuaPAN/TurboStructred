@@ -90,7 +90,7 @@ std::vector<double> SODinitialDistributionY(Vector r, double yI, ShockTubeParame
 void RunSODTestRoe1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 200;
+	conf.nX = 500;
 	//conf.nY = 10;
 	conf.LX = 1.0;
 	//conf.LY = 1.0;
@@ -121,7 +121,7 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
 		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 	};
 	kernel->Init(conf);
