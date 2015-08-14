@@ -90,7 +90,7 @@ std::vector<double> SODinitialDistributionY(Vector r, double yI, ShockTubeParame
 void RunSODTestRoe1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 500;
+	conf.nX = 200;
 	//conf.nY = 10;
 	conf.LX = 1.0;
 	//conf.LY = 1.0;
@@ -121,7 +121,7 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 	};
 	kernel->Init(conf);
@@ -131,11 +131,11 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	params.gammaL = params.gammaR = 1.4;
 	params.roL = 1.0;
 	params.PL = 1.0;
-	params.uL = 0.75;
+	params.uL = 0.0;
 	params.roR = 0.125;
 	params.PR = 0.1;
 	params.uR = 0.0;
-	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.3, params);
+	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
 	kernel->SetInitialConditions(initD);
 
 	//save solution
@@ -277,6 +277,7 @@ void RunContactDisconTest1D(int argc, char *argv[]) {
 	kernel->Finilaze();
 };
 
+// collision of two media
 void RunShockWaves1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
@@ -466,7 +467,7 @@ void RunFluxesTest2D(int argc, char *argv[]) {
 };
 
 void RunPoiseuille2DFVM(int argc, char *argv[]) {
-	double viscosity = 1.73e-5;	//Air
+	double viscosity = 9.73e-2;	//Air
 	double sigma = 0.14;		// -dPdx
 	double ro_init = 1.225;		//Air
 	double Pave = 1.0e5;		//average pressure
@@ -475,15 +476,15 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	//sigma = 0.16;
 
 	//Test parameters
-	//ro_init = 1.0;
-	//Pave = 20.0;
-	//sigma = 1.0;
-	//viscosity = 0.25;
+	ro_init = 1.0;
+	Pave = 20.0;
+	sigma = 1.0;
+	viscosity = 0.25;
 
 	KernelConfiguration conf;
 	conf.nDims = 2;
 	conf.nX = 10;
-	conf.nY = 100;
+	conf.nY = 40;
 	conf.LX = 0.2;
 	conf.LY = 0.1;
 	conf.isPeriodicX = true;
@@ -534,7 +535,7 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	std::normal_distribution<double> normal_dist(0.0, sdv);  // N(mean, stddeviation)
 	
 	auto initD = [ro_init, Pave, &conf, &normal_dist, &mt](Vector r) {
-		double u = 0.45 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
+		double u = 0.54 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
 		double v = 0.0;// + normal_dist(mt);
 		double w = 0.0;
 
@@ -556,7 +557,7 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	auto GetXVel = [](std::valarray<double> vals) {
 		return vals[1] / vals[0];
 	};
-	kernel->isSensorEnable = true;
+	kernel->isSensorEnable = false;
 	kernel->SaveSensorRecordIterations = 100;
 	std::shared_ptr<CellSensor> sen = std::make_shared<CellSensor>("Ysensor(0.5, 0.5).dat", GetXVel, kernel->nVariables);
 	sen->SetIndex(kernel->getSerialIndexGlobal((int)(conf.nX * 0.5), (int)(conf.nY * 0.5), 0));
