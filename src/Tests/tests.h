@@ -131,11 +131,11 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	params.gammaL = params.gammaR = 1.4;
 	params.roL = 1.0;
 	params.PL = 1.0;
-	params.uL = 0.75;
+	params.uL = 0.0;
 	params.roR = 0.125;
 	params.PR = 0.1;
 	params.uR = 0.0;
-	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.3, params);
+	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
 	kernel->SetInitialConditions(initD);
 
 	//save solution

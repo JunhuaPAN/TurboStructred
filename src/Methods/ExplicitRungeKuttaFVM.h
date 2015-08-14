@@ -725,27 +725,30 @@ public:
 				for (int k = kMin; k <= kMax; k++) {
 					std::vector<std::valarray<double> > stencil_values;		// vector of stencil values
 					std::vector<Vector> points;								// vector of stencil points
-					std::valarray<double> cell_values(std::move(ConservativeToPrimitive(getCellValues(i, j, k))));	// primitive variables in our cell
+					std::valarray<double> cell_values(getCellValues(i, j, k), 5);	// primitive variables in our cell
 					Vector cell_center = Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k]);
 
 					// X direction stencil
 					for (int iStencil = -dummyCellLayersX; iStencil <= dummyCellLayersX; iStencil++) {
 						if (iStencil == 0) continue;
-						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i + iStencil, j, k))));
+						double* v = getCellValues(i + iStencil, j, k);
+						stencil_values.push_back(std::valarray<double>{v, 5});
 						points.push_back(std::move(Vector(CoordinateX[i + iStencil], CoordinateY[j], CoordinateZ[k])));
 					};
 
 					//Y direction stencil
 					for (int jStencil = -dummyCellLayersY; jStencil <= dummyCellLayersY; jStencil++) {
 						if (jStencil == 0) continue;
-						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i, j + jStencil, k))));
+						double* v = getCellValues(i, j + jStencil, k);
+						stencil_values.push_back(std::valarray<double>{v, 5});
 						points.push_back(std::move(Vector(CoordinateX[i], CoordinateY[j + jStencil], CoordinateZ[k])));
 					};
 
 					//Z direction stencil
 					for (int kStencil = -dummyCellLayersZ; kStencil <= dummyCellLayersZ; kStencil++) {
 						if (kStencil == 0) continue;
-						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i, j, k + kStencil))));
+						double* v = getCellValues(i, j, k + kStencil);
+						stencil_values.push_back(std::valarray<double>{v, 5});
 						points.push_back(std::move(Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k + kStencil])));
 					};
 
@@ -1037,17 +1040,17 @@ public:
 					// Apply boundary conditions
 					if ((pManager->rankCart[0] == 0) && (i == iMin) && (IsPeriodicX != true))									// Left border
 					{
-						UR = PrimitiveToConservative(reconstructions[1][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
+						UR = reconstructions[1][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter);
 						UL = xLeftBC->getDummyReconstructions(&UR[0]);
 					}
 					else if ((pManager->rankCart[0] == pManager->dimsCart[0] - 1) && (i == iMax + 1) && (IsPeriodicX != true))	// Right border
 					{
-						UL = PrimitiveToConservative(reconstructions[iMax - iMin + 1][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
+						UL =reconstructions[iMax - iMin + 1][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter);
 						UR = xRightBC->getDummyReconstructions(&UL[0]);
 					} else
 					{
-						UL = PrimitiveToConservative(reconstructions[i - iMin][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
-						UR = PrimitiveToConservative(reconstructions[i - iMin + 1][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
+						UL = reconstructions[i - iMin][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter);
+						UR = reconstructions[i - iMin + 1][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter);
 					};
 
 					// Compute convective flux
