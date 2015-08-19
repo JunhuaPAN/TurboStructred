@@ -43,6 +43,9 @@
     <Filter Include="Header Files\Reconstruction">
       <UniqueIdentifier>{cfb7e5ba-203f-4169-a346-488f9f9e576f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Tests\1DToroTests">
+      <UniqueIdentifier>{890c242a-e0ad-48b9-a749-321b86a534ce}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -154,6 +157,9 @@
     </ClInclude>
     <ClInclude Include="..\src\Reconstruction\ENO3PointsStencil.h">
       <Filter>Header Files\Reconstruction</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\1DToroTests\ToroTests.h">
+      <Filter>Header Files\Tests\1DToroTests</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
