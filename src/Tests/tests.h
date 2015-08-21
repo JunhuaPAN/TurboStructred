@@ -4,9 +4,10 @@
 #include <iostream>
 #include <vector>
 #include <random>
-#include "kernel\kernel.h";
-#include "Methods\ExplicitRungeKuttaFVM.h"
-#include "Tests\1DToroTests\ToroTests.h"
+#include "kernel/kernel.h";
+#include "Methods/ExplicitRungeKuttaFVM.h"
+#include "Tests/1DToroTests/ToroTests.h"
+#include "Tests/UncomTests/Aleshin1987Modeling.h"
 
 #define PI 3.14159265359
 

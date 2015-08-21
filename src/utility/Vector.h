@@ -11,6 +11,7 @@ public:
 	double x;
 	double y;
 	double z;
+	Vector(const Vector& v) : x{ v.x }, y{ v.y }, z{ v.z } {};
 	Vector(): x(0), y(0), z(0)		
 	{
 	};

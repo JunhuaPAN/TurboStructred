@@ -5,7 +5,8 @@
 int main(int argc, char *argv[])
 {
 	//main function
-	RunRTI2D(argc, argv);
+	AleshinExp::RunExperiment(argc, argv);
+	//RunRTI2D(argc, argv);
 	//RunTriplePointRoe2D(argc, argv);
 	//RunSODTestRoe2D(argc, argv);
 	//RunPoiseuille2DFVM(argc, argv);

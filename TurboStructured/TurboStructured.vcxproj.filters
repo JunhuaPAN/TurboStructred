@@ -46,6 +46,9 @@
     <Filter Include="Header Files\Tests\1DToroTests">
       <UniqueIdentifier>{890c242a-e0ad-48b9-a749-321b86a534ce}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Tests\UncomTests">
+      <UniqueIdentifier>{483bdf3e-c119-42a3-883d-913216d1356e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -160,6 +163,9 @@
     </ClInclude>
     <ClInclude Include="..\src\Tests\1DToroTests\ToroTests.h">
       <Filter>Header Files\Tests\1DToroTests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\UncomTests\Aleshin1987Modeling.h">
+      <Filter>Header Files\Tests\UncomTests</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

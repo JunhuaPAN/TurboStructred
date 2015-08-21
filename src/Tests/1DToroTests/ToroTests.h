@@ -18,7 +18,6 @@ struct ShockTubeParameters {
 	double gammaR;
 };
 
-
 // Error norm functions
 double ComputeL2Error(std::valarray<double>& comp_val, std::valarray<double>& exac_val, int nV) {
 	return 0;
@@ -27,6 +26,27 @@ double ComputeL2Error(std::valarray<double>& comp_val, std::valarray<double>& ex
 double ComputeLinfError(std::valarray<double>& comp_val, std::valarray<double>& exac_val, int nV) {
 	return 0;
 }
+
+// Initial states function depending on test number
+ShockTubeParameters SetStates(int TestNumber, double gamma) {
+	assert(TestNumber != 2, "Toro test #2 isn't implemented");
+	ShockTubeParameters states;
+	if (TestNumber == 1) {
+		states.roL = 1.0;
+		states.uL = { 0, 0, 0 };
+		states.PL = 1.0;
+		states.gammaL = gamma;
+		states.roR = 0.125;
+		states.uR = { 0, 0, 0 };
+		states.PR = 0.1;
+		states.gammaR = gamma;
+	};
+
+	return states;
+};
+
+// Compute exact solution depending on test number
+
 
 std::pair<double, double> RunToroTest1(int argc, char *argv[]) {
 	KernelConfiguration conf;
@@ -64,15 +84,8 @@ std::pair<double, double> RunToroTest1(int argc, char *argv[]) {
 	kernel->Init(conf);
 
 	// initial conditions
-	ShockTubeParameters params;
-	params.gammaL = params.gammaR = 1.4;
-	params.roL = 1.0;
-	params.PL = 1.0;
-	params.uL = { 0, 0, 0 };
-	params.roR = 0.125;
-	params.PR = 0.1;
-	params.uR = { 0, 0, 0 };
-
+	ShockTubeParameters params = SetStates(1, conf.Gamma);
+	
 	//save solution
 	kernel->SaveSolution("init.dat");
 
