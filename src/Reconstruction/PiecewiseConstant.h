@@ -3,8 +3,8 @@
 
 #include <valarray>
 #include <vector>
-#include "utility\Vector.h"
-#include <Reconstruction\IReconstruction.h>
+#include "utility/Vector.h"
+#include <Reconstruction/IReconstruction.h>
 
 
 //Reconstruction by piecewise constant approximation

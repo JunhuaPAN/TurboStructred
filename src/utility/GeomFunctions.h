@@ -10,7 +10,7 @@
 #include <sstream>
 #include <vector>
 #include "Vector.h"
-#include <Eigen\Dense>
+#include <Eigen/Dense>
 
 using namespace Eigen;
 

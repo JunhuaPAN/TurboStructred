@@ -2,7 +2,7 @@
 #define TurboStructured_Reconstruction_Reconstruction
 
 #include <valarray>
-#include "utility\Vector.h"
+#include "utility/Vector.h"
 
 //Basic class for all reconstruction classes
 class IReconstruction {

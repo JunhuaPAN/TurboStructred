@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <valarray>
-#include "utility\Vector.h"
+#include "utility/Vector.h"
 
 //Solution information structure
 class RiemannProblemSolutionResult {

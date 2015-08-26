@@ -1,7 +1,7 @@
 #ifndef TurboStructured_Methods_MethodConfiguration
 #define TurboStructured_Methods_MethodConfiguration
 
-#include "EquationsOfState\EquationsOfState.h"
+#include "EquationsOfState/EquationsOfState.h"
 
 //Method configuration class
 struct MethodConfiguration {

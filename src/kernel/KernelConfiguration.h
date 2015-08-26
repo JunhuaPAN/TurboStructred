@@ -1,9 +1,9 @@
 #ifndef TurboStructured_kernel_KernelConfiguration
 #define TurboStructured_kernel_KernelConfiguration
 
-#include "Methods\MethodConfiguration.h"
+#include "Methods/MethodConfiguration.h"
 #include "Vector.h"
-#include "BoundaryConditions\BoundaryConditionConfiguration.h"
+#include "BoundaryConditions/BoundaryConditionConfiguration.h"
 
 
 //Class that manages all configurable parameters

@@ -4,12 +4,12 @@
 #include <iostream>
 #include <vector>
 #include <random>
-#include "kernel\kernel.h";
-#include "Methods\ExplicitRungeKuttaFVM.h"
-#include "Methods\HybridFVM.h"
-#include "Methods\GeneralEosMethods\HybridGeneralEOSOnePhase.h"
-#include "Methods\GeneralEosMethods\HybridBarotropicEOSOnePhase.h"
-#include "Methods\GeneralEosMethods\HybridBarotropicEOSTwoPhase.h"
+#include "kernel/kernel.h";
+#include "Methods/ExplicitRungeKuttaFVM.h"
+#include "Methods/HybridFVM.h"
+#include "Methods/GeneralEosMethods/HybridGeneralEOSOnePhase.h"
+#include "Methods/GeneralEosMethods/HybridBarotropicEOSOnePhase.h"
+#include "Methods/GeneralEosMethods/HybridBarotropicEOSTwoPhase.h"
 
 
 #define PI 3.14159265359

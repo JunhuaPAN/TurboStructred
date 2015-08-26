@@ -13,14 +13,14 @@
 
 #include "KernelConfiguration.h"
 #include "ParallelManager.h"
-#include "utility\Vector.h"
-#include "utility\Matrix.h"
-#include "utility\Timer.h"
-#include "RiemannSolvers\RoeSolverPerfectGasEOS.h"
-#include "BoundaryConditions\BCGeneral.h"
-#include "Sensors\Sensors.h"
+#include "utility/Vector.h"
+#include "utility/Matrix.h"
+#include "utility/Timer.h"
+#include "RiemannSolvers/RoeSolverPerfectGasEOS.h"
+#include "BoundaryConditions/BCGeneral.h"
+#include "Sensors/Sensors.h"
 
-#include "cgnslib.h"
+//#include "cgnslib.h"
 
 //Step info
 class StepInfo {
