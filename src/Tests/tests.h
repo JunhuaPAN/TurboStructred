@@ -4,7 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <random>
-#include "kernel/kernel.h";
+#include "kernel/kernel.h"
 #include "Methods/ExplicitRungeKuttaFVM.h"
 #include "Methods/HybridFVM.h"
 #include "Methods/GeneralEosMethods/HybridGeneralEOSOnePhase.h"
@@ -90,7 +90,7 @@ std::vector<double> SODinitialDistributionY(Vector r, double yI, ShockTubeParame
 void RunSODTestRoe1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 200;
+	conf.nX = 20;
 	//conf.nY = 10;
 	conf.LX = 1.0;
 	//conf.LY = 1.0;
@@ -121,8 +121,8 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
-		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 	};
 	kernel->Init(conf);
 
@@ -139,14 +139,15 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	kernel->SetInitialConditions(initD);
 
 	//save solution
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionSega("init.dat");
 	
 	//run computation
-	kernel->Run();		
+	//kernel->Run();		
 
 	//finalize kernel
 	kernel->Finilaze();
 };
+
 void RunSODTestReconstruction(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;

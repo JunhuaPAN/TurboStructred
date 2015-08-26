@@ -785,12 +785,12 @@ public:
 		std::vector<double> bufferToSend;
 
 		//Allocate buffers
-		int msgLen = ReconstructionType::GetBufferLenght(nDims, nVariables);
-		int layerSizeX = nlocalY * nlocalZ;
-		int layerSizeY = nlocalX * nlocalZ;
-		int layerSizeZ = nlocalX * nlocalY;
-		int bufferSize = 0;
-		if(nDims < 2) bufferSize = msgLen;
+		auto msgLen = ReconstructionType::GetBufferLenght(nDims, nVariables);
+		auto layerSizeX = nlocalY * nlocalZ;
+		auto layerSizeY = nlocalX * nlocalZ;
+		auto layerSizeZ = nlocalX * nlocalY;
+    size_t bufferSize{ 0 };
+		if (nDims < 2) bufferSize = msgLen;
 		else if (nDims < 3) bufferSize = std::max(layerSizeX, layerSizeY) * msgLen;
 		else bufferSize = std::max(std::max(layerSizeX, layerSizeY), layerSizeZ) * msgLen;
 		bufferToSend.resize(bufferSize);
@@ -800,8 +800,8 @@ public:
 
 		//! Main layer exchanging procedure //TO DO lift from lambda to member
 		auto exchangeLayers = [&](Direction direction, int iSend, int rankDest, int iRecv, int rankSource) {
-			int nRecv = 0;
-			int nSend = 0;
+      size_t nRecv{ 0 };
+      size_t nSend{ 0 };
 
 			//Fill buffer with reconstructions only from inner cells (buffer to SEND reconstruction to another core)
 			int idxBuffer = 0;
@@ -844,7 +844,7 @@ public:
 			};
 
 			//Make exchange
-			pManager->SendRecvDouble(comm, rankDest, rankSource, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
+			pManager->SendRecvDouble(comm, rankDest, rankSource, &bufferToSend.front(), int(nSend), &bufferToRecv.front(), int(nRecv));
 
 			//Write recieved values back
 			idxBuffer = 0;

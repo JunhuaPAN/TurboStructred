@@ -85,7 +85,7 @@ public:
 		//if we know normal part of value (inV) gradient
 		if(CGradient != 0)
 		{
-			int sign = (faceNormal * Vector(1, 1, 1));
+			double sign = (faceNormal * Vector(1, 1, 1));
 			res = GradTangential + (2.0 * sign * Value - GradNormal.mod()) * faceNormal;
 		};
 
