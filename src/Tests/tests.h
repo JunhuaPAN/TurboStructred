@@ -90,7 +90,7 @@ std::vector<double> SODinitialDistributionY(Vector r, double yI, ShockTubeParame
 void RunSODTestRoe1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 20;
+	conf.nX = 200;
 	//conf.nY = 10;
 	conf.LX = 1.0;
 	//conf.LY = 1.0;
@@ -142,7 +142,7 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	kernel->SaveSolutionSega("init.dat");
 	
 	//run computation
-	//kernel->Run();		
+	kernel->Run();		
 
 	//finalize kernel
 	kernel->Finilaze();

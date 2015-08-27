@@ -98,8 +98,8 @@ public:
 	int SaveSensorRecordIterations;
 
 	//External forces
-	Vector Sigma; //Potential force like presure gradient
-	Vector UniformAcceleration;	//external uniform acceleration
+  Vector Sigma{ Vector(0,0,0) }; //Potential force like presure gradient
+	Vector UniformAcceleration{ Vector(0,0,0) };	//external uniform acceleration
 
 	//Boundary conditions
 	std::unique_ptr<BoundaryConditions::BCGeneral> xLeftBC;
@@ -173,15 +173,15 @@ public:
 	};
 
 	//Calculation parameters	
-	double MaxIteration;
+  double MaxIteration;
 	double MaxTime;
 	double SaveSolutionSnapshotTime;
 	int SaveSolutionSnapshotIterations;
 	int ResidualOutputIterations;
 	bool ContinueComputation;
-
   bool DebugOutputEnabled{ true };
 
+  //Array of sensors in use
 	std::vector<std::shared_ptr<Sensor>> Sensors;
 
 	//Constructor
@@ -280,9 +280,9 @@ public:
 		kMin = pManager->rankCart[2] * nlocalZ + dummyCellLayersZ;
 		kMax = (pManager->rankCart[2]+1) * nlocalZ + dummyCellLayersZ - 1;		
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->_rankCart<<", iMin = "<<iMin<<", iMax = "<<iMax<<"\n";
-			std::cout<<"rank = "<<pManager->_rankCart<<", jMin = "<<jMin<<", jMax = "<<jMax<<"\n";
-			std::cout<<"rank = "<<pManager->_rankCart<<", kMin = "<<kMin<<", kMax = "<<kMax<<"\n";
+      std::cout << "rank = " << pManager->_rankCart << ", iMin = " << iMin << ", iMax = " << iMax << ", dimsCart[0] = " << pManager->dimsCart[0] << "\n";
+      std::cout << "rank = " << pManager->_rankCart << ", jMin = " << jMin << ", jMax = " << jMax << ", dimsCart[1] = " << pManager->dimsCart[1] << "\n";
+      std::cout << "rank = " << pManager->_rankCart << ", kMin = " << kMin << ", kMax = " << kMax << ", dimsCart[2] = " << pManager->dimsCart[2] << "\n";
 		};
 
 		//Sync
@@ -290,9 +290,9 @@ public:
 
 		double Lx = config.LX;
 		double Ly = config.LY;
-		double Lz = config.LZ;	
-		if (nDims < 3) Lz = 0;
+		double Lz = config.LZ;			
 		if (nDims < 2) Ly = 0;
+    if (nDims < 3) Lz = 0;
 
 		//Generate cells (uniform grid)
 		nXAll = nX + 2 * dummyCellLayersX;
@@ -310,9 +310,9 @@ public:
 		hy.resize(nYAll);
 		hz.resize(nZAll);    
 
-		//fill cell centers positions and edges sizes
+		//fill cell centers positions and edges sizes    
 		double h_x = Lx / nX;			//uniform grid case
-		if(gridInfo.qx != 1) h_x = 0.5 * Lx * (1.0 - gridInfo.qx) / (1.0 - pow(gridInfo.qx, 0.5 * nX));	//X step around the border
+		if (gridInfo.qx != 1) h_x = 0.5 * Lx * (1.0 - gridInfo.qx) / (1.0 - pow(gridInfo.qx, 0.5 * nX));	//X step around the border
 		double xl = - (dummyCellLayersX * h_x) + 0.5 * h_x;				//left cell (global) position
 		double xr = Lx + dummyCellLayersX * h_x - 0.5 * h_x;			//right cell (global) position
 		for(int i = 0; i < dummyCellLayersX; i++) {
@@ -324,7 +324,7 @@ public:
 			xr -= h_x;
 		};
 
-		for (int i = iMin; i < 0.5 * (iMax + iMin + 1); i++) {
+		for (int i = 1; i < 0.5 * (nX + 1); i++) {
 			CoordinateX[i] = xl;
 			CoordinateX[nXAll - 1 - i] = xr;
 			hx[i] = h_x;
