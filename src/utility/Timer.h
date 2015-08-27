@@ -7,54 +7,58 @@
 #include <memory>
 #include <thread>
 
+using namespace std;
+using namespace std::chrono;
+
 //Simple timer object
 class Timer {
-	std::chrono::time_point<std::chrono::high_resolution_clock> _pauseTime;
+  using clock_t = high_resolution_clock;
+  clock_t::time_point _pauseTime;
 public:
 	bool IsActive;
-	std::chrono::time_point<std::chrono::high_resolution_clock> StartTime;
-	std::chrono::time_point<std::chrono::high_resolution_clock> EndTime;
-	std::chrono::high_resolution_clock::duration ElapsedTime;
+  clock_t::time_point StartTime;
+  clock_t::time_point EndTime;
+  clock_t::duration ElapsedTime;
 
 	Timer() {
 		IsActive = false;
-		ElapsedTime = std::chrono::high_resolution_clock::duration(0);
+		ElapsedTime = clock_t::duration(0);
 	};
 
 	double ElapsedTimeMilliseconds() {
-		return std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(ElapsedTime).count();
+		return duration_cast<duration<double, std::milli>>(ElapsedTime).count();
 	};
 
 	void Start() {
 		IsActive = true;
-		StartTime = std::chrono::steady_clock::now();
+		StartTime = clock_t::now();
 		_pauseTime = StartTime;
-		ElapsedTime = std::chrono::high_resolution_clock::duration(0);
+		ElapsedTime = clock_t::duration(0);
 	};
 
 	void Resume() {
 		if (!IsActive) {
-			_pauseTime = std::chrono::steady_clock::now();
+			_pauseTime = clock_t::now();
 			IsActive = true;
 		};
 	};
 
 	void Pause() {
 		if (IsActive) {
-			ElapsedTime += std::chrono::steady_clock::now() - _pauseTime;
+			ElapsedTime += clock_t::now() - _pauseTime;
 			IsActive = false;
 		};
 	};
 
 	void Reset() {
 		if (!IsActive) {
-			ElapsedTime = std::chrono::high_resolution_clock::duration(0);
+			ElapsedTime = clock_t::duration(0);
 		};
 	};
 
 	void Stop() {
 		Pause();
-		EndTime = std::chrono::steady_clock::now();
+		EndTime = clock_t::now();
 	};
 };
 

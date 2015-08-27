@@ -347,7 +347,7 @@ public:
 			yr -= h_y;
 		};
 
-		for (int j = jMin; j < 0.5 * (jMax + jMin + 1); j++) {
+		for (int j = 1; j < 0.5 * (nY + 1); j++) {
 			CoordinateY[j] = yl;
 			CoordinateY[nYAll - 1 - j] = yr;
 			hy[j] = h_y;
@@ -370,7 +370,7 @@ public:
 			zr -= h_z;
 		};
 
-		for (int k = kMin; k < 0.5 * (kMax + kMin + 1); k++) {
+		for (int k = 1; k < 0.5 * (nZ + 1); k++) {
 			CoordinateZ[k] = zl;
 			CoordinateZ[nZAll - 1 - k] = zr;
 			hz[k] = h_z;
