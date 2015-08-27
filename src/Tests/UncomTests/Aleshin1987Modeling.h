@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <vector>
+#include "math.h"
 #include "kernel/kernel.h";
 #include "Methods/ExplicitRungeKuttaFVM.h"
 
@@ -28,66 +29,56 @@ namespace AleshinExp {
 	// Default parameters
 	void DefaultSettings(Parameters &par) {
 		par.amplitude = 0.01;
-		par.D = 600;
+		par.D = -600;			//shock moves in left direction
 		par.gamma = 1.67;
 		par.Lx = 0.08;
-		par.xInterface = 0.065;
-		par.xShock = 0.051;
-		par.uReff = 400;
-		//par.xShock = 0.01;
-		//par.xInterface = 1.0;
-
+		par.xInterface = 0.015;
+		par.xShock = 0.029;
+		par.uReff = -400;		// frame of refference moves in left direction
 		par.Ly = 7.2e-2;
 		par.p0 = 5.0e4;		// a half of one barr
-		par.roL = 1.784;			// argon
-		par.roR = 5.894;			// xenon
-	}
+		par.roR = 1.784;			// argon
+		par.roL = 5.894;			// xenon
+	};
 
 	// compute state after shock		
 	void ComputeStateAfterShock(Parameters &par, double &p, double &ro, double &u ) {
-		// I'm NOT SURE in that part //
 
 		// compute velocity after the shock
 		double D = par.D;
 		double g = par.gamma;
-		double g1 = g - 1.0;
-		double e0 = par.p0 / (g1 * par.roL);
-		double temp1 = D * D * g1 / g + 2.0 * D * D + e0 * g1;	// just to simplify coding of expression
-		double temp2 = D * (g + 1) / g;
-		u = (temp1 - sqrt( temp1 * temp1 - 2.0 * D * temp2 * (2.0 * e0 * g1 + D * D / 2.0)));
-		u /= temp2;
 
-		// compute pressure and denscity after the shock
-		ro = par.roL * D / (D - u);
-		p = par.p0 + par.roL * D * D - ro * (D - u) * (D - u);
+		// compute velocity pressure and denscity after the shock
+		u = -2.0 * (g * par.p0 - D * D * par.roR) / (D * par.roR * (1.0 + g));
+		ro = par.roR * D / (D - u);
+		p = par.p0 + ro * u * (D - u);
 
-		// CHEAT	- approximate solution (D = 610 m/s)
-		u = 400.006;
-		ro = 5.17244;
-		p = 485752;
+		// TO DO DELETE
+		// Test for permutations of states 
 		
 		// Rankine - Hugoniot conditions cheking
-		double ro0 = par.roL;
+		/*double ro0 = par.roR;
 		double p0 = par.p0;
 		double u0 = 0;
+		double g1 = g - 1.0;
 		
 		double dU1 = ro0 - ro;
 		double dF1 = ro0 * u0 - ro * u;
-		dF1 /= D;
+		dU1 *= D;
 		
 		double dU2 = ro0 * u0 - ro * u;
-		double dF2 = p0 + ro0 * u0 * u0 - p - ro * u * u;
+		double dF2 = p0 - p + ro0 * u0 * u0 - p - ro * u * u;
 		dF2 /= D;
 
-		double roe0 = p0 / (par.gamma - 1.0);
+		double roe0 = p0 / g1;
 		double roE0 = roe0 + 0.5 * ro0 * u0 * u0;
 		double FE0 = u0 * (roE0 + p0);
-		double roe = p / (par.gamma - 1.0);
+		double roe = p / g1;
 		double roE = roe + 0.5 * ro * u * u;
 		double FE = u * (roE + p);
 		double dU3 = roE0 - roE;
 		double dF3 = FE0 - FE;
-		dF3 /= D;
+		dF3 /= D;*/
 
 		return;
 	};
@@ -137,12 +128,7 @@ namespace AleshinExp {
 		kernel->Init(conf);
 
 		double u3, ro3, p3;		// state after the shock
-		ComputeStateAfterShock(par, p3, ro3, u3);	// need to fix this function
-
-		// aproximate state for shock's velocity condition - D = 610 m/s if we collide two argons with 800 and 0 velocities
-		//u3 = 800;
-		//p3 = par.p0;
-		//ro3 = par.roL;
+		ComputeStateAfterShock(par, p3, ro3, u3);
 
 		auto initD = [&par, &conf, modeNumber, p3, ro3, u3](Vector r) {
 			double ro;
@@ -152,22 +138,22 @@ namespace AleshinExp {
 			// domain is divided into three areas
 
 		    // on the left to the shock
-			if (r.x < par.xShock) {
+			if (r.x > par.xShock) {
 				ro = ro3;
 				p = p3;
 				u = u3;
-			}	// on th eright of the shock   
+			}	// on the right of the shock   
 			else {
 				double xborder = par.xInterface;
-				xborder += par.amplitude * cos(2 * PI * r.y * modeNumber / par.Ly);
+				xborder -= par.amplitude * cos(2 * PI * r.y * modeNumber / par.Ly);
 
-				// left part (argon)
+				// left part (xenon)
 				if (r.x < xborder) {
 					ro = par.roL;
 					p = par.p0;
 					u = 0;
 				}
-				// right part (xenon)
+				// right part (argon)
 				else {
 					ro = par.roR;
 					p = par.p0;
@@ -201,7 +187,7 @@ namespace AleshinExp {
 
 	// Run Computation Experiment
 	void RunExperiment(int argc, char *argv[]) {
-		int modeNumber = 3;		// initial perturbation modes number
+		int modeNumber = 1;		// initial perturbation modes number
 		double TotalTime = 2.0e-4;
 
 		// Fill parameters structure (SI system)
