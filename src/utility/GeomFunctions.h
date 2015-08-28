@@ -46,7 +46,7 @@ Vector ComputeGradientByPoints(int ndims, Vector point, double value, const std:
 	Vector3d x = svd.solve(rhs); 
 
 	//Check rank deficiency case
-	if (svd.rank() < ndims) throw std::exception("Could not solve for gradient due to rank deficiency");
+	if (svd.rank() < ndims) throw std::runtime_error{ "Could not solve for gradient due to rank deficiency"};
 
 	//Output
 	grad = Vector(x[0], 0, 0);

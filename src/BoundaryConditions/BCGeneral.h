@@ -107,7 +107,7 @@ public:
 	std::map<BoundaryVariableType, CompositeBoundaryConditionInfo> boundaryConditions;
 
 	// Get dummy cell values
-	virtual std::valarray<double> getDummyValues(double* values, Vector& faceNormal, Vector& faceCenter, Vector& cellCenter) {		
+	virtual std::valarray<double> getDummyValues(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) {		
 		//Compute dummy values
 		double ro = values[0];
 		double u = values[1] / values[0];

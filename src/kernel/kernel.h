@@ -153,7 +153,8 @@ public:
 
 		return std::move(res);
 	};
-	inline std::valarray<double> PrimitiveToConservative(std::valarray<double> &vals) {
+
+	inline std::valarray<double> PrimitiveToConservative(std::valarray<double>&& vals) {
 		std::valarray<double> res(nVariables);
 		double rho_e = vals[0] / (gamma - 1.0);
 		double rho = rho_e / vals[4];
