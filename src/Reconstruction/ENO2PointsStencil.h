@@ -60,7 +60,7 @@ public:
 	};
 
 	// Update center of Reconstruction if needed
-	virtual void RefrashPosition(Vector point) override {
+	virtual void RefreshPosition(Vector point) override {
 		center_ = point;
 	};
 };

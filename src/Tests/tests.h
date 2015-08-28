@@ -12,6 +12,17 @@
 #define PI 3.14159265359
 
 //collect here all tests now
+struct ShockTubeParameters {
+	double gammaL;
+	double roL;
+	double PL;
+	Vector uL;
+	double roR;
+	double PR;
+	Vector uR;
+	double gammaR;
+};
+
 std::vector<double> SODinitialDistribution(Vector r, double R0, ShockTubeParameters params) {
 	std::vector<double> U(5);	
 	double ro;

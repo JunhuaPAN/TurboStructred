@@ -115,7 +115,7 @@ namespace AleshinExp {
 
 		conf.MaxTime = TotalTime;
 		conf.MaxIteration = 1000000;
-		conf.SaveSolutionSnapshotTime = 1.0e-5;
+		conf.SaveSolutionSnapshotTime = 2.0e-6;
 		conf.SaveSolutionSnapshotIterations = 0;
 		conf.ResidualOutputIterations = 10;
 
@@ -137,12 +137,12 @@ namespace AleshinExp {
 
 			// domain is divided into three areas
 
-		    // on the left to the shock
+		    // on the right of the shock
 			if (r.x > par.xShock) {
 				ro = ro3;
 				p = p3;
 				u = u3;
-			}	// on the right of the shock   
+			}	// on the left of the shock   
 			else {
 				double xborder = par.xInterface;
 				xborder -= par.amplitude * cos(2 * PI * r.y * modeNumber / par.Ly);
@@ -187,7 +187,7 @@ namespace AleshinExp {
 
 	// Run Computation Experiment
 	void RunExperiment(int argc, char *argv[]) {
-		int modeNumber = 1;		// initial perturbation modes number
+		int modeNumber = 3;		// initial perturbation modes number
 		double TotalTime = 2.0e-4;
 
 		// Fill parameters structure (SI system)
@@ -201,6 +201,132 @@ namespace AleshinExp {
 		std::cout << "Aleshin experiment simulation is complited";
 		std::cout << std::endl;
 		return;
+	};
+
+	// Additional part - 3D case
+	// Run one experiment ( parameters is as input data)
+	void Run3DExperiment(int argc, char *argv[]) {
+		// experiment parameters
+		int modeNumber = 2;			// initial perturbation modes number
+		double TotalTime = 2.0e-4;
+
+		// Fill parameters structure (SI system)
+		Parameters par;
+		DefaultSettings(par);
+
+		KernelConfiguration conf;
+		conf.nDims = 3;
+		conf.nX = 100;
+		conf.nY = 50;
+		conf.nZ = 50;
+		conf.LX = par.Lx;
+		conf.LY = par.Ly;
+		conf.LZ = conf.LY / modeNumber;
+		conf.isPeriodicX = false;
+		conf.isPeriodicY = true;
+		conf.isPeriodicZ = true;
+		conf.isUniformAlongX = true;
+		conf.isUniformAlongY = true;
+		conf.isUniformAlongZ = true;
+
+		conf.Gamma = par.gamma;
+
+		conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
+		conf.xLeftBoundary.Gamma = conf.Gamma;
+		conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
+		conf.xRightBoundary.Gamma = conf.Gamma;
+
+		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+		conf.methodConfiguration.CFL = 0.4;
+		conf.methodConfiguration.RungeKuttaOrder = 1;
+		conf.methodConfiguration.Eps = 0.05;
+		conf.DummyLayerSize = 1;
+
+		conf.MaxTime = TotalTime;
+		conf.MaxIteration = 1000000;
+		conf.SaveSolutionSnapshotTime = 1.0e-5;
+		conf.SaveSolutionSnapshotIterations = 0;
+		conf.ResidualOutputIterations = 10;
+
+		// init kernel
+		std::unique_ptr<Kernel> kernel;
+		if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+			//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		};
+		kernel->Init(conf);
+
+		double u3, ro3, p3;		// state after the shock
+		ComputeStateAfterShock(par, p3, ro3, u3);
+
+		auto initD = [&par, &conf, modeNumber, p3, ro3, u3](Vector r) {
+			double ro;
+			double p;
+			double u;
+
+			// domain is divided into three areas
+
+			// on the right of the shock
+			if (r.x > par.xShock) {
+				ro = ro3;
+				p = p3;
+				u = u3;
+			}	// on the left of the shock   
+			else {
+				double dr_z = abs(r.z - 0.5 * conf.LZ);		//dr - is a Vector (in YZ plane) from nearest center of perturbation to projection of r in YZ plane
+				double lyambda = conf.LY / modeNumber;
+				int n_mode = (int)(r.y / lyambda);
+				double dr_y = abs(r.y - (n_mode + 0.5) * lyambda);
+				double dr = sqrt(dr_y * dr_y + dr_z * dr_z);
+				dr /= 0.5 * lyambda;
+				double xborder = par.xInterface;
+				if (dr >= 1.0) {
+					xborder -= par.amplitude;
+				}
+				else {
+					xborder -= par.amplitude * cos(PI * (1.0 - dr));
+				};
+
+				// left part (xenon)
+				if (r.x < xborder) {
+					ro = par.roL;
+					p = par.p0;
+					u = 0;
+				}
+				// right part (argon)
+				else {
+					ro = par.roR;
+					p = par.p0;
+					u = 0;
+				};
+			};
+
+			// compute ro_e and write conservative variables
+			double roe = p / (par.gamma - 1.0);
+			u -= par.uReff;
+			std::vector<double> res(5);
+			res[0] = ro;
+			res[1] = ro * u;
+			res[2] = 0.0;
+			res[3] = 0.0;
+			res[4] = roe + 0.5 * ro * u * u;		//total energy equals internal one because a motion is absent
+
+			return res;
+		};
+		kernel->SetInitialConditions(initD);
+
+		//save solution
+		kernel->SaveSolutionSega("init.dat");
+
+		//run computation
+		kernel->Run();
+
+		//finalize kernel
+		kernel->Finilaze();
+
+		//end of experiments
+		std::cout << "Aleshin experiment 3D simulation is complited";
+		std::cout << std::endl;
 	};
 }
 
