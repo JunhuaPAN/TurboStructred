@@ -2167,7 +2167,7 @@ public:
 	};
 
 	//Finalize kernel
-	void Finilaze() {
+	void Finalize() {
 		//Finalize MPI
 		pManager->Finalize();
 	};

@@ -5,8 +5,9 @@
 int main(int argc, char *argv[])
 {
 	//main function
-	AleshinExp::Run3DExperiment(argc, argv);
-	//AleshinExp::RunExperiment(argc, argv);
+	//ShockWaveTest::RunExperiment(argc, argv);
+	//AleshinExp::Run3DExperiment(argc, argv);
+	AleshinExp::RunExperiment(argc, argv);
 	//RunRTI2D(argc, argv);
 	//RunTriplePointRoe2D(argc, argv);
 	//RunSODTestRoe2D(argc, argv);
@@ -18,8 +19,7 @@ int main(int argc, char *argv[])
 	//RunSODTestRoe1D(argc, argv);
 	//RunShearFlow2D(argc, argv);
 	//RunPoiseuille3D(argc, argv);
-
-
+	
 		
 	//RunSODTestHybrid1DGeneral(argc, argv);
 	//RunSODTestRoe2DX(argc, argv);

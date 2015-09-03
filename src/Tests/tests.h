@@ -6,7 +6,7 @@
 #include <random>
 #include "kernel/kernel.h";
 #include "Methods/ExplicitRungeKuttaFVM.h"
-#include "Tests/1DToroTests/ToroTests.h"
+#include "Tests/1DTests/testlist.h"
 #include "Tests/UncomTests/Aleshin1987Modeling.h"
 
 #define PI 3.14159265359
@@ -144,7 +144,7 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	kernel->Run();		
 
 	//finalize kernel
-	kernel->Finilaze();
+	kernel->Finalize();
 };
 void RunSODTestReconstruction(int argc, char *argv[]) {
 	KernelConfiguration conf;
@@ -215,7 +215,7 @@ void RunSODTestReconstruction(int argc, char *argv[]) {
 	kernel->Run();
 
 	//finalize kernel
-	kernel->Finilaze();
+	kernel->Finalize();
 };
 
 void RunContactDisconTest1D(int argc, char *argv[]) {
@@ -273,66 +273,7 @@ void RunContactDisconTest1D(int argc, char *argv[]) {
 	kernel->Run();
 
 	//finalize kernel
-	kernel->Finilaze();
-};
-
-// collision of two media
-void RunShockWaves1D(int argc, char *argv[]) {
-	KernelConfiguration conf;
-	conf.nDims = 1;
-	conf.nX = 100;
-	conf.LX = 1.0;
-	conf.isPeriodicX = false;
-	conf.isUniformAlongX = true;
-	conf.qx = 1.00;
-
-	conf.Gamma = 1.4;
-
-	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-	conf.DummyLayerSize = 1;
-	conf.methodConfiguration.CFL = 0.5;
-	conf.methodConfiguration.RungeKuttaOrder = 1;
-	conf.methodConfiguration.Eps = 0.05;
-
-	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
-	conf.xLeftBoundary.Gamma = 1.4;
-	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
-	conf.xRightBoundary.Gamma = 1.4;
-
-	conf.MaxTime = 0.2;
-	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0.1;
-	conf.SaveSolutionSnapshotIterations = 5;
-	conf.ResidualOutputIterations = 10;
-
-	//init kernel
-	std::unique_ptr<Kernel> kernel;
-	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
-		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
-	};
-	kernel->Init(conf);
-
-	// initial conditions
-	ShockTubeParameters params;
-	params.gammaL = params.gammaR = 1.4;
-	params.roL = 1.0;
-	params.PL = 1.0;
-	params.uL = { 0.75, 0, 0 };
-	params.roR = params.roL;
-	params.PR = params.PL;
-	params.uR = { -0.75, 0, 0 };
-	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
-	kernel->SetInitialConditions(initD);
-
-	//save solution
-	kernel->SaveSolution("init.dat");
-
-	//run computation
-	kernel->Run();
-
-	//finalize kernel
-	kernel->Finilaze();
+	kernel->Finalize();
 };
 
 // Just one shock wave TO DO compute correct IC
@@ -392,7 +333,7 @@ void RunShockWave1D(int argc, char *argv[]) {
 	kernel->Run();
 
 	//finalize kernel
-	kernel->Finilaze();
+	kernel->Finalize();
 };
 
 
@@ -461,7 +402,7 @@ void RunSODTestRoe2D(int argc, char *argv[]) {
 	kernel->Run();
 
 	//finalize kernel
-	kernel->Finilaze();
+	kernel->Finalize();
 };
 
 // 2D Noh Problem [Boscheri - 2015]
@@ -554,7 +495,7 @@ void RunNohProblem2D(int argc, char *argv[]) {
 	kernel->Run();
 
 	//finalize kernel
-	kernel->Finilaze();
+	kernel->Finalize();
 };
 
 // 2D Mono-Material Triple Point Problem from [Boscheri - 2015]
@@ -647,7 +588,7 @@ void RunTriplePointRoe2D(int argc, char *argv[]) {
 	kernel->Run();
 
 	//finalize kernel
-	kernel->Finilaze();
+	kernel->Finalize();
 };
 
 //test for comparison of fluxes in different codes
@@ -717,7 +658,7 @@ void RunFluxesTest2D(int argc, char *argv[]) {
 	kernel->Run();		
 
 	//finalize kernel
-	kernel->Finilaze();
+	kernel->Finalize();
 };
 
 void RunPoiseuille2DFVM(int argc, char *argv[]) {
@@ -814,7 +755,7 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	kernel->isSensorEnable = true;
 	kernel->SaveSensorRecordIterations = 100;
 	std::shared_ptr<CellSensor> sen = std::make_shared<CellSensor>("Ysensor(0.5, 0.5).dat", GetXVel, kernel->nVariables);
-	sen->SetIndex(kernel->getSerialIndexGlobal((int)(conf.nX * 0.5), (int)(conf.nY * 0.5), 0));
+	sen->SetSensor(kernel->getSerialIndexGlobal((int)(conf.nX * 0.5), (int)(conf.nY * 0.5), 0));
 	kernel->Sensors.push_back(sen);
 	for (auto& r : kernel->Sensors) r->Process(kernel->values);		//initial recording
 	
@@ -822,7 +763,7 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	kernel->Run();		
 
 	//finalize kernel
-	kernel->Finilaze();
+	kernel->Finalize();
 };
 
 void RunPoiseuille3D(int argc, char *argv[]) {
@@ -901,7 +842,7 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	kernel->Run();
 
 	//finalize kernel
-	kernel->Finilaze();
+	kernel->Finalize();
 };
 
 void RunShearFlow2D(int argc, char *argv[]) {
@@ -994,13 +935,13 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	};
 	kernel->isSensorEnable = true;
 	std::shared_ptr<CellSensor> sen1 = std::make_shared<CellSensor>("Ysensor(0.5, 0.75).dat", GetXVel, kernel->nVariables);
-	sen1->SetIndex(kernel->getSerialIndexGlobal((int)(conf.nX * 0.5), (int)(conf.nY * 0.75), 0));
+	sen1->SetSensor(kernel->getSerialIndexGlobal((int)(conf.nX * 0.5), (int)(conf.nY * 0.75), 0));
 
 	std::shared_ptr<CellSensor> sen2 = std::make_shared<CellSensor>("Ysensor(0.5, 0.5).dat", GetXVel, kernel->nVariables);
-	sen2->SetIndex(kernel->getSerialIndexGlobal((int)(conf.nX * 0.5), (int)(conf.nY * 0.5), 0));
+	sen2->SetSensor(kernel->getSerialIndexGlobal((int)(conf.nX * 0.5), (int)(conf.nY * 0.5), 0));
 
 	std::shared_ptr<CellSensor> sen3 = std::make_shared<CellSensor>("Ysensor(0.5, 0.25).dat", GetXVel, kernel->nVariables);
-	sen3->SetIndex(kernel->getSerialIndexGlobal((int)(conf.nX * 0.5), (int)(conf.nY * 0.25), 0));
+	sen3->SetSensor(kernel->getSerialIndexGlobal((int)(conf.nX * 0.5), (int)(conf.nY * 0.25), 0));
 	kernel->Sensors.push_back(sen1);
 	kernel->Sensors.push_back(sen2);
 	kernel->Sensors.push_back(sen3);
@@ -1010,7 +951,7 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	kernel->Run();		
 
 	//finalize kernel
-	kernel->Finilaze();
+	kernel->Finalize();
 };
 
 // 2D classic Releigh-Teylor test
@@ -1106,7 +1047,7 @@ void RunRTI2D(int argc, char *argv[]) {
 	kernel->Run();
 
 	// Finalize kernel
-	kernel->Finilaze();
+	kernel->Finalize();
 };
 
 

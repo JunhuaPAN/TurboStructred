@@ -1,5 +1,5 @@
-#ifndef TurboStructured_Tests_1DToroTests_IToroTest
-#define TurboStructured_Tests_1DToroTestsIToroTest
+#ifndef TurboStructured_Tests_1DTests_ToroTest
+#define TurboStructured_Tests_1DTests_ToroTest
 
 #include <iostream>
 #include <vector>
@@ -221,7 +221,7 @@ public:
 		kernel->Run();
 
 		//finalize kernel
-		kernel->Finilaze();
+		kernel->Finalize();
 
 		return{};
 	};

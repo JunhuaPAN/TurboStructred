@@ -87,10 +87,10 @@ namespace AleshinExp {
 	void RunSingleExperiment(int modeNumber, double TotalTime, Parameters& par, int argc, char *argv[]) {
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 500;
-		conf.nY = 200;
+		conf.nX = 600;
+		conf.nY = 300;
 		conf.LX = par.Lx;
-		conf.LY = par.Ly; 
+		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
 		conf.isPeriodicY = false;
 		conf.isUniformAlongX = true;
@@ -115,7 +115,7 @@ namespace AleshinExp {
 
 		conf.MaxTime = TotalTime;
 		conf.MaxIteration = 1000000;
-		conf.SaveSolutionSnapshotTime = 2.0e-6;
+		conf.SaveSolutionSnapshotTime = 1.0e-6;
 		conf.SaveSolutionSnapshotIterations = 0;
 		conf.ResidualOutputIterations = 10;
 
@@ -182,13 +182,13 @@ namespace AleshinExp {
 		kernel->Run();
 
 		//finalize kernel
-		kernel->Finilaze();
+		kernel->Finalize();
 	};
 
 	// Run Computation Experiment
 	void RunExperiment(int argc, char *argv[]) {
-		int modeNumber = 3;		// initial perturbation modes number
-		double TotalTime = 2.0e-4;
+		int modeNumber = 2;		// initial perturbation modes number
+		double TotalTime = 2.8e-5;
 
 		// Fill parameters structure (SI system)
 		Parameters par;
@@ -322,7 +322,7 @@ namespace AleshinExp {
 		kernel->Run();
 
 		//finalize kernel
-		kernel->Finilaze();
+		kernel->Finalize();
 
 		//end of experiments
 		std::cout << "Aleshin experiment 3D simulation is complited";

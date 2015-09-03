@@ -46,6 +46,11 @@ public:
 		HybridBarotropicEOSOnePhase,
 		HybridBarotropicEOSTwoPhase
 	} SolutionMethod;
+	enum class Reconstruction {
+		PiecewiseConstant,
+		ENO2PointsStencil,
+		WENO2PointsStencil
+	} ReconstructionType;
 
 	MethodConfiguration methodConfiguration;
 
