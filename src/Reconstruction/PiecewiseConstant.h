@@ -30,7 +30,7 @@ public:
 		values_ = _values;
 	};
 
-	virtual void RefrashPosition(Vector point) override {};
+	virtual void RefreshPosition(Vector point) override {};
 
 	//copy semantics
 	//PiecewiseConstant(const PiecewiseConstant& element) : values_ (element.values_) {}; // copy constructor 	

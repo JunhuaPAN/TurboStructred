@@ -43,6 +43,12 @@
     <Filter Include="Header Files\Reconstruction">
       <UniqueIdentifier>{cfb7e5ba-203f-4169-a346-488f9f9e576f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Tests\UncomTests">
+      <UniqueIdentifier>{483bdf3e-c119-42a3-883d-913216d1356e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Tests\1DTests">
+      <UniqueIdentifier>{00bda88e-83ee-491f-93ba-9508180baafc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -154,6 +160,21 @@
     </ClInclude>
     <ClInclude Include="..\src\Reconstruction\ENO3PointsStencil.h">
       <Filter>Header Files\Reconstruction</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\UncomTests\Aleshin1987Modeling.h">
+      <Filter>Header Files\Tests\UncomTests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\1DTests\ToroTests.h">
+      <Filter>Header Files\Tests\1DTests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\1DTests\ShockWaveTest.h">
+      <Filter>Header Files\Tests\1DTests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\1DTests\testlist.h">
+      <Filter>Header Files\Tests\1DTests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Sensors\MValuePosSensor.h">
+      <Filter>Header Files\Sensors</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

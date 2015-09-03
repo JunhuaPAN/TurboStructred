@@ -878,7 +878,7 @@ public:
 
 						//Deserialize from string of doubles
 						reconstructions[iRec][jRec][kRec].Deserialize(msg);
-						reconstructions[iRec][jRec][kRec].RefrashPosition({ CoordinateX[i], CoordinateY[j], CoordinateZ[k] });
+						reconstructions[iRec][jRec][kRec].RefreshPosition({ CoordinateX[i], CoordinateY[j], CoordinateZ[k] });
 
 						//Increase object counter
 						idxBuffer++;
@@ -1008,9 +1008,6 @@ public:
 		// arrays of left and right reconstructions
 		std::valarray<double> UL;
 		std::valarray<double> UR;
-
-		// array of pointers to cell values TO DO REMOVE
-		std::vector<std::valarray<double> > U(2);
 
 		//layers number for dummy reconstructions
 		int yLayer = 0;
@@ -1143,7 +1140,7 @@ public:
 							for (int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += -(fr[nv] - fl[nv]) * fS;
 
 							// Compute volume of cell
-							double volume = fS * hy[i - 1];
+							double volume = fS * hy[j - 1];
 
 							// Add up spectral radius estimate
 							spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
@@ -1173,57 +1170,71 @@ public:
 		if (nDims > 2)
 		{
 			faceInd = 0;
-			fn = Vector(0.0, 0.0, 1.0); // y direction
-			for (int i = iMin; i <= iMax; i++) {
-				for (int j = jMin; j <= jMax; j++) {
-					//Compute face square
-					double fS = hx[i] * hy[j];
-
-					//Initial load of values
-					U[0] = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][0].SampleSolution(Vector(0, 0, 0));
+			Vector fn = Vector(0.0, 0.0, 1.0); // y direction
+			for (int j = jMin; j <= jMax; j++) {
+				for (int i = iMin; i <= iMax; i++) {
+					// Compute face square
+					double fS = hx[i] * hy[i];
 
 					for (int k = kMin; k <= kMax + 1; k++) {
-						//Update stencil values
-						U[1] = reconstructions[i - iMin + dummyCellLayersX][j - jMin + dummyCellLayersY][k - kMin + dummyCellLayersZ].SampleSolution(Vector(0, 0, 0));
 
-						//Compute flux
-						RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(U, fn);
+						// Set Riemann Problem arguments
+						Vector faceCenter = Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k] - 0.5 * hz[k]);
+
+						// Apply boundary conditions
+						if ((pManager->rankCart[1] == 0) && (k == kMin) && (IsPeriodicZ != true))									// Left border
+						{
+							UR = PrimitiveToConservative(reconstructions[i - iMin + 1][j - jMin + yLayer][1].SampleSolution(faceCenter));
+							UL = zLeftBC->getDummyReconstructions(&UR[0]);
+						}
+						else if ((pManager->rankCart[1] == pManager->dimsCart[1] - 1) && (k == kMax + 1) && (IsPeriodicZ != true))	// Right border
+						{
+							UL = PrimitiveToConservative(reconstructions[i - iMin + 1][j - jMin + yLayer][kMax - kMin + 1].SampleSolution(faceCenter));
+							UR = zRightBC->getDummyReconstructions(&UL[0]);
+						}
+						else
+						{
+							UL = PrimitiveToConservative(reconstructions[i - iMin + 1][j - jMin + yLayer][k - kMin].SampleSolution(faceCenter));
+							UR = PrimitiveToConservative(reconstructions[i - iMin + 1][j - jMin + yLayer][k - kMin + 1].SampleSolution(faceCenter));
+						};
+
+						// Compute convective flux
+						RiemannProblemSolutionResult result = _riemannSolver->ComputeFlux(UL, UR, fn);
 						fr = result.Fluxes;
 
-						//Compute viscous flux
+						// Compute viscous flux
 						int sL = getSerialIndexLocal(i, j, k - 1);
 						int sR = getSerialIndexLocal(i, j, k);
 						if (isViscousFlow == true) fvisc = vfluxesZ[faceInd];
-						for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
-	
-						//Update residuals
-						if(k > kMin)
-						{
-							//Fluxes difference equals residual
-							int idx = getSerialIndexLocal(i, j, k - 1);
-							for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += - (fr[nv] - fl[nv]) * fS;
+						for (int nv = 0; nv < nVariables; nv++) fr[nv] -= fvisc[nv];
 
-							//Compute volume of cell
+						// Update residuals
+						if (k > kMin)
+						{
+							// Fluxes difference equals residual
+							int idx = getSerialIndexLocal(i, j, k - 1);
+							for (int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += -(fr[nv] - fl[nv]) * fS;
+
+							// Compute volume of cell
 							double volume = fS * hz[k - 1];
 
-							//Add up spectral radius estimate
-							spectralRadius[idx] += fS * result.MaxEigenvalue;
-							double roFace = sqrt(U[0][0] * U[1][0]); // (Roe averaged) density
+							// Add up spectral radius estimate
+							spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
+							double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
 							double gammaFace = gamma;
-							double vsr = std::max(4.0 / (3.0 * roFace), gammaFace/roFace);
+							double vsr = std::max(4.0 / (3.0 * roFace), gammaFace / roFace);
 							double viscosityFace = viscosity;
 							double PrandtlNumberFace = 1.0;
-							vsr *= viscosityFace / PrandtlNumberFace; 
-							vsr *= fS * fS;
+							vsr *= viscosityFace / PrandtlNumberFace;
+							vsr *= fS*fS;
 							vsr /= volume;
 							spectralRadius[idx] += vsr;
 						};
-          
-						//Shift stencil
-						fl = fr;
-						U[0] = U[1];
 
-						//Increment face index
+						// Shift stencil
+						fl = fr;
+
+						// Increment face index
 						faceInd++;
 					};
 				};

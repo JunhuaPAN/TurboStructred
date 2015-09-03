@@ -24,12 +24,12 @@ public:
 	virtual void Deserialize(const std::valarray<double>& ) = 0;
 
 	// Update reconstruction center
-	virtual void RefrashPosition(Vector point) = 0;
+	virtual void RefreshPosition(Vector point) = 0;
 };
 
 template<typename T>
 T ComputeReconstruction(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
-	static_assert(false, "We dont have required function.")
+	static_assert(false, "We dont have required function.");
 };
 
 #endif

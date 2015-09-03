@@ -188,7 +188,7 @@ public:
 	};
 
 	//Set initial conditions
-	void SetInitialConditions(std::function<std::vector<double>(Vector r)> initF) {		
+	void SetInitialConditions(std::function<std::vector<double>(const Vector& r)> initF) {		
 		for (int i = iMin; i <= iMax; i++) {
 			for (int j = jMin; j <= jMax; j++) {
 				for (int k = kMin; k <= kMax; k++) {
@@ -2167,7 +2167,7 @@ public:
 	};
 
 	//Finalize kernel
-	void Finilaze() {
+	void Finalize() {
 		//Finalize MPI
 		pManager->Finalize();
 	};

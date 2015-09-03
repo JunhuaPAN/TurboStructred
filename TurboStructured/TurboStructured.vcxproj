@@ -52,7 +52,12 @@
     <ClInclude Include="..\src\Sensors\CellSensor.h" />
     <ClInclude Include="..\src\Sensors\Sensor.h" />
     <ClInclude Include="..\src\Sensors\Sensors.h" />
+    <ClInclude Include="..\src\Sensors\MValuePosSensor.h" />
+    <ClInclude Include="..\src\Tests\1DTests\ShockWaveTest.h" />
+    <ClInclude Include="..\src\Tests\1DTests\testlist.h" />
+    <ClInclude Include="..\src\Tests\1DTests\ToroTests.h" />
     <ClInclude Include="..\src\tests\tests.h" />
+    <ClInclude Include="..\src\Tests\UncomTests\Aleshin1987Modeling.h" />
     <ClInclude Include="..\src\utility\GeomFunctions.h" />
     <ClInclude Include="..\src\utility\Matrix.h" />
     <ClInclude Include="..\src\utility\Timer.h" />
