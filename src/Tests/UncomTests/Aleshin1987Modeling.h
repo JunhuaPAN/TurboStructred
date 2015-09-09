@@ -1,5 +1,5 @@
-#ifndef TurboStructured_Tests_UncomTests
-#define TurboStructured_Tests_UncomTests
+#ifndef TurboStructured_Tests_UncomTests_AleshinExp
+#define TurboStructured_Tests_UncomTests_AleshinExp
 
 
 #include <iostream>
@@ -7,6 +7,7 @@
 #include "math.h"
 #include "kernel/kernel.h";
 #include "Methods/ExplicitRungeKuttaFVM.h"
+#include "Sensors/Sensors.h"
 
 namespace AleshinExp {
 	double PI = 3.14159265359;
@@ -87,8 +88,8 @@ namespace AleshinExp {
 	void RunSingleExperiment(int modeNumber, double TotalTime, Parameters& par, int argc, char *argv[]) {
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 600;
-		conf.nY = 300;
+		conf.nX = 400;
+		conf.nY = 200;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
@@ -115,7 +116,7 @@ namespace AleshinExp {
 
 		conf.MaxTime = TotalTime;
 		conf.MaxIteration = 1000000;
-		conf.SaveSolutionSnapshotTime = 1.0e-6;
+		conf.SaveSolutionSnapshotTime = 5.0e-6;
 		conf.SaveSolutionSnapshotIterations = 0;
 		conf.ResidualOutputIterations = 10;
 
@@ -178,6 +179,30 @@ namespace AleshinExp {
 		//save solution
 		kernel->SaveSolutionSega("init.dat");
 
+		// Set sensors if needed
+		auto GetInEnergy = [](std::valarray<double> vals) {
+			double roe =  vals[4] - 0.5 * (vals[1] * vals[1] + vals[2] * vals[2]) / vals[0];
+			return roe / vals[0];
+		};
+		// create grid
+		Grid g;
+		g.iMin = kernel->iMin;
+		g.iMax = kernel->iMax;
+		g.jMin = kernel->jMin;
+		g.jMax = kernel->jMax;
+		g.kMin = kernel->kMin;
+		g.kMax = kernel->kMax;
+		g.coordsX = kernel->CoordinateX;
+		g.nXAll = kernel->nXAll;
+		g.nYAll = kernel->nYAll;
+		g.nlocalX = kernel->nlocalX;
+		kernel->isSensorEnable = true;
+		kernel->SaveSensorRecordIterations = 1;
+
+		std::unique_ptr<MValuePosXSensor2> sen1 = std::make_unique<MValuePosXSensor2>("border_pos.dat", *kernel->pManager, g, GetInEnergy);
+		sen1->SetSensor((int)(0.5 * conf.nY / modeNumber), 0, kernel->nVariables);
+		kernel->Sensors.push_back(std::move(sen1));
+
 		//run computation
 		kernel->Run();
 
@@ -188,7 +213,7 @@ namespace AleshinExp {
 	// Run Computation Experiment
 	void RunExperiment(int argc, char *argv[]) {
 		int modeNumber = 2;		// initial perturbation modes number
-		double TotalTime = 2.8e-5;
+		double TotalTime = 10.0e-5;
 
 		// Fill parameters structure (SI system)
 		Parameters par;
@@ -198,7 +223,7 @@ namespace AleshinExp {
 		RunSingleExperiment(modeNumber, TotalTime, par, argc, argv);
 
 		//end of experiments
-		std::cout << "Aleshin experiment simulation is complited";
+		std::cout << "Aleshin's experiment simulation is complited";
 		std::cout << std::endl;
 		return;
 	};
@@ -325,7 +350,7 @@ namespace AleshinExp {
 		kernel->Finalize();
 
 		//end of experiments
-		std::cout << "Aleshin experiment 3D simulation is complited";
+		std::cout << "Aleshin's experiment 3D simulation is complited";
 		std::cout << std::endl;
 	};
 }

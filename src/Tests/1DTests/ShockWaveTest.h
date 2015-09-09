@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <vector>
-#include "kernel\kernel.h";
+#include "kernel\kernel.h"
 #include "Methods\ExplicitRungeKuttaFVM.h"
 
 namespace ShockWaveTest
