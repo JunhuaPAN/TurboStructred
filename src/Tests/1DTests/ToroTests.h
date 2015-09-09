@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <vector>
-#include "kernel\kernel.h";
+#include "kernel\kernel.h"
 #include "Methods\ExplicitRungeKuttaFVM.h"
 
 namespace ToroTests
@@ -39,7 +39,7 @@ public:
 
 	// Initial states function depending on test number
 	void SetStates(int TestNumber, double gamma) {
-		assert(TestNumber != 2, "Toro test #2 isn't implemented");
+		assert(TestNumber != 2);
 		if (TestNumber == 1) {
 			par.roL = 1.0;
 			par.uL = 0.0;

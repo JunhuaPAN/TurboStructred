@@ -173,7 +173,10 @@
     <ClInclude Include="..\src\Tests\1DTests\testlist.h">
       <Filter>Header Files\Tests\1DTests</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Sensors\MValuePosSensor.h">
+    <ClInclude Include="..\src\Sensors\MValuePosXSensor.h">
+      <Filter>Header Files\Sensors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Sensors\MValuePosXSensor2.h">
       <Filter>Header Files\Sensors</Filter>
     </ClInclude>
   </ItemGroup>

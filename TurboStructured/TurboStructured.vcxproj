@@ -50,9 +50,10 @@
     <ClInclude Include="..\src\RiemannSolvers\RoeSolverPerfectGasEOS.h" />
     <ClInclude Include="..\src\RiemannSolvers\RiemannSolver.h" />
     <ClInclude Include="..\src\Sensors\CellSensor.h" />
+    <ClInclude Include="..\src\Sensors\MValuePosXSensor.h" />
+    <ClInclude Include="..\src\Sensors\MValuePosXSensor2.h" />
     <ClInclude Include="..\src\Sensors\Sensor.h" />
     <ClInclude Include="..\src\Sensors\Sensors.h" />
-    <ClInclude Include="..\src\Sensors\MValuePosSensor.h" />
     <ClInclude Include="..\src\Tests\1DTests\ShockWaveTest.h" />
     <ClInclude Include="..\src\Tests\1DTests\testlist.h" />
     <ClInclude Include="..\src\Tests\1DTests\ToroTests.h" />
@@ -132,7 +133,7 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\libs\cgnslib_3.1.4\build\src\Release;..\libs\MicrosoftMPI\Lib\amd64;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\lib\intel64;D:\Projects\Lib\cgnslib_3.1.4\build\src\Release;D:\Dropbox\!Sega\GitHub\TurboStructred\libs\cgnslib_3.1.4\build\src\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\libs\MicrosoftMPI\Lib\amd64;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\lib\intel64;D:\Projects\Lib\cgnslib_3.1.4\build\src\Release;D:\Dropbox\!Sega\GitHub\TurboStructred\libs\cgnslib_3.1.4\build\src\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>cgns.lib;msmpi.lib;mkl_core.lib;mkl_sequential.lib;mkl_intel_lp64.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -162,7 +163,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>..\libs\cgnslib_3.1.4\build\src\Release;..\libs\MicrosoftMPI\Lib\amd64;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\lib\intel64;D:\Projects\Lib\cgnslib_3.1.4\build\src\Release;D:\Dropbox\!Sega\GitHub\TurboStructred\libs\cgnslib_3.1.4\build\src\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\libs\MicrosoftMPI\Lib\amd64;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\lib\intel64;D:\Projects\Lib\cgnslib_3.1.4\build\src\Release;D:\Dropbox\!Sega\GitHub\TurboStructred\libs\cgnslib_3.1.4\build\src\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>cgns.lib;msmpi.lib;mkl_core.lib;mkl_sequential.lib;mkl_intel_lp64.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>

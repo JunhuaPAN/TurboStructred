@@ -5,28 +5,39 @@
 #include <valarray>
 #include <functional>
 #include <fstream>
+#include "ParallelManager.h"
+
+struct Grid {
+	int iMin, iMax;
+	int jMin, jMax;
+	int kMin, kMax;
+	int nXAll, nYAll, nZAll;
+	int nlocalX, nlocalY, nlocalZ;
+	std::valarray<double> coordsX;
+};
 
 class Sensor
 {
 protected:
-	int nVariables;
+	bool _isActive;			// flag which show the sensor is active or not
+	ParallelManager& _parM;	// parallel manager and grid
+	Grid& _grid;
 
 public:
 	int iteration;			//number of iteration
 	double timer;			//time of working
 	std::string filename;	//file to write data
-	std::function<double(const std::valarray<double>&)> getValue;
+
 	std::ofstream ofs;
 
-	Sensor(std::string _filename, std::function<double(const std::valarray<double>&)> _getValue, int _nVariables) : filename(_filename), getValue(_getValue), nVariables(_nVariables) {
-		//ofs.open(filename, std::ifstream::app);
-		ofs.open(filename);
+	Sensor(std::string _filename, ParallelManager& parM, Grid& grid) : filename(_filename), _parM(parM), _grid(grid) {
+		_isActive = false;
+		if (_parM.getRank() == 0) {
+			ofs.open(filename);
+			ofs.close();
+		};
 		iteration = 0;
 		timer = 0;
-	};
-
-	~Sensor() {
-		ofs.close();
 	};
 
 	virtual void Process(const std::valarray<double>& values) = 0;

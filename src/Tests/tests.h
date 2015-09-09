@@ -4,7 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <random>
-#include "kernel/kernel.h";
+#include "kernel/kernel.h"
 #include "Methods/ExplicitRungeKuttaFVM.h"
 #include "Tests/1DTests/testlist.h"
 #include "Tests/UncomTests/Aleshin1987Modeling.h"
@@ -749,15 +749,15 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	kernel->SaveSolutionSega("init.dat");
 
 	//Set sensor at center
-	auto GetXVel = [](std::valarray<double> vals) {
-		return vals[1] / vals[0];
-	};
-	kernel->isSensorEnable = true;
-	kernel->SaveSensorRecordIterations = 100;
-	std::shared_ptr<CellSensor> sen = std::make_shared<CellSensor>("Ysensor(0.5, 0.5).dat", GetXVel, kernel->nVariables);
-	sen->SetSensor(kernel->getSerialIndexGlobal((int)(conf.nX * 0.5), (int)(conf.nY * 0.5), 0));
-	kernel->Sensors.push_back(sen);
-	for (auto& r : kernel->Sensors) r->Process(kernel->values);		//initial recording
+	//auto GetXVel = [](std::valarray<double> vals) {
+	//	return vals[1] / vals[0];
+	//};
+	//kernel->isSensorEnable = true;
+	//kernel->SaveSensorRecordIterations = 100;
+	//std::unique_ptr<CellSensor> sen = std::make_unique<CellSensor>("Ysensor(0.5, 0.5).dat", GetXVel, kernel->nVariables);
+	//sen->SetSensor((int)(conf.nX * 0.5), (int)(conf.nY * 0.5), 0);
+	//kernel->Sensors.push_back(std::move(sen));
+	//for (auto& r : kernel->Sensors) r->Process(kernel->values);		//initial recording
 	
 	//run computation
 	kernel->Run();		
@@ -930,22 +930,22 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	kernel->SaveSolutionSega("init.dat");
 
 	//Set sensors
-	auto GetXVel = [](std::valarray<double> vals) {
-		return vals[1] / vals[0];
-	};
-	kernel->isSensorEnable = true;
-	std::shared_ptr<CellSensor> sen1 = std::make_shared<CellSensor>("Ysensor(0.5, 0.75).dat", GetXVel, kernel->nVariables);
-	sen1->SetSensor(kernel->getSerialIndexGlobal((int)(conf.nX * 0.5), (int)(conf.nY * 0.75), 0));
+	//auto GetXVel = [](std::valarray<double> vals) {
+	//	return vals[1] / vals[0];
+	//};
+	//kernel->isSensorEnable = true;
+	//std::unique_ptr<CellSensor> sen1 = std::make_unique<CellSensor>("Ysensor(0.5, 0.75).dat", GetXVel, kernel->nVariables);
+	//sen1->SetSensor((int)(conf.nX * 0.5), (int)(conf.nY * 0.75), 0);
 
-	std::shared_ptr<CellSensor> sen2 = std::make_shared<CellSensor>("Ysensor(0.5, 0.5).dat", GetXVel, kernel->nVariables);
-	sen2->SetSensor(kernel->getSerialIndexGlobal((int)(conf.nX * 0.5), (int)(conf.nY * 0.5), 0));
+	//std::unique_ptr<CellSensor> sen2 = std::make_unique<CellSensor>("Ysensor(0.5, 0.5).dat", GetXVel, kernel->nVariables);
+	//sen2->SetSensor((int)(conf.nX * 0.5), (int)(conf.nY * 0.5), 0);
 
-	std::shared_ptr<CellSensor> sen3 = std::make_shared<CellSensor>("Ysensor(0.5, 0.25).dat", GetXVel, kernel->nVariables);
-	sen3->SetSensor(kernel->getSerialIndexGlobal((int)(conf.nX * 0.5), (int)(conf.nY * 0.25), 0));
-	kernel->Sensors.push_back(sen1);
-	kernel->Sensors.push_back(sen2);
-	kernel->Sensors.push_back(sen3);
-	for(auto& r : kernel->Sensors) r->Process(kernel->values);		//initial recording
+	//std::unique_ptr<CellSensor> sen3 = std::make_unique<CellSensor>("Ysensor(0.5, 0.25).dat", GetXVel, kernel->nVariables);
+	//sen3->SetSensor((int)(conf.nX * 0.5), (int)(conf.nY * 0.25), 0);
+	//kernel->Sensors.push_back(std::move(sen1));
+	//kernel->Sensors.push_back(std::move(sen2));
+	//kernel->Sensors.push_back(std::move(sen3));
+	//for(auto& r : kernel->Sensors) r->Process(kernel->values);		//initial recording
 
 	//run computation
 	kernel->Run();		

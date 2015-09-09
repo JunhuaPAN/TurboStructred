@@ -7,7 +7,7 @@
 
 //Implementation of matrix product operation
 //Matrix type
-using Matix = Eigen::MatrixXd;
+using Matrix = Eigen::MatrixXd;
 //struct Matrix {
 //	int Nrows;	//number of rows
 //	int Mcolumns;	//number of columns

@@ -13,12 +13,12 @@
 
 #include "KernelConfiguration.h"
 #include "ParallelManager.h"
-#include "utility\Vector.h"
-#include "utility\Matrix.h"
-#include "utility\Timer.h"
-#include "RiemannSolvers\RoeSolverPerfectGasEOS.h"
-#include "BoundaryConditions\BCGeneral.h"
-#include "Sensors\Sensors.h"
+#include "utility/Vector.h"
+#include "utility/Matrix.h"
+#include "utility/Timer.h"
+#include "RiemannSolvers/RoeSolverPerfectGasEOS.h"
+#include "BoundaryConditions/BCGeneral.h"
+#include "Sensors/Sensors.h"
 
 #include "cgnslib.h"
 
@@ -32,6 +32,7 @@ public:
 	double NextSnapshotTime;
 };
 
+
 //Calculation kernel
 class Kernel {
 public:
@@ -42,7 +43,7 @@ public:
 	//Parallel run information
 	std::unique_ptr<ParallelManager> pManager;
 	int rank; //Rank of process
-	int iMin; 
+	int iMin;
 	int iMax;
 	int jMin;
 	int jMax;
@@ -110,7 +111,7 @@ public:
 	std::unique_ptr<BoundaryConditions::BCGeneral> zRightBC;
 
 	//Solution data
-	std::valarray<double> values;	
+	std::valarray<double> values;
 	std::valarray<double> residual;
 
 	//Get serial index for cell
@@ -120,13 +121,13 @@ public:
 	};
 
 	inline int getSerialIndexLocal(int i, int j, int k) {
-		int sI =  (k - kMin + dummyCellLayersZ) * nlocalXAll * nlocalYAll + (j - jMin + dummyCellLayersY) * nlocalXAll + (i - iMin + dummyCellLayersX);
+		int sI = (k - kMin + dummyCellLayersZ) * nlocalXAll * nlocalYAll + (j - jMin + dummyCellLayersY) * nlocalXAll + (i - iMin + dummyCellLayersX);
 		return sI;
 	};
-	
+
 	//Get cell values
 	inline double* getCellValues(int i, int j, int k) {
-		int sBegin = getSerialIndexLocal(i, j, k) * nVariables;		
+		int sBegin = getSerialIndexLocal(i, j, k) * nVariables;
 		return &values[sBegin];
 	};
 
@@ -147,7 +148,7 @@ public:
 		res[3] = w;
 
 		// Internal energy
-		res[4] = rho_e / rho;		
+		res[4] = rho_e / rho;
 
 		return std::move(res);
 	};
@@ -159,7 +160,7 @@ public:
 		double rho_v = rho * vals[2];
 		double rho_w = rho * vals[3];
 		double rho_E = rho_e + 0.5 * (rho_u * rho_u + rho_v * rho_v + rho_w * rho_w) / rho;
-		
+
 		//fill conservative result array
 		res[0] = rho;
 		res[1] = rho_u;
@@ -180,15 +181,15 @@ public:
 
 	bool DebugOutputEnabled;
 
-	std::vector<std::shared_ptr<Sensor>> Sensors;
+	std::vector<std::unique_ptr<Sensor>> Sensors;
 
 	//Constructor
 	Kernel(int* argc, char **argv[]) : pManager(new ParallelManager(argc, argv)) {
-			nVariables = 5;	//default value
+		nVariables = 5;	//default value
 	};
 
 	//Set initial conditions
-	void SetInitialConditions(std::function<std::vector<double>(const Vector& r)> initF) {		
+	void SetInitialConditions(std::function<std::vector<double>(const Vector& r)> initF) {
 		for (int i = iMin; i <= iMax; i++) {
 			for (int j = jMin; j <= jMax; j++) {
 				for (int k = kMin; k <= kMax; k++) {
@@ -197,14 +198,14 @@ public:
 					double y = CoordinateY[j];
 					double z = CoordinateZ[k];
 					int sBegin = getSerialIndexLocal(i, j, k) * nVariables;
-					std::vector<double> U = initF(Vector(x,y,z));
-					for (int varn = 0; varn < nVariables; varn++) values[sBegin + varn] = U[varn];					
+					std::vector<double> U = initF(Vector(x, y, z));
+					for (int varn = 0; varn < nVariables; varn++) values[sBegin + varn] = U[varn];
 				};
 			};
 		};
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Initial conditions written.\n";
+			std::cout << "rank = " << pManager->getRank() << ", Initial conditions written.\n";
 			std::cout.flush();
 		};
 		//Sync
@@ -252,32 +253,35 @@ public:
 		pManager->InitCartesianTopology(gridInfo);
 
 		//nullify compression if we have uniform grid
-		if(config.isUniformAlongX == false) {
+		if (config.isUniformAlongX == false) {
 			gridInfo.qx = config.qx;
 			assert(gridInfo.IsPeriodicX == false);
-		} else gridInfo.qx = 1;
-		if(config.isUniformAlongY == false) {
+		}
+		else gridInfo.qx = 1;
+		if (config.isUniformAlongY == false) {
 			gridInfo.qy = config.qy;
 			assert(gridInfo.IsPeriodicY == false);
-		} else gridInfo.qy = 1;		
-		if(config.isUniformAlongZ == false) {
+		}
+		else gridInfo.qy = 1;
+		if (config.isUniformAlongZ == false) {
 			gridInfo.qz = config.qz;
 			assert(gridInfo.IsPeriodicZ == false);
-		} else gridInfo.qz = 1;
+		}
+		else gridInfo.qz = 1;
 
 		nlocalX = nX / pManager->dimsCart[0];
 		nlocalY = nY / pManager->dimsCart[1];
-		nlocalZ = nZ / pManager->dimsCart[2];	
+		nlocalZ = nZ / pManager->dimsCart[2];
 		iMin = pManager->rankCart[0] * nlocalX + dummyCellLayersX;
-		iMax = (pManager->rankCart[0]+1) * nlocalX + dummyCellLayersX - 1;
+		iMax = (pManager->rankCart[0] + 1) * nlocalX + dummyCellLayersX - 1;
 		jMin = pManager->rankCart[1] * nlocalY + dummyCellLayersY;
-		jMax = (pManager->rankCart[1]+1) * nlocalY + dummyCellLayersY - 1;
+		jMax = (pManager->rankCart[1] + 1) * nlocalY + dummyCellLayersY - 1;
 		kMin = pManager->rankCart[2] * nlocalZ + dummyCellLayersZ;
-		kMax = (pManager->rankCart[2]+1) * nlocalZ + dummyCellLayersZ - 1;		
+		kMax = (pManager->rankCart[2] + 1) * nlocalZ + dummyCellLayersZ - 1;
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->_rankCart<<", iMin = "<<iMin<<", iMax = "<<iMax<<"\n";
-			std::cout<<"rank = "<<pManager->_rankCart<<", jMin = "<<jMin<<", jMax = "<<jMax<<"\n";
-			std::cout<<"rank = "<<pManager->_rankCart<<", kMin = "<<kMin<<", kMax = "<<kMax<<"\n";
+			std::cout << "rank = " << pManager->_rankCart << ", iMin = " << iMin << ", iMax = " << iMax << "\n";
+			std::cout << "rank = " << pManager->_rankCart << ", jMin = " << jMin << ", jMax = " << jMax << "\n";
+			std::cout << "rank = " << pManager->_rankCart << ", kMin = " << kMin << ", kMax = " << kMax << "\n";
 		};
 
 		//Sync
@@ -285,7 +289,7 @@ public:
 
 		double Lx = config.LX;
 		double Ly = config.LY;
-		double Lz = config.LZ;	
+		double Lz = config.LZ;
 		if (nDims < 3) Lz = 0;
 		if (nDims < 2) Ly = 0;
 
@@ -307,10 +311,10 @@ public:
 
 		//fill cell centers positions and edges sizes
 		double h_x = Lx / nX;			//uniform grid case
-		if(gridInfo.qx != 1) h_x = 0.5 * Lx * (1.0 - gridInfo.qx) / (1.0 - pow(gridInfo.qx, 0.5 * nX));	//X step around the border
-		double xl = - (dummyCellLayersX * h_x) + 0.5 * h_x;				//left cell (global) position
+		if (gridInfo.qx != 1) h_x = 0.5 * Lx * (1.0 - gridInfo.qx) / (1.0 - pow(gridInfo.qx, 0.5 * nX));	//X step around the border
+		double xl = -(dummyCellLayersX * h_x) + 0.5 * h_x;				//left cell (global) position
 		double xr = Lx + dummyCellLayersX * h_x - 0.5 * h_x;			//right cell (global) position
-		for(int i = 0; i < dummyCellLayersX; i++) {
+		for (int i = 0; i < dummyCellLayersX; i++) {
 			CoordinateX[i] = xl;
 			CoordinateX[nXAll - 1 - i] = xr;
 			hx[i] = h_x;
@@ -330,10 +334,10 @@ public:
 		};
 
 		double h_y = Ly / nY;			//uniform grid case
-		if(gridInfo.qy != 1) h_y = 0.5 * Ly * (1.0 - gridInfo.qy) / (1.0 - pow(gridInfo.qy, 0.5 * nY));	//Y step around the border
-		double yl = - (dummyCellLayersY * h_y) + 0.5 * h_y;			//	left cell (global) position
+		if (gridInfo.qy != 1) h_y = 0.5 * Ly * (1.0 - gridInfo.qy) / (1.0 - pow(gridInfo.qy, 0.5 * nY));	//Y step around the border
+		double yl = -(dummyCellLayersY * h_y) + 0.5 * h_y;			//	left cell (global) position
 		double yr = Ly + dummyCellLayersY * h_y - 0.5 * h_y;		//	right cell (global) position
-		for(int i = 0; i < dummyCellLayersY; i++) {
+		for (int i = 0; i < dummyCellLayersY; i++) {
 			CoordinateY[i] = yl;
 			CoordinateY[nYAll - 1 - i] = yr;
 			hy[i] = h_y;
@@ -353,10 +357,10 @@ public:
 		};
 
 		double h_z = Lz / nZ;			//uniform grid case
-		if(gridInfo.qz != 1) h_z = 0.5 * Lz * (1.0 - gridInfo.qz) / (1.0 - pow(gridInfo.qz, 0.5 * nZ));	//Y step around the border
-		double zl = - (dummyCellLayersZ * h_z) + 0.5 * h_z;				//left cell (global) position
+		if (gridInfo.qz != 1) h_z = 0.5 * Lz * (1.0 - gridInfo.qz) / (1.0 - pow(gridInfo.qz, 0.5 * nZ));	//Y step around the border
+		double zl = -(dummyCellLayersZ * h_z) + 0.5 * h_z;				//left cell (global) position
 		double zr = Lz + dummyCellLayersZ * h_z - 0.5 * h_z;			//right cell (global) position
-		for(int i = 0; i < dummyCellLayersZ; i++) {
+		for (int i = 0; i < dummyCellLayersZ; i++) {
 			CoordinateZ[i] = zl;
 			CoordinateZ[nZAll - 1 - i] = zr;
 			hz[i] = h_z;
@@ -382,39 +386,42 @@ public:
 		gamma = config.Gamma;
 		viscosity = config.Viscosity;
 		thermalConductivity = config.ThermalConductivity;
-		if(config.IsViscousFlow == true) {
+		if (config.IsViscousFlow == true) {
 			isViscousFlow = true;
 			isGradientRequired = true;
-		} else {
+		}
+		else {
 			isViscousFlow = false;
 			isGradientRequired = false;
 		};
-		if(config.IsExternalForceRequared == true) {
+		if (config.IsExternalForceRequared == true) {
 			isExternalForce = true;
-		} else {
+		}
+		else {
 			isExternalForce = false;
 		};
-		if(config.IsUnifromAccelerationRequared == true) {
+		if (config.IsUnifromAccelerationRequared == true) {
 			isExternalAccelaration = true;
-		} else {
+		}
+		else {
 			isExternalAccelaration = false;
 		};
 		ContinueComputation = config.ContinueComputation;
 
 		//Allocate data structures
-		values.resize(nVariables * nlocalXAll * nlocalYAll * nlocalZAll);	
+		values.resize(nVariables * nlocalXAll * nlocalYAll * nlocalZAll);
 		residual.resize(nVariables * nlocalXAll * nlocalYAll * nlocalZAll);
 
 		//Initialize calculation parameters
 		MaxTime = config.MaxTime;
 		MaxIteration = config.MaxIteration;
-		SaveSolutionSnapshotTime = config.SaveSolutionSnapshotTime;	
+		SaveSolutionSnapshotTime = config.SaveSolutionSnapshotTime;
 		SaveSolutionSnapshotIterations = config.SaveSolutionSnapshotIterations;
 		ResidualOutputIterations = config.ResidualOutputIterations;
 		stepInfo.Time = 0;
 		stepInfo.Iteration = 0;
 		stepInfo.NextSnapshotTime = stepInfo.Time + SaveSolutionSnapshotTime;
-		
+
 		//Initialize boundary conditions
 		InitBoundaryConditions(config);
 
@@ -424,9 +431,9 @@ public:
 
 		isSensorEnable = false;			//by default
 		SaveSensorRecordIterations = 1;	//by default
-		
+
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";
+			std::cout << "rank = " << pManager->getRank() << ", Kernel initialized\n";
 			std::cout.flush();
 		};
 		//Sync
@@ -459,7 +466,7 @@ public:
 	void UpdateSolution(double dt) {
 		stepInfo.Residual.resize(nVariables);
 		for (int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = 0;
-		
+
 		for (int i = iMin; i <= iMax; i++)
 		{
 			for (int j = jMin; j <= jMax; j++)
@@ -468,9 +475,9 @@ public:
 				{
 					int idx = getSerialIndexLocal(i, j, k);
 					//Compute cell volume
-					double volume { hx[i] * hy[j] * hz[k] };
+					double volume{ hx[i] * hy[j] * hz[k] };
 					//Update cell values
-					for(int nv = 0; nv < nVariables; nv++) {
+					for (int nv = 0; nv < nVariables; nv++) {
 						values[idx * nVariables + nv] += residual[idx * nVariables + nv] * dt / volume;
 						//Compute total residual
 						stepInfo.Residual[nv] += abs(residual[idx * nVariables + nv]);
@@ -480,14 +487,14 @@ public:
 		};
 
 		//Aggregate
-		for(int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = pManager->Sum(stepInfo.Residual[nv]);
+		for (int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = pManager->Sum(stepInfo.Residual[nv]);
 	};
 
 	//Update Residual
 	void UpdateResiduals() {
 		stepInfo.Residual.resize(nVariables);
 		for (int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = 0;
-		
+
 		for (int i = iMin; i <= iMax; i++)
 		{
 			for (int j = jMin; j <= jMax; j++)
@@ -498,7 +505,7 @@ public:
 					//Compute cell volume
 					double volume = hx[i - iMin + dummyCellLayersX] * hy[j - jMin + dummyCellLayersY] * hz[k - kMin + dummyCellLayersZ];
 					//Update cell values
-					for(int nv = 0; nv < nVariables; nv++) {
+					for (int nv = 0; nv < nVariables; nv++) {
 						//Compute total residual
 						stepInfo.Residual[nv] += abs(residual[idx * nVariables + nv]);
 					};
@@ -507,7 +514,7 @@ public:
 		};
 
 		//Aggregate
-		for(int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = pManager->Sum(stepInfo.Residual[nv]);
+		for (int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = pManager->Sum(stepInfo.Residual[nv]);
 	};
 
 	//Exchange values between processors
@@ -518,29 +525,29 @@ public:
 		int k = 0;
 
 		//Get parallel run info
-		MPI_Comm comm = pManager->getComm();		
+		MPI_Comm comm = pManager->getComm();
 
 		//Buffers
 		std::vector<double> bufferToRecv;
-		std::vector<double> bufferToSend;		
+		std::vector<double> bufferToSend;
 		int rankLeft; // if equals -1 no left neighbour
 		int rankRight; // if equals -1 no right neighbour
-		
-		//X direction exchange		
 
-		//Allocate buffers
+					   //X direction exchange		
+
+					   //Allocate buffers
 		int layerSize = nlocalY * nlocalZ;
 		bufferToSend.resize(layerSize * nVariables);
-		bufferToRecv.resize(layerSize * nVariables);				
+		bufferToRecv.resize(layerSize * nVariables);
 
 		//Determine neighbours' ranks
 		int rankL = pManager->GetRankByCartesianIndexShift(-1, 0, 0);
 		int rankR = pManager->GetRankByCartesianIndexShift(+1, 0, 0);
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<rank<<
-				"; rankL = "<<rankL<<
-				"; rankR = "<<rankR<<
-				std::endl<<std::flush;
+			std::cout << "rank = " << rank <<
+				"; rankL = " << rankL <<
+				"; rankR = " << rankR <<
+				std::endl << std::flush;
 		};
 
 		for (int layer = 1; layer <= dummyCellLayersX; layer++) {
@@ -550,12 +557,12 @@ public:
 			int iSend = iMin + layer - 1; // layer index to send
 			int iRecv = iMax + layer; // layer index to recv
 
-			// Prepare values to send
+									  // Prepare values to send
 			if (rankL != -1) {
 				nSend = layerSize * nVariables;
 				for (j = jMin; j <= jMax; j++) {
 					for (k = kMin; k <= kMax; k++) {
-						int idxBuffer = (j-jMin) + (k-kMin)* nY; //Exclude x index
+						int idxBuffer = (j - jMin) + (k - kMin)* nY; //Exclude x index
 						double *U = getCellValues(iSend, j, k);
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = U[nv];
 					};
@@ -563,15 +570,15 @@ public:
 			};
 
 			if (DebugOutputEnabled) {
-				std::cout<<"rank = "<<rank<<
-				"; iSend = "<<iSend<<
-				"; iRecv = "<<iRecv<<
-				std::endl<<std::flush;
+				std::cout << "rank = " << rank <<
+					"; iSend = " << iSend <<
+					"; iRecv = " << iRecv <<
+					std::endl << std::flush;
 			};
 
 			//Determine recive number
 			if (rankR != -1) {
-				nRecv = layerSize * nVariables;				
+				nRecv = layerSize * nVariables;
 			};
 
 			//Make exchange
@@ -580,7 +587,7 @@ public:
 			//Write to recieving layer of dummy cells
 			for (j = jMin; j <= jMax; j++) {
 				for (k = kMin; k <= kMax; k++) {
-					int idxBuffer = (j-jMin) + (k-kMin)* nY; //Exclude x index
+					int idxBuffer = (j - jMin) + (k - kMin)* nY; //Exclude x index
 					double *U = getCellValues(iRecv, j, k);
 					for (int nv = 0; nv < nVariables; nv++) U[nv] = bufferToRecv[idxBuffer * nVariables + nv];
 				};
@@ -593,10 +600,10 @@ public:
 			iRecv = iMin - layer; // layer index to recv
 
 			if (DebugOutputEnabled) {
-				std::cout<<"rank = "<<rank<<
-				"; iSend = "<<iSend<<
-				"; iRecv = "<<iRecv<<
-				std::endl<<std::flush;
+				std::cout << "rank = " << rank <<
+					"; iSend = " << iSend <<
+					"; iRecv = " << iRecv <<
+					std::endl << std::flush;
 			};
 
 			// Prepare values to send
@@ -604,7 +611,7 @@ public:
 				nSend = layerSize * nVariables;
 				for (j = jMin; j <= jMax; j++) {
 					for (k = kMin; k <= kMax; k++) {
-						int idxBuffer = (j-jMin) + (k-kMin)* nY; //Exclude x index
+						int idxBuffer = (j - jMin) + (k - kMin)* nY; //Exclude x index
 						double *U = getCellValues(iSend, j, k);
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = U[nv];
 					};
@@ -613,7 +620,7 @@ public:
 
 			//Determine recive number
 			if (rankL != -1) {
-				nRecv = layerSize * nVariables;				
+				nRecv = layerSize * nVariables;
 			};
 
 			//Make exchange
@@ -622,7 +629,7 @@ public:
 			//Write to recieving layer of dummy cells
 			for (j = jMin; j <= jMax; j++) {
 				for (k = kMin; k <= kMax; k++) {
-					int idxBuffer = (j-jMin) + (k-kMin)* nY; //Exclude x index
+					int idxBuffer = (j - jMin) + (k - kMin)* nY; //Exclude x index
 					double *U = getCellValues(iRecv, j, k);
 					for (int nv = 0; nv < nVariables; nv++) U[nv] = bufferToRecv[idxBuffer * nVariables + nv];
 				};
@@ -630,7 +637,7 @@ public:
 
 		}; // 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Exchange values X-direction executed\n";
+			std::cout << "rank = " << pManager->getRank() << ", Exchange values X-direction executed\n";
 		};
 		//Sync
 		pManager->Barrier();
@@ -641,15 +648,15 @@ public:
 		//Allocate buffers
 		layerSize = nlocalX * nlocalZ;
 		bufferToSend.resize(layerSize * nVariables);
-		bufferToRecv.resize(layerSize * nVariables);				
+		bufferToRecv.resize(layerSize * nVariables);
 
 		//Determine neighbours' ranks
 		rankL = pManager->GetRankByCartesianIndexShift(0, -1, 0);
 		rankR = pManager->GetRankByCartesianIndexShift(0, +1, 0);
 		/*std::cout<<"rank = "<<rank<<
-			"; rankL = "<<rankL<<
-			"; rankR = "<<rankR<<
-			std::endl<<std::flush;*/
+		"; rankL = "<<rankL<<
+		"; rankR = "<<rankR<<
+		std::endl<<std::flush;*/
 
 		for (int layer = 1; layer <= dummyCellLayersY; layer++) {
 			// Minus direction exchange
@@ -658,12 +665,12 @@ public:
 			int jSend = jMin + layer - 1; // layer index to send
 			int jRecv = jMax + layer; // layer index to recv
 
-			// Prepare values to send
+									  // Prepare values to send
 			if (rankL != -1) {
 				nSend = layerSize * nVariables;
 				for (i = iMin; i <= iMax; i++) {
 					for (k = kMin; k <= kMax; k++) {
-						int idxBuffer = (i - iMin) + (k-kMin) * nX; //Exclude y index
+						int idxBuffer = (i - iMin) + (k - kMin) * nX; //Exclude y index
 						int idxValues = getSerialIndexLocal(i, jSend, k);
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
 					};
@@ -672,7 +679,7 @@ public:
 
 			//Determine recive number
 			if (rankR != -1) {
-				nRecv = layerSize * nVariables;				
+				nRecv = layerSize * nVariables;
 			};
 
 			//Make exchange
@@ -681,7 +688,7 @@ public:
 			//Write to recieving layer of dummy cells
 			for (i = iMin; i <= iMax; i++) {
 				for (k = kMin; k <= kMax; k++) {
-					int idxBuffer = (i - iMin) + (k-kMin) * nX; //Exclude y index
+					int idxBuffer = (i - iMin) + (k - kMin) * nX; //Exclude y index
 					int idxValues = getSerialIndexLocal(i, jRecv, k);
 					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
 				};
@@ -693,12 +700,12 @@ public:
 			jSend = jMax - layer + 1; // layer index to send
 			jRecv = jMin - layer; // layer index to recv
 
-			// Prepare values to send
+								  // Prepare values to send
 			if (rankR != -1) {
 				nSend = layerSize * nVariables;
 				for (i = iMin; i <= iMax; i++) {
 					for (k = kMin; k <= kMax; k++) {
-						int idxBuffer = (i - iMin) + (k-kMin) * nX; //Exclude y index
+						int idxBuffer = (i - iMin) + (k - kMin) * nX; //Exclude y index
 						int idxValues = getSerialIndexLocal(i, jSend, k);
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
 					};
@@ -707,7 +714,7 @@ public:
 
 			//Determine recive number
 			if (rankL != -1) {
-				nRecv = layerSize * nVariables;				
+				nRecv = layerSize * nVariables;
 			};
 
 			//Make exchange
@@ -716,7 +723,7 @@ public:
 			//Write to recieving layer of dummy cells
 			for (i = iMin; i <= iMax; i++) {
 				for (k = kMin; k <= kMax; k++) {
-					int idxBuffer = (i - iMin) + (k-kMin) * nX; //Exclude y index
+					int idxBuffer = (i - iMin) + (k - kMin) * nX; //Exclude y index
 					int idxValues = getSerialIndexLocal(i, jRecv, k);
 					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
 				};
@@ -724,7 +731,7 @@ public:
 		};
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Exchange values Y-direction executed\n";
+			std::cout << "rank = " << pManager->getRank() << ", Exchange values Y-direction executed\n";
 			std::cout.flush();
 		};
 		//Sync
@@ -736,7 +743,7 @@ public:
 		//Allocate buffers
 		layerSize = nlocalX * nlocalY;
 		bufferToSend.resize(layerSize * nVariables);
-		bufferToRecv.resize(layerSize * nVariables);				
+		bufferToRecv.resize(layerSize * nVariables);
 
 		//Determine neighbours' ranks
 		rankL = pManager->GetRankByCartesianIndexShift(0, 0, -1);
@@ -745,13 +752,13 @@ public:
 		//rankR = pManager->GetRankByCartesianIndex(0, 0, 1);
 
 		if (DebugOutputEnabled) {
-			std::cout<<"Exchange Z-direction started"<<std::endl<<std::flush;
-			std::cout<<"rank = "<<rank<<
-				"; rankL = "<<rankL<<
-				"; rankR = "<<rankR<<
-				std::endl<<std::flush;
+			std::cout << "Exchange Z-direction started" << std::endl << std::flush;
+			std::cout << "rank = " << rank <<
+				"; rankL = " << rankL <<
+				"; rankR = " << rankR <<
+				std::endl << std::flush;
 		};
-		
+
 
 		for (int layer = 1; layer <= dummyCellLayersZ; layer++) {
 			// Minus direction exchange
@@ -760,7 +767,7 @@ public:
 			int kSend = kMin + layer - 1; // layer index to send
 			int kRecv = kMax + layer; // layer index to recv
 
-			// Prepare values to send
+									  // Prepare values to send
 			if (rankL != -1) {
 				nSend = layerSize * nVariables;
 				for (i = iMin; i <= iMax; i++) {
@@ -773,15 +780,15 @@ public:
 			};
 
 			if (DebugOutputEnabled) {
-				std::cout<<"rank = "<<rank<<
-				"; kSend = "<<kSend<<
-				"; kRecv = "<<kRecv<<
-				std::endl<<std::flush;
+				std::cout << "rank = " << rank <<
+					"; kSend = " << kSend <<
+					"; kRecv = " << kRecv <<
+					std::endl << std::flush;
 			};
 
 			//Determine recive number
 			if (rankR != -1) {
-				nRecv = layerSize * nVariables;				
+				nRecv = layerSize * nVariables;
 			};
 
 			//Make exchange
@@ -803,10 +810,10 @@ public:
 			kRecv = kMin - layer; // layer index to recv
 
 			if (DebugOutputEnabled) {
-				std::cout<<"rank = "<<rank<<
-				"; kSend = "<<kSend<<
-				"; kRecv = "<<kRecv<<
-				std::endl<<std::flush;
+				std::cout << "rank = " << rank <<
+					"; kSend = " << kSend <<
+					"; kRecv = " << kRecv <<
+					std::endl << std::flush;
 			};
 
 			// Prepare values to send
@@ -823,7 +830,7 @@ public:
 
 			//Determine recive number
 			if (rankL != -1) {
-				nRecv = layerSize * nVariables;				
+				nRecv = layerSize * nVariables;
 			};
 
 			//Make exchange
@@ -841,7 +848,7 @@ public:
 		}; // 
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Exchange values Z-direction executed\n";
+			std::cout << "rank = " << pManager->getRank() << ", Exchange values Z-direction executed\n";
 			std::cout.flush();
 		};
 
@@ -849,13 +856,13 @@ public:
 		pManager->Barrier();
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<rank<<"Exchange values finished."<<			
-			std::endl<<std::flush;
+			std::cout << "rank = " << rank << "Exchange values finished." <<
+				std::endl << std::flush;
 		};
 
 	}; // function
 
-	//Compute dummy cell values as result of boundary conditions and interprocessor exchange communication
+	   //Compute dummy cell values as result of boundary conditions and interprocessor exchange communication
 	void ComputeDummyCellValues() {
 		//Index variables
 		int i = 0;
@@ -863,8 +870,8 @@ public:
 		int k = 0;
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<rank<<"Dummy cell processing started."<<			
-			std::endl<<std::flush;
+			std::cout << "rank = " << rank << "Dummy cell processing started." <<
+				std::endl << std::flush;
 		};
 
 		//Current face and cell information
@@ -872,13 +879,13 @@ public:
 		Vector faceNormalR;
 		Vector faceCenter;
 		Vector cellCenter;
-		
+
 		//X direction		
 		faceNormalL = Vector(-1.0, 0.0, 0.0);
 		faceNormalR = Vector(1.0, 0.0, 0.0);
 		if (!IsPeriodicX) {
 			for (j = jMin; j <= jMax; j++) {
-				for (k = kMin; k <= kMax; k++) {				
+				for (k = kMin; k <= kMax; k++) {
 					//Inner cell
 					cellCenter.y = CoordinateY[j];
 					cellCenter.z = CoordinateZ[k];
@@ -888,13 +895,13 @@ public:
 					faceCenter.z = CoordinateZ[k];
 
 					if (DebugOutputEnabled) {
-						std::cout<<"rank = "<<rank<<
-						"; f.y = "<<faceCenter.y<<
-						"; f.z = "<<faceCenter.z<<
-						std::endl<<std::flush;
+						std::cout << "rank = " << rank <<
+							"; f.y = " << faceCenter.y <<
+							"; f.z = " << faceCenter.z <<
+							std::endl << std::flush;
 					};
 
-					for (int layer = 1; layer <= dummyCellLayersX; layer++) {		
+					for (int layer = 1; layer <= dummyCellLayersX; layer++) {
 						if (pManager->rankCart[0] == 0) {
 							//Left border
 							i = iMin - layer; // layer index
@@ -903,7 +910,7 @@ public:
 							faceCenter.x = (CoordinateX[iIn] + CoordinateX[i]) / 2.0;
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(iIn, j, k);
-					
+
 							//Apply left boundary conditions						
 							std::valarray<double> dValues = xLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
@@ -911,7 +918,7 @@ public:
 							};
 						};
 
-						if (pManager->rankCart[0] == pManager->dimsCart[0]-1) {
+						if (pManager->rankCart[0] == pManager->dimsCart[0] - 1) {
 							//Right border
 							i = iMax + layer; // layer index
 							int iIn = iMax - layer + 1; // opposite index
@@ -919,12 +926,12 @@ public:
 							faceCenter.x = (CoordinateX[iIn] + CoordinateX[i]) / 2.0;
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(iIn, j, k);
-					
+
 							//Apply right boundary conditions						
 							std::valarray<double> dValues = xRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
-							};		
+							};
 						};
 					};
 				};
@@ -932,7 +939,7 @@ public:
 		}; //X direction
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Dummy values X-direction computed\n";
+			std::cout << "rank = " << pManager->getRank() << ", Dummy values X-direction computed\n";
 			std::cout.flush();
 		};
 		//Sync
@@ -944,7 +951,7 @@ public:
 		faceNormalR = Vector(0.0, 1.0, 0.0);
 		if (!IsPeriodicY) {
 			for (i = iMin; i <= iMax; i++) {
-				for (k = kMin; k <= kMax; k++) {				
+				for (k = kMin; k <= kMax; k++) {
 					//Inner cell
 					cellCenter.x = CoordinateX[i];
 					cellCenter.z = CoordinateZ[k];
@@ -962,7 +969,7 @@ public:
 							faceCenter.y = (CoordinateY[jIn] + CoordinateY[j]) / 2.0;	//for uniform dummy cells		TO DO MODIFY
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(i, jIn, k);
-					
+
 							//Apply left boundary conditions						
 							std::valarray<double> dValues = yLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
@@ -970,7 +977,7 @@ public:
 							};
 						};
 
-						if (pManager->rankCart[1] == pManager->dimsCart[1]-1) {
+						if (pManager->rankCart[1] == pManager->dimsCart[1] - 1) {
 							//Right border
 							j = jMax + layer; // layer index
 							int jIn = jMax - layer + 1; // opposite index
@@ -978,7 +985,7 @@ public:
 							faceCenter.y = (CoordinateY[jIn] + CoordinateY[j]) / 2.0;
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(i, jIn, k);
-					
+
 							//Apply right boundary conditions						
 							std::valarray<double> dValues = yRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
@@ -991,7 +998,7 @@ public:
 		}; //Y direction
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Dummy values Y-direction computed\n";
+			std::cout << "rank = " << pManager->getRank() << ", Dummy values Y-direction computed\n";
 			std::cout.flush();
 		};
 		//Sync
@@ -1003,7 +1010,7 @@ public:
 		faceNormalR = Vector(0.0, 0.0, 1.0);
 		if (!IsPeriodicZ) {
 			for (i = iMin; i <= iMax; i++) {
-				for (j = jMin; j <= jMax; j++) {				
+				for (j = jMin; j <= jMax; j++) {
 					//Inner cell
 					cellCenter.x = CoordinateX[i];
 					cellCenter.y = CoordinateY[j];
@@ -1022,7 +1029,7 @@ public:
 							faceCenter.z = (CoordinateZ[kIn] + CoordinateZ[k]) / 2.0;
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(i, j, kIn);
-					
+
 							//Apply left boundary conditions						
 							std::valarray<double> dValues = zLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
@@ -1030,7 +1037,7 @@ public:
 							};
 						};
 
-						if (pManager->rankCart[2] == pManager->dimsCart[2]-1) {
+						if (pManager->rankCart[2] == pManager->dimsCart[2] - 1) {
 							//Right border
 							k = kMax + layer; // layer index
 							int kIn = kMax - layer + 1; // opposite index
@@ -1038,7 +1045,7 @@ public:
 							faceCenter.z = (CoordinateZ[kIn] + CoordinateZ[k]) / 2.0;
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(i, j, kIn);
-					
+
 							//Apply right boundary conditions						
 							std::valarray<double> dValues = zRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
@@ -1051,7 +1058,7 @@ public:
 		}; //Z direction
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Dummy values Z-direction computed\n";
+			std::cout << "rank = " << pManager->getRank() << ", Dummy values Z-direction computed\n";
 			std::cout.flush();
 		};
 		//Sync
@@ -1069,12 +1076,12 @@ public:
 					double volume = hx[i] * hy[j] * hz[k];
 
 					double *V = getCellValues(i, j, k);
-					double u = V[1]/V[0];
-					double v = V[2]/V[0];
-					double w = V[3]/V[0];
+					double u = V[1] / V[0];
+					double v = V[2] / V[0];
+					double w = V[3] / V[0];
 					Vector velocity = Vector(u, v, w); //Cell velocity
 
-					//Compute total residual
+													   //Compute total residual
 					residual[idx * nVariables];										//ro
 					residual[idx * nVariables + 1] += volume * Sigma.x;				//rou
 					residual[idx * nVariables + 2] += volume * Sigma.y;				//rov
@@ -1093,23 +1100,23 @@ public:
 					//Compute cell volume
 					double volume = hx[i] * hy[j] * hz[k];
 					double *V = getCellValues(i, j, k);
-					double u = V[1]/V[0];
-					double v = V[2]/V[0];
-					double w = V[3]/V[0];
+					double u = V[1] / V[0];
+					double v = V[2] / V[0];
+					double w = V[3] / V[0];
 					Vector velocity = Vector(u, v, w); //Cell velocity
 
-					//Mass forces represents body accelerations (per unit mass)
+													   //Mass forces represents body accelerations (per unit mass)
 					double ro = V[0];
 					residual[idx * nVariables + 1] += ro * volume * UniformAcceleration.x;				//rou
 					residual[idx * nVariables + 2] += ro * volume * UniformAcceleration.y;				//rov
 					residual[idx * nVariables + 3] += ro * volume * UniformAcceleration.z;				//row
-					residual[idx * nVariables + 4] += ro * UniformAcceleration * velocity * volume ;	//roE
+					residual[idx * nVariables + 4] += ro * UniformAcceleration * velocity * volume;	//roE
 				};
 			};
 		};
 	};
 
-	//Save solution CGNS
+	//Save solution CGNS TO DO DELETE?
 	void SaveSolutionPCGNS(std::string fname) {
 		//int comm_size, comm_rank;
 		//int tot_nnodes, tot_nelems, nnodes, nelems;
@@ -1117,7 +1124,7 @@ public:
 		//int i, j, k, n, nn, ne;
 		//float *x, *y, *z, *d;
 		//cgsize_t sizes[3], *e, start, end, ncells;
- 
+
 		///* open the file and create base and zone */
 		//sizes[0] = tot_nnodes;
 		//sizes[1] = tot_nelems;
@@ -1143,13 +1150,13 @@ public:
 		//	cgp_coord_write(F, B, Z, RealSingle, "CoordinateY", &Cy) ||
 		//	cgp_coord_write(F, B, Z, RealSingle, "CoordinateZ", &Cz))
 		//	cgp_error_exit();
- 
+
 		///* number of nodes and range this process will write */
 		//nnodes = (tot_nnodes + comm_size - 1) / comm_size;
 		//start  = nnodes * comm_rank + 1;
 		//end    = nnodes * (comm_rank + 1);
 		//if (end > tot_nnodes) end = tot_nnodes;
-  //  
+		//  
 		///* create the coordinate data for this process */
 		//x = (float *)malloc(nnodes * sizeof(float));
 		//y = (float *)malloc(nnodes * sizeof(float));
@@ -1174,7 +1181,7 @@ public:
 		//	cgp_coord_write_data(F, B, Z, Cy, &start, &end, y) ||
 		//	cgp_coord_write_data(F, B, Z, Cz, &start, &end, z))
 		//	cgp_error_exit();
-  //  
+		//  
 		///* write out the queued coordinate data */
 		//if (cgp_queue_flush()) cgp_error_exit();
 		//cgp_queue_set(0);
@@ -1182,13 +1189,13 @@ public:
 		///* create data node for elements */
 		//if (cgp_section_write(F, B, Z, "Hex", HEXA_8, 1, tot_nelems, 0, &E))
 		//	cgp_error_exit();
- 
+
 		///* number of elements and range this process will write */
 		//nelems = (tot_nelems + comm_size - 1) / comm_size;
 		//start  = nelems * comm_rank + 1;
 		//end    = nelems * (comm_rank + 1);
 		//if (end > tot_nelems) end = tot_nelems;
-  //  
+		//  
 		///* create the hex element data for this process */
 		//e = (cgsize_t *)malloc(8 * nelems * sizeof(cgsize_t));
 		//nn = 0;
@@ -1261,11 +1268,11 @@ public:
 		//Function to determine value position in buffer
 		std::vector<int> index(3, 0);
 		std::vector<double> outBuffer(nCellsLocal);
-		auto getIndex = [] (std::vector<int> index, int nDims, int dims[]) {
+		auto getIndex = [](std::vector<int> index, int nDims, int dims[]) {
 			int ind = index[0];
 			if (nDims > 1) ind += (dims[0]) * index[1];
 			if (nDims > 2) ind += (dims[1]) * (dims[0]) * index[2];
-		/*	int ind = index[0];
+			/*	int ind = index[0];
 			if (nDims > 1) ind = ind * dims[1] + index[1];
 			if (nDims > 2) ind = ind * dims[2] + index[2];*/
 			return ind;
@@ -1273,14 +1280,14 @@ public:
 
 		//Indexes inside CGNS database
 		int F, B, Z, S, C, Fs;
- 
+
 		//Create file
 		if (pManager->IsMasterCart()) {
 			//Delete file if exists
 			if (remove(fname.c_str()))
 				std::cout << "Failed to delete '" << fname << "': " << strerror(errno) << '\n';
 			//else
-				//std::cout << '\'' << fname << "' successfully deleted.\n";
+			//std::cout << '\'' << fname << "' successfully deleted.\n";
 
 			/* Open the file and create base and zone */
 			std::vector<cgsize_t> sizes;
@@ -1322,8 +1329,8 @@ public:
 		//Wait for file structure to be written before writing parts of solution on each process
 		pManager->Barrier();
 
-		std::cout<<"rank = "<<rank<<", file has been created.\n";
-		std::cout.flush();		
+		std::cout << "rank = " << rank << ", file has been created.\n";
+		std::cout.flush();
 
 		if (!pManager->IsMaster()) {
 			//And have to go to same zone node
@@ -1334,7 +1341,7 @@ public:
 
 		/* create data nodes for coordinates */
 
-		
+
 
 		int dimsC[3];
 		dimsC[0] = nlocalX;
@@ -1343,27 +1350,27 @@ public:
 		auto getCellIndex = std::bind(getIndex, std::placeholders::_1, nDims, dimsC);
 
 		//Open file
-		if (cg_open(fname.c_str(), CG_MODE_MODIFY, &F)) 
+		if (cg_open(fname.c_str(), CG_MODE_MODIFY, &F))
 			cg_error_exit();
 
 
 		/*} catch (std::exception exc) {
-			std::cout<<"rank = "<<rank<<", exception msg : "<<exc.what()<<"\n";
-			std::cout.flush();
+		std::cout<<"rank = "<<rank<<", exception msg : "<<exc.what()<<"\n";
+		std::cout.flush();
 		};*/
 		//};
 
-		
-		std::cout<<"rank = "<<rank<<", np = "<<np<<"\n";
-		std::cout.flush();		
+
+		std::cout << "rank = " << rank << ", np = " << np << "\n";
+		std::cout.flush();
 
 		int currentRank = 0;
 		for (currentRank = 0; currentRank < 1; currentRank++) {
 
 			if (currentRank != rank) {
-		
-	//			pManager->Barrier();
-		//		continue;
+
+				//			pManager->Barrier();
+				//		continue;
 			};
 
 			//Begin of critical section
@@ -1386,10 +1393,10 @@ public:
 
 			auto getVertexIndex = std::bind(getIndex, std::placeholders::_1, nDims, dimsV);
 
-			std::cout<<"rank = "<<rank<<", buffer size = "<<outBuffer.size()<<"\n";
-			std::cout<<"iMin = "<<startIndex[0]<<", iMax = "<<endIndex[0]<<"\n";
-			std::cout<<"jMin = "<<startIndex[1]<<", jMax = "<<endIndex[1]<<"\n";
-			std::cout<<"kMin = "<<startIndex[2]<<", kMax = "<<endIndex[2]<<"\n";
+			std::cout << "rank = " << rank << ", buffer size = " << outBuffer.size() << "\n";
+			std::cout << "iMin = " << startIndex[0] << ", iMax = " << endIndex[0] << "\n";
+			std::cout << "jMin = " << startIndex[1] << ", jMax = " << endIndex[1] << "\n";
+			std::cout << "kMin = " << startIndex[2] << ", kMax = " << endIndex[2] << "\n";
 			std::cout.flush();
 
 			//Write x-coords
@@ -1446,11 +1453,11 @@ public:
 			};
 
 
-			std::cout<<"rank = "<<rank<<", coordinates written.\n";
-			std::cout.flush();	
+			std::cout << "rank = " << rank << ", coordinates written.\n";
+			std::cout.flush();
 
 
-			std::cout<<"rank = "<<rank<<", Solution writing begin\n";
+			std::cout << "rank = " << rank << ", Solution writing begin\n";
 			std::cout.flush();
 
 			//Write solution data part for each process
@@ -1463,14 +1470,14 @@ public:
 			endIndex.push_back((nDims > 1) ? jMax - dummyCellLayersY + 1 : 1);
 			endIndex.push_back((nDims > 2) ? kMax - dummyCellLayersZ + 1 : 1);
 
-			std::cout<<"rank = "<<rank<<", buffer size = "<<outBuffer.size()<<"\n";
-			std::cout<<"iMin = "<<startIndex[0]<<", iMax = "<<endIndex[0]<<"\n";
-			std::cout<<"jMin = "<<startIndex[1]<<", jMax = "<<endIndex[1]<<"\n";
-			std::cout<<"kMin = "<<startIndex[2]<<", kMax = "<<endIndex[2]<<"\n";
+			std::cout << "rank = " << rank << ", buffer size = " << outBuffer.size() << "\n";
+			std::cout << "iMin = " << startIndex[0] << ", iMax = " << endIndex[0] << "\n";
+			std::cout << "jMin = " << startIndex[1] << ", jMax = " << endIndex[1] << "\n";
+			std::cout << "kMin = " << startIndex[2] << ", kMax = " << endIndex[2] << "\n";
 			std::cout.flush();
-		
+
 			//Function that returns density
-			auto getDensity = [] (double *U) {
+			auto getDensity = [](double *U) {
 				return U[0];
 			};
 
@@ -1495,13 +1502,13 @@ public:
 
 			//Density
 			if (cg_field_partial_write(F, B, Z, S, RealDouble, "Density", &startIndex.front(), &endIndex.front(), &outBuffer.front(), &Fs))
-				cg_error_exit(); 
-		
-			std::cout<<"rank = "<<rank<<", Density field written\n";
+				cg_error_exit();
+
+			std::cout << "rank = " << rank << ", Density field written\n";
 			std::cout.flush();
 
 			/* close the file */
-			cg_close(F); 
+			cg_close(F);
 
 			//End of critical section
 			pManager->Barrier();
@@ -1513,41 +1520,41 @@ public:
 
 		//Read coordinates
 		/*if (rank == 0) {
-			if (cg_open(fname.c_str(), CG_MODE_READ, &F)) 
-				cg_error_exit();
+		if (cg_open(fname.c_str(), CG_MODE_READ, &F))
+		cg_error_exit();
 
-			std::vector<cgsize_t> startIndex(0);
-			startIndex.push_back(iMin - dummyCellLayersX + 1);
-			startIndex.push_back((nDims > 1) ? jMin - dummyCellLayersY + 1 : 1);
-			startIndex.push_back((nDims > 2) ? kMin - dummyCellLayersZ + 1 : 1);
-			std::vector<cgsize_t> endIndex(0);
-			endIndex.push_back(iMax - dummyCellLayersX + 1);
-			endIndex.push_back((nDims > 1) ? jMax - dummyCellLayersY + 1 : 1);
-			endIndex.push_back((nDims > 2) ? kMax - dummyCellLayersZ + 1 : 1);
-			int nVertexesLocal = 1;
-			int dimsV[3];
-			for (int dn = 0; dn < nDims; dn++) {
-				if (pManager->rankCart[dn] == pManager->dimsCart[dn] - 1) endIndex[dn]++;
-				dimsV[dn] = endIndex[dn] - startIndex[dn] + 1;
-				nVertexesLocal *= dimsV[dn];
-			};
-			outBuffer.resize(nVertexesLocal);
+		std::vector<cgsize_t> startIndex(0);
+		startIndex.push_back(iMin - dummyCellLayersX + 1);
+		startIndex.push_back((nDims > 1) ? jMin - dummyCellLayersY + 1 : 1);
+		startIndex.push_back((nDims > 2) ? kMin - dummyCellLayersZ + 1 : 1);
+		std::vector<cgsize_t> endIndex(0);
+		endIndex.push_back(iMax - dummyCellLayersX + 1);
+		endIndex.push_back((nDims > 1) ? jMax - dummyCellLayersY + 1 : 1);
+		endIndex.push_back((nDims > 2) ? kMax - dummyCellLayersZ + 1 : 1);
+		int nVertexesLocal = 1;
+		int dimsV[3];
+		for (int dn = 0; dn < nDims; dn++) {
+		if (pManager->rankCart[dn] == pManager->dimsCart[dn] - 1) endIndex[dn]++;
+		dimsV[dn] = endIndex[dn] - startIndex[dn] + 1;
+		nVertexesLocal *= dimsV[dn];
+		};
+		outBuffer.resize(nVertexesLocal);
 
-			cg_coord_read(F, B, Z, "CoordinateX", RealDouble, &startIndex.front(), &endIndex.front(), &outBuffer.front());
+		cg_coord_read(F, B, Z, "CoordinateX", RealDouble, &startIndex.front(), &endIndex.front(), &outBuffer.front());
 
-			std::ofstream ofs("CoordX.txt");
-			for (int i = 0; i<outBuffer.size(); i++) ofs<<outBuffer[i]<<std::endl;
-			ofs.close();
+		std::ofstream ofs("CoordX.txt");
+		for (int i = 0; i<outBuffer.size(); i++) ofs<<outBuffer[i]<<std::endl;
+		ofs.close();
 
 
-			cg_coord_read(F, B, Z, "CoordinateY", RealDouble, &startIndex.front(), &endIndex.front(), &outBuffer.front());
+		cg_coord_read(F, B, Z, "CoordinateY", RealDouble, &startIndex.front(), &endIndex.front(), &outBuffer.front());
 
-			std::ofstream ofs2("CoordY.txt");
-			for (int i = 0; i<outBuffer.size(); i++) ofs2<<outBuffer[i]<<std::endl;
-			ofs2.close();
+		std::ofstream ofs2("CoordY.txt");
+		for (int i = 0; i<outBuffer.size(); i++) ofs2<<outBuffer[i]<<std::endl;
+		ofs2.close();
 
-			cg_close(F);
-			exit(0);
+		cg_close(F);
+		exit(0);
 		};*/
 
 		return;
@@ -1555,40 +1562,40 @@ public:
 
 	//Save solution TecPlot Format 
 	void SaveSliceToTecplot(std::string fname, int I, int J, int K) {
-		
+
 		std::ofstream ofs;
-		ofs<<std::scientific;
+		ofs << std::scientific;
 		int rank = pManager->getRank();
 
 		//Open file
 		if (pManager->IsMaster()) {
 			//std::cout<<"File created"<<std::endl<<std::flush;
 			ofs.open(fname, std::ios_base::out);
-			ofs<<"VARIABLES = ";
+			ofs << "VARIABLES = ";
 			int dims = 0;
 			if (I == -1) {
-				ofs<<"\""<<"X"<<"\" ";
-				dims++;		
+				ofs << "\"" << "X" << "\" ";
+				dims++;
 			};
 			if (J == -1) {
-				ofs<<"\""<<"Y"<<"\" ";
+				ofs << "\"" << "Y" << "\" ";
 				dims++;
 			};
 			if (K == -1) {
-				ofs<<"\""<<"Z"<<"\" ";
+				ofs << "\"" << "Z" << "\" ";
 				dims++;
 			};
-							
-			ofs<<"\""<<"ro"<<"\" ";
-			ofs<<"\""<<"u"<<"\" ";
-			ofs<<"\""<<"v"<<"\" ";
-			ofs<<"\""<<"w"<<"\" ";
-			ofs<<"\""<<"P"<<"\" ";
-			ofs<<"\""<<"e"<<"\" ";
-			ofs<<std::endl;
+
+			ofs << "\"" << "ro" << "\" ";
+			ofs << "\"" << "u" << "\" ";
+			ofs << "\"" << "v" << "\" ";
+			ofs << "\"" << "w" << "\" ";
+			ofs << "\"" << "P" << "\" ";
+			ofs << "\"" << "e" << "\" ";
+			ofs << std::endl;
 
 			ofs << "ZONE T=\"1\"";	//zone name
-			ofs<<std::endl;
+			ofs << std::endl;
 
 			if (I == -1) ofs << "I=" << nX;
 			else ofs << "I=" << 1;
@@ -1598,7 +1605,8 @@ public:
 			else ofs << "K=" << 1;
 			ofs << "F=POINT\n";
 			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
-		} else {
+		}
+		else {
 			//Wait for previous process to finish writing
 			pManager->Wait(rank - 1);
 
@@ -1617,8 +1625,8 @@ public:
 					//Obtain cell data
 					double x = CoordinateX[i];
 					double y = CoordinateY[j];
-					double z = CoordinateZ[k];					
-					double* U = getCellValues(i,j,k);
+					double z = CoordinateZ[k];
+					double* U = getCellValues(i, j, k);
 					double ro = U[0];
 					double u = U[1] / ro;
 					double v = U[2] / ro;
@@ -1627,21 +1635,21 @@ public:
 					double P = (gamma - 1.0) * ro * e;
 
 					//Write to file
-					if (I == -1) ofs<<x<<" ";
-					if (J == -1) ofs<<y<<" ";
-					if (K == -1) ofs<<z<<" ";					
-					ofs<<ro<<" ";
-					ofs<<u<<" ";
-					ofs<<v<<" ";
-					ofs<<w<<" ";
-					ofs<<P<<" ";
-					ofs<<e<<" ";
-					ofs<<std::endl;
+					if (I == -1) ofs << x << " ";
+					if (J == -1) ofs << y << " ";
+					if (K == -1) ofs << z << " ";
+					ofs << ro << " ";
+					ofs << u << " ";
+					ofs << v << " ";
+					ofs << w << " ";
+					ofs << P << " ";
+					ofs << e << " ";
+					ofs << std::endl;
 				};
 			};
 		}; // Solution output
 
-		//Close file and signal to next process to begin writing
+		   //Close file and signal to next process to begin writing
 		ofs.close();
 		//std::cout<<"File closed"<<std::endl<<std::flush;
 		if (rank != pManager->getProcessorNumber() - 1) {
@@ -1661,34 +1669,34 @@ public:
 		std::ofstream ofs;
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->_rankCart<<", Solution save begin\n";
+			std::cout << "rank = " << pManager->_rankCart << ", Solution save begin\n";
 			std::cout.flush();
 		};
 		pManager->Barrier();
-		
+
 		//Header
 		if (pManager->IsMasterCart()) {
 			ofs.open(fname, std::ios_base::out);
-			ofs<<"VARIABLES = ";
-			ofs<<"\""<<"X"<<"\" ";
-			if (nDims > 1) ofs<<"\""<<"Y"<<"\" ";
-			if (nDims > 2) ofs<<"\""<<"Z"<<"\" ";
-			ofs<<"\""<<"ro"<<"\" ";
-			ofs<<"\""<<"u"<<"\" ";
-			if (nDims > 1) ofs<<"\""<<"v"<<"\" ";
-			if (nDims > 2) ofs<<"\""<<"w"<<"\" ";
-			ofs<<"\""<<"P"<<"\" ";
-			ofs<<"\""<<"e"<<"\" ";
-			ofs<<std::endl;
+			ofs << "VARIABLES = ";
+			ofs << "\"" << "X" << "\" ";
+			if (nDims > 1) ofs << "\"" << "Y" << "\" ";
+			if (nDims > 2) ofs << "\"" << "Z" << "\" ";
+			ofs << "\"" << "ro" << "\" ";
+			ofs << "\"" << "u" << "\" ";
+			if (nDims > 1) ofs << "\"" << "v" << "\" ";
+			if (nDims > 2) ofs << "\"" << "w" << "\" ";
+			ofs << "\"" << "P" << "\" ";
+			ofs << "\"" << "e" << "\" ";
+			ofs << std::endl;
 
 			std::string zoneTitle = "Time = ";
-			ofs<<"ZONE T = \""<<zoneTitle<<stepInfo.Time<<"\", ";
+			ofs << "ZONE T = \"" << zoneTitle << stepInfo.Time << "\", ";
 
-			if (nDims > 1) ofs<<"J = "<<nY<<", ";
-			ofs<<"I = "<<nX<<", ";
-			
-			if (nDims > 2) ofs<<"K = "<<nZ<<", ";
-			ofs<<"DATAPACKING=POINT"<<std::endl;
+			if (nDims > 1) ofs << "J = " << nY << ", ";
+			ofs << "I = " << nX << ", ";
+
+			if (nDims > 2) ofs << "K = " << nZ << ", ";
+			ofs << "DATAPACKING=POINT" << std::endl;
 		};
 
 		//Obtain indexes for each process
@@ -1702,8 +1710,8 @@ public:
 			pManager->GatherCounts(jMin, jMinAll);
 			pManager->GatherCounts(jMax, jMaxAll);
 		};
-		std::vector<int> kMinAll(pManager->getProcessorNumber(), 0);		
-		std::vector<int> kMaxAll(pManager->getProcessorNumber(), 0);		
+		std::vector<int> kMinAll(pManager->getProcessorNumber(), 0);
+		std::vector<int> kMaxAll(pManager->getProcessorNumber(), 0);
 		if (nDims > 2) {
 			pManager->GatherCounts(kMin, kMinAll);
 			pManager->GatherCounts(kMax, kMaxAll);
@@ -1711,24 +1719,24 @@ public:
 
 		//Send solution to master from slave nodes
 		int masterRank = 0;
-		if (!pManager->IsMasterCart()) {	
+		if (!pManager->IsMasterCart()) {
 			MPI_Send(&values[0], values.size(), MPI_LONG_DOUBLE, masterRank, 0, pManager->_commCart);
-		};		
-	
+		};
+
 
 		//On master output each part
 		if (pManager->IsMasterCart()) {
-			std::cout<<"rank = "<<pManager->_rankCart<<", Solution writing begin\n";
-			std::cout.flush();			
+			std::cout << "rank = " << pManager->_rankCart << ", Solution writing begin\n";
+			std::cout.flush();
 
 			//Output solution
 			int masterRank = 0;
-			std::vector<double> recvBuff;			
+			std::vector<double> recvBuff;
 			for (int rI = 0; rI < pManager->dimsCart[0]; rI++) {
 				for (int rJ = 0; rJ < pManager->dimsCart[1]; rJ++) {
 					for (int rK = 0; rK < pManager->dimsCart[2]; rK++) {
 						int rank = pManager->GetRankByCartesianIndex(rI, rJ, rK);
-						std::cout<<"rank = "<<rank<<", Part of solution writing begin\n";
+						std::cout << "rank = " << rank << ", Part of solution writing begin\n";
 						std::cout.flush();
 
 						//Change view to current process
@@ -1751,14 +1759,15 @@ public:
 						//Get values into buffer
 						if (rank == masterRank) {
 							//Do not recieve
-							recvBuff = std::vector<double>(std::begin(values), std::end(values));								
-						} else {
+							recvBuff = std::vector<double>(std::begin(values), std::end(values));
+						}
+						else {
 							//Recieve
-							recvBuff.resize(size * nVariables);								
+							recvBuff.resize(size * nVariables);
 							MPI_Status status;
 							MPI_Recv(&recvBuff.front(), recvBuff.size(), MPI_LONG_DOUBLE, rank, 0, pManager->_commCart, &status);
 						};
-						
+
 						//Solution output
 						for (int i = iMin; i <= iMax; i++) {
 							for (int j = jMin; j <= jMax; j++) {
@@ -1777,69 +1786,69 @@ public:
 									double P = (gamma - 1.0) * ro * e;
 
 									//Write to file
-									ofs<<x<<" ";
-									if (nDims > 1) ofs<<y<<" ";
-									if (nDims > 2) ofs<<z<<" ";
-									ofs<<ro<<" ";
-									ofs<<u<<" ";
-									if (nDims > 1) ofs<<v<<" ";
-									if (nDims > 2) ofs<<w<<" ";
-									ofs<<P<<" ";
-									ofs<<e<<" ";
-									ofs<<std::endl;
+									ofs << x << " ";
+									if (nDims > 1) ofs << y << " ";
+									if (nDims > 2) ofs << z << " ";
+									ofs << ro << " ";
+									ofs << u << " ";
+									if (nDims > 1) ofs << v << " ";
+									if (nDims > 2) ofs << w << " ";
+									ofs << P << " ";
+									ofs << e << " ";
+									ofs << std::endl;
 								};
 							};
 						}; // Solution output
 
-						std::cout<<"rank = "<<rank<<", Part of solution written\n";
+						std::cout << "rank = " << rank << ", Part of solution written\n";
 						std::cout.flush();
 
 					}; // for rK
 				}; // for rJ
 			}; // for rI
 
-			//Restore indexes
+			   //Restore indexes
 			iMin = iMinAll[masterRank];
 			iMax = iMaxAll[masterRank];
 			if (nDims > 1) {
 				jMin = jMinAll[masterRank];
 				jMax = jMaxAll[masterRank];
 			};
-			if (nDims > 2) {			
+			if (nDims > 2) {
 				kMin = kMinAll[masterRank];
 				kMax = kMaxAll[masterRank];
 			};
 
 		};// if	
 
-		//Close file
+		  //Close file
 		if (pManager->IsMasterCart()) ofs.close();
 
-		std::cout<<"rank = "<<pManager->getRank()<<", Solution written\n";
+		std::cout << "rank = " << pManager->getRank() << ", Solution written\n";
 		std::cout.flush();
 		//Sync
-		pManager->Barrier();					
+		pManager->Barrier();
 
 		return;
 
 		//2D tecplot style
-		if(nDims > 1) {			
+		if (nDims > 1) {
 			if (pManager->IsMaster()) {
 				ofs.open(fname, std::ios_base::out);
 				//Header				
-				ofs<<"VARIABLES = ";
-				ofs<<"\""<<"X"<<"\" ";
-				ofs<<"\""<<"Y"<<"\" ";
-				ofs<<"\""<<"Z"<<"\" ";
-				ofs<<"\""<<"ro"<<"\" ";
-				ofs<<"\""<<"u"<<"\" ";
-				ofs<<"\""<<"v"<<"\" ";
-				ofs<<"\""<<"w"<<"\" ";
-				ofs<<"\""<<"P"<<"\" ";
-				ofs<<"\""<<"e"<<"\" ";
-				ofs<<std::endl;
-			
-				ofs << "ZONE T=\"1\"\nI=" << nX <<"J=" << nY << "K=" << nZ << "F=POINT\n";
+				ofs << "VARIABLES = ";
+				ofs << "\"" << "X" << "\" ";
+				ofs << "\"" << "Y" << "\" ";
+				ofs << "\"" << "Z" << "\" ";
+				ofs << "\"" << "ro" << "\" ";
+				ofs << "\"" << "u" << "\" ";
+				ofs << "\"" << "v" << "\" ";
+				ofs << "\"" << "w" << "\" ";
+				ofs << "\"" << "P" << "\" ";
+				ofs << "\"" << "e" << "\" ";
+				ofs << std::endl;
+
+				ofs << "ZONE T=\"1\"\nI=" << nX << "J=" << nY << "K=" << nZ << "F=POINT\n";
 				ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
 			};
 
@@ -1876,8 +1885,8 @@ public:
 		};
 
 		if (pManager->IsMaster()) ofs.close();
-		
-		std::cout<<"rank = "<<pManager->getRank()<<", Solution written\n";
+
+		std::cout << "rank = " << pManager->getRank() << ", Solution written\n";
 		std::cout.flush();
 		//Sync
 		pManager->Barrier();
@@ -1888,19 +1897,19 @@ public:
 		std::ofstream ofs(fname);
 
 		//1D tecplot style
-		if(nDims == 1)
+		if (nDims == 1)
 		{
 			//Header				
-			ofs<<"VARIABLES = ";
-			ofs<<"\""<<"X"<<"\" ";
-			ofs<<"\""<<"ro"<<"\" ";
-			ofs<<"\""<<"u"<<"\" ";
-			ofs<<"\""<<"v"<<"\" ";
-			ofs<<"\""<<"w"<<"\" ";
-			ofs<<"\""<<"P"<<"\" ";
-			ofs<<"\""<<"e"<<"\" ";
-			ofs<<std::endl;
-			
+			ofs << "VARIABLES = ";
+			ofs << "\"" << "X" << "\" ";
+			ofs << "\"" << "ro" << "\" ";
+			ofs << "\"" << "u" << "\" ";
+			ofs << "\"" << "v" << "\" ";
+			ofs << "\"" << "w" << "\" ";
+			ofs << "\"" << "P" << "\" ";
+			ofs << "\"" << "e" << "\" ";
+			ofs << std::endl;
+
 			//Solution
 			for (int i = iMin; i <= iMax; i++) {
 				//Obtain cell data
@@ -1914,39 +1923,39 @@ public:
 				double P = (gamma - 1.0) * ro * e;
 
 				//Write to file
-				ofs<<x<<" ";
-				ofs<<ro<<" ";
-				ofs<<u<<" ";
-				ofs<<v<<" ";
-				ofs<<w<<" ";
-				ofs<<P<<" ";
-				ofs<<e<<" ";
-				ofs<<std::endl;
+				ofs << x << " ";
+				ofs << ro << " ";
+				ofs << u << " ";
+				ofs << v << " ";
+				ofs << w << " ";
+				ofs << P << " ";
+				ofs << e << " ";
+				ofs << std::endl;
 			};	//end cycle
 
 			ofs.close();
 			return;
 		};	//end if
 
-		//2D/3D tecplot style
-		if(nDims > 1)
+			//2D/3D tecplot style
+		if (nDims > 1)
 		{
 			//Header				
-			ofs<<"VARIABLES = ";
-			ofs<<"\""<<"X"<<"\" ";
-			ofs<<"\""<<"Y"<<"\" ";
-			ofs<<"\""<<"Z"<<"\" ";
-			ofs<<"\""<<"ro"<<"\" ";
-			ofs<<"\""<<"u"<<"\" ";
-			ofs<<"\""<<"v"<<"\" ";
-			ofs<<"\""<<"w"<<"\" ";
-			ofs<<"\""<<"P"<<"\" ";
-			ofs<<"\""<<"e"<<"\" ";
-			ofs<<std::endl;
-			
-			ofs << "ZONE T=\"1\"\nI=" << nX <<"J=" << nY << "K=" << nZ << "F=POINT\n";
+			ofs << "VARIABLES = ";
+			ofs << "\"" << "X" << "\" ";
+			ofs << "\"" << "Y" << "\" ";
+			ofs << "\"" << "Z" << "\" ";
+			ofs << "\"" << "ro" << "\" ";
+			ofs << "\"" << "u" << "\" ";
+			ofs << "\"" << "v" << "\" ";
+			ofs << "\"" << "w" << "\" ";
+			ofs << "\"" << "P" << "\" ";
+			ofs << "\"" << "e" << "\" ";
+			ofs << std::endl;
+
+			ofs << "ZONE T=\"1\"\nI=" << nX << "J=" << nY << "K=" << nZ << "F=POINT\n";
 			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
-		
+
 			//Solution
 			for (int k = kMin; k <= kMax; k++) {
 				for (int j = jMin; j <= jMax; j++) {
@@ -1955,7 +1964,7 @@ public:
 						double x = CoordinateX[i];
 						double y = CoordinateY[j];
 						double z = CoordinateZ[k];
-						double* U = getCellValues(i,j,k);
+						double* U = getCellValues(i, j, k);
 						double ro = U[0];
 						double u = U[1] / ro;
 						double v = U[2] / ro;
@@ -1964,16 +1973,16 @@ public:
 						double P = (gamma - 1.0) * ro * e;
 
 						//Write to file
-						ofs<<x<<" ";
-						ofs<<y<<" ";
-						ofs<<z<<" ";
-						ofs<<ro<<" ";
-						ofs<<u<<" ";
-						ofs<<v<<" ";
-						ofs<<w<<" ";
-						ofs<<P<<" ";
-						ofs<<e<<" ";
-						ofs<<std::endl;
+						ofs << x << " ";
+						ofs << y << " ";
+						ofs << z << " ";
+						ofs << ro << " ";
+						ofs << u << " ";
+						ofs << v << " ";
+						ofs << w << " ";
+						ofs << P << " ";
+						ofs << e << " ";
+						ofs << std::endl;
 					};
 				};
 			};	//end for ijk
@@ -1996,15 +2005,15 @@ public:
 		if (pManager->IsMaster()) {
 			ofs.open("history.dat", std::ios_base::out);
 			//Header
-			ofs<<"VARIABLES = ";
-			ofs<<"\""<<"time"<<"\" ";			
-			ofs<<"\""<<"roR"<<"\" ";
-			ofs<<"\""<<"rouR"<<"\" ";
-			if (nDims > 1) ofs<<"\""<<"rovR"<<"\" ";
-			if (nDims > 2) ofs<<"\""<<"rowR"<<"\" ";			
-			ofs<<"\""<<"roeR"<<"\" ";
-			ofs<<"\""<<"uMax"<<"\" ";
-			ofs<<std::endl;			
+			ofs << "VARIABLES = ";
+			ofs << "\"" << "time" << "\" ";
+			ofs << "\"" << "roR" << "\" ";
+			ofs << "\"" << "rouR" << "\" ";
+			if (nDims > 1) ofs << "\"" << "rovR" << "\" ";
+			if (nDims > 2) ofs << "\"" << "rowR" << "\" ";
+			ofs << "\"" << "roeR" << "\" ";
+			ofs << "\"" << "uMax" << "\" ";
+			ofs << std::endl;
 		};
 
 		//Start timers
@@ -2017,32 +2026,32 @@ public:
 
 		//Calc loop		
 		if (pManager->IsMaster()) {
-			std::cout<<"Calculation started!"<<std::endl<<std::flush;
+			std::cout << "Calculation started!" << std::endl << std::flush;
 		};
 		pManager->Barrier();
 
 		//Processor info output
 		rank = pManager->getRank();
 		if (!pManager->IsFirstNode()) pManager->Wait(rank - 1);
-		std::cout<<"Info for node rank : "<<rank<<""<<std::endl<<
-			"rankX = "<<pManager->rankCart[0]<<
-			", iMin = "<<iMin<<
-			", iMax = "<<iMax
-			<<std::endl;
-			if (nDims > 1) {
-				std::cout<<
-				"rankY = "<<pManager->rankCart[1]<<
-				", jMin = "<<jMin<<
-				", jMax = "<<jMax
-				<<std::endl;
-			};
-			if (nDims > 2) {
-				std::cout<<
-				"rankZ = "<<pManager->rankCart[2]<<
-				", jMin = "<<jMin<<
-				", jMax = "<<jMax
-				<<std::endl;
-			};
+		std::cout << "Info for node rank : " << rank << "" << std::endl <<
+			"rankX = " << pManager->rankCart[0] <<
+			", iMin = " << iMin <<
+			", iMax = " << iMax
+			<< std::endl;
+		if (nDims > 1) {
+			std::cout <<
+				"rankY = " << pManager->rankCart[1] <<
+				", jMin = " << jMin <<
+				", jMax = " << jMax
+				<< std::endl;
+		};
+		if (nDims > 2) {
+			std::cout <<
+				"rankZ = " << pManager->rankCart[2] <<
+				", jMin = " << jMin <<
+				", jMax = " << jMax
+				<< std::endl;
+		};
 		if (!pManager->IsLastNode()) pManager->Signal(rank + 1);
 		pManager->Barrier();
 
@@ -2056,19 +2065,19 @@ public:
 				double iterationsPackTimeAverage = iterTimer.ElapsedTimeMilliseconds();
 				iterationsPackTimeAverage /= ResidualOutputIterations;
 				iterTimer.Start();
-				std::cout<<"Iteration = "<<stepInfo.Iteration<<
-					"; Total time = "<< stepInfo.Time <<
-					"; Time step = " <<stepInfo.TimeStep <<
-					"; RMSrou = "<<stepInfo.Residual[1]<<
-					"; avgIterTime = "<<iterationsPackTimeAverage<<" ms"<<
+				std::cout << "Iteration = " << stepInfo.Iteration <<
+					"; Total time = " << stepInfo.Time <<
+					"; Time step = " << stepInfo.TimeStep <<
+					"; RMSrou = " << stepInfo.Residual[1] <<
+					"; avgIterTime = " << iterationsPackTimeAverage << " ms" <<
 					std::endl;
-			};		
+			};
 
 			//Sensors recording
-			if((isSensorEnable == true) && (iteration % SaveSensorRecordIterations == 0))
+			if ((isSensorEnable == true) && (iteration % SaveSensorRecordIterations == 0))
 			{
-				for(auto &r : Sensors) {
-					r->NewRecord();
+				for (auto &r : Sensors) {
+					r->UpdateIteration(iteration);
 					r->UpdateTimer(stepInfo.Time);
 					r->Process(values);
 				};
@@ -2080,11 +2089,11 @@ public:
 				//Save snapshot
 				std::stringstream snapshotFileName;
 				snapshotFileName.str(std::string());
-				snapshotFileName<<"dataI"<<stepInfo.Iteration<<".dat";						
+				snapshotFileName << "dataI" << stepInfo.Iteration << ".dat";
 				SaveSolutionSega(snapshotFileName.str());
 
 				if (pManager->IsMaster()) {
-					std::cout<<"Solution has been written to file \""<<snapshotFileName.str()<<"\""<<std::endl;
+					std::cout << "Solution has been written to file \"" << snapshotFileName.str() << "\"" << std::endl;
 				};
 			};
 
@@ -2093,13 +2102,13 @@ public:
 				//Save snapshot
 				std::stringstream snapshotFileName;
 				snapshotFileName.str(std::string());
-				snapshotFileName<<std::fixed;
-				snapshotFileName.precision(snapshotTimePrecision);								
-				snapshotFileName<<"dataT"<<stepInfo.Time<<".dat";							
+				snapshotFileName << std::fixed;
+				snapshotFileName.precision(snapshotTimePrecision);
+				snapshotFileName << "dataT" << stepInfo.Time << ".dat";
 				SaveSolutionSega(snapshotFileName.str());
 
 				if (pManager->IsMaster()) {
-					std::cout<<"Solution has been written to file \""<<snapshotFileName.str()<<"\""<<std::endl;
+					std::cout << "Solution has been written to file \"" << snapshotFileName.str() << "\"" << std::endl;
 				};
 
 				//Adjust next snapshot time
@@ -2108,36 +2117,32 @@ public:
 
 			//Save convergence history		
 			if (pManager->IsMaster() && (stepInfo.Iteration % ResidualOutputIterations)) {
-				ofs<<stepInfo.Time<<" ";			
-				ofs<<stepInfo.Residual[0]<<" ";							
-				ofs<<stepInfo.Residual[1]<<" ";			
-				if (nDims > 1) ofs<<stepInfo.Residual[2]<<" ";			
-				if (nDims > 2) ofs<<stepInfo.Residual[3]<<" ";		
-				if (nVariables > 4) ofs<<stepInfo.Residual[4]<<" ";				
-				ofs<<std::endl;	
+				ofs << stepInfo.Time << " ";
+				ofs << stepInfo.Residual[0] << " ";
+				ofs << stepInfo.Residual[1] << " ";
+				if (nDims > 1) ofs << stepInfo.Residual[2] << " ";
+				if (nDims > 2) ofs << stepInfo.Residual[3] << " ";
+				if (nVariables > 4) ofs << stepInfo.Residual[4] << " ";
+				ofs << std::endl;
 			};
 
 			//Convergence criteria
 			if (stepInfo.Iteration == MaxIteration) {
 				if (pManager->IsMaster()) {
-					std::cout<<"Maximal number of iterations reached.\n";
+					std::cout << "Maximal number of iterations reached.\n";
 				};
 				break;
 			};
 
 			if (stepInfo.Time >= MaxTime) {
 				if (pManager->IsMaster()) {
-					std::cout<<"Maximal time reached.\n";
-				};				
+					std::cout << "Maximal time reached.\n";
+				};
 				break;
 			};
 
 			//Synchronize
 			pManager->Barrier();
-
-			//Now master node outputs connectivity information
-			if (pManager->IsMaster()) {
-			};
 		};
 
 		//Synchronize		
@@ -2146,10 +2151,10 @@ public:
 		//Calculate max idle time
 		double idleTime = pManager->getIdleTime<std::milli>(); //ms
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", local idle time = " << idleTime / 1e3 << " seconds.\n";
+			std::cout << "rank = " << pManager->getRank() << ", local idle time = " << idleTime / 1e3 << " seconds.\n";
 			std::cout.flush();
 		};
-		
+
 		double maxIdleTime = pManager->Max(idleTime);
 
 		if (pManager->IsMaster()) {
@@ -2157,13 +2162,13 @@ public:
 			ofs.flush();
 			ofs.close();
 
-			std::cout<<"Calculation finished!\n";			
+			std::cout << "Calculation finished!\n";
 			//Stop timer
 			workTimer.Stop();
-			std::cout<<"Total work time = " << workTimer.ElapsedTimeMilliseconds() / 1e3 << " seconds.\n";			
-			std::cout<<"Maximum idle time = " << maxIdleTime / 1e3 << " seconds.\n";			
+			std::cout << "Total work time = " << workTimer.ElapsedTimeMilliseconds() / 1e3 << " seconds.\n";
+			std::cout << "Maximum idle time = " << maxIdleTime / 1e3 << " seconds.\n";
 		};
-		
+
 	};
 
 	//Finalize kernel
@@ -2171,7 +2176,9 @@ public:
 		//Finalize MPI
 		pManager->Finalize();
 	};
-
+	
 };
+
+
 
 #endif
