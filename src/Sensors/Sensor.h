@@ -7,15 +7,6 @@
 #include <fstream>
 #include "ParallelManager.h"
 
-struct Grid {
-	int iMin, iMax;
-	int jMin, jMax;
-	int kMin, kMax;
-	int nXAll, nYAll, nZAll;
-	int nlocalX, nlocalY, nlocalZ;
-	std::valarray<double> coordsX;
-};
-
 class Sensor
 {
 protected:

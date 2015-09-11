@@ -46,14 +46,14 @@ public:
 		RungeKuttaOrder = config.RungeKuttaOrder;
 		
 		//Allocate memory for values and residual
-		spectralRadius.resize(g.nCellsLocalAll);
+		spectralRadius.resize(nCellsLocalAll);
 
 		// Resize our reconstructions array
-		reconstructions.resize(g.nlocalX + 2 * g.dummyCellLayersX);
-		for(auto& r : reconstructions) r.resize(g.nlocalY + 2 * g.dummyCellLayersY);
+		reconstructions.resize(nlocalX + 2 * dummyCellLayersX);
+		for(auto& r : reconstructions) r.resize(nlocalY + 2 * dummyCellLayersY);
 		for(auto& r : reconstructions) {
 			for (auto& s : r) {
-				s.resize(g.nlocalZ + 2 * g.dummyCellLayersZ);
+				s.resize(nlocalZ + 2 * dummyCellLayersZ);
 				for (auto& m : s) {
 					m.nDimensions = nDims;
 					m.nValues = nVariables;
@@ -122,17 +122,17 @@ public:
 	Vector ComputeGradientNonUniformStructured(int i, int j, int k, std::function<double(double*)> func) {\
 		Vector grad(0,0,0);
 		double dux = func(getCellValues(i + 1, j, k)) - func(getCellValues(i - 1, j, k));
-		double dudx = dux / (g.CoordinateX[i + 1] - g.CoordinateX[i - 1]);
+		double dudx = dux / (CoordinateX[i + 1] - CoordinateX[i - 1]);					
 		grad.x = dudx;
 
 		if (nDims > 1) {
 			double duy = func(getCellValues(i, j + 1, k)) - func(getCellValues(i, j - 1, k));
-			double dudy = duy / (g.CoordinateY[j + 1] - g.CoordinateY[j - 1]);
+			double dudy = duy / (CoordinateY[j + 1] - CoordinateY[j - 1]);
 			grad.y = dudy;
 		};
 		if (nDims > 2) {
 			double duz = func(getCellValues(i, j, k + 1)) - func(getCellValues(i, j, k - 1));
-			double dudz = duz / (g.CoordinateZ[k + 1] - g.CoordinateZ[k - 1]);
+			double dudz = duz / (CoordinateZ[k + 1] - CoordinateZ[k - 1]);
 			grad.z = dudz;
 		};
 		return grad;
@@ -144,14 +144,14 @@ public:
 		auto getu = [](double *U) { return U[1]/U[0]; };
 		auto getv = [](double *U) { return U[2]/U[0]; };
 		auto getw = [](double *U) { return U[3]/U[0]; };
-		if (gradientVelocityX.size() != g.nCellsLocalAll) gradientVelocityX.resize(g.nCellsLocalAll);
-		if (gradientVelocityY.size() != g.nCellsLocalAll) gradientVelocityY.resize(g.nCellsLocalAll);
-		if (gradientVelocityZ.size() != g.nCellsLocalAll) gradientVelocityZ.resize(g.nCellsLocalAll);
+		if (gradientVelocityX.size() != nCellsLocalAll) gradientVelocityX.resize(nCellsLocalAll);
+		if (gradientVelocityY.size() != nCellsLocalAll) gradientVelocityY.resize(nCellsLocalAll);
+		if (gradientVelocityZ.size() != nCellsLocalAll) gradientVelocityZ.resize(nCellsLocalAll);
 
 		//Inside domain
-		for (int i = g.iMin; i <= g.iMax; i++) {
-			for (int j = g.jMin; j <= g.jMax; j++) {
-				for (int k = g.kMin; k <= g.kMax; k++) {
+		for (int i = iMin; i <= iMax; i++) {
+			for (int j = jMin; j <= jMax; j++) {
+				for (int k = kMin; k <= kMax; k++) {
 					int idx = getSerialIndexLocal(i, j, k);
 
 					//Cell values
@@ -210,8 +210,8 @@ public:
 		std::vector<double> bufferToSend;								
 
 		//Allocate buffers
-		int layerSizeX = g.nlocalYAll * g.nlocalZAll;
-		int layerSizeY = g.nlocalXAll * g.nlocalZAll;
+		int layerSizeX = nlocalYAll * nlocalZAll;
+		int layerSizeY = nlocalXAll * nlocalZAll;
 		int bufferSize = std::max(layerSizeX, layerSizeY) * nDims;// * nVariables;
 		bufferToSend.resize(bufferSize);
 		bufferToRecv.resize(bufferSize);
@@ -224,11 +224,11 @@ public:
 
 			//Fill buffer with gradient values
 			int idxBuffer = 0;
-			for (i = g.iMin - g.dummyCellLayersX; i <= g.iMax + g.dummyCellLayersX; i++) {
+			for (i = iMin - dummyCellLayersX; i <= iMax + dummyCellLayersX; i++) {
 				if ((direction == Direction::XDirection) && (i != iSend)) continue; //skip
-				for (j = g.jMin - g.dummyCellLayersY; j <= g.jMax + g.dummyCellLayersY; j++) {
+				for (j = jMin - dummyCellLayersY; j <= jMax + dummyCellLayersY; j++) {
 					if ((direction == Direction::YDirection) && (j != iSend)) continue; //skip
-					for (k = g.kMin - g.dummyCellLayersZ; k <= g.kMax + g.dummyCellLayersZ; k++) {
+					for (k = kMin - dummyCellLayersZ; k <= kMax + dummyCellLayersZ; k++) {
 						if ((direction == Direction::ZDirection) && (k != iSend)) continue; //skip
 						nRecv+=nDims;
 						if (rankDest == -1) continue;
@@ -254,11 +254,11 @@ public:
 
 			//Write recieved values back
 			idxBuffer = 0;
-			for (i = g.iMin - g.dummyCellLayersX; i <= g.iMax + g.dummyCellLayersX; i++) {
+			for (i = iMin - dummyCellLayersX; i <= iMax + dummyCellLayersX; i++) {
 				if ((direction == Direction::XDirection) && (i != iRecv)) continue; //skip
-				for (j = g.jMin - g.dummyCellLayersY; j <= g.jMax + g.dummyCellLayersY; j++) {
+				for (j = jMin - dummyCellLayersY; j <= jMax + dummyCellLayersY; j++) {
 					if ((direction == Direction::YDirection) && (j != iRecv)) continue; //skip
-					for (k = g.kMin - g.dummyCellLayersZ; k <= g.kMax + g.dummyCellLayersZ; k++) {
+					for (k = kMin - dummyCellLayersZ; k <= kMax + dummyCellLayersZ; k++) {
 						if ((direction == Direction::ZDirection) && (k != iRecv)) continue; //skip
 						int idxCell = getSerialIndexLocal(i, j, k);
 						cellGradients[idxCell].x = bufferToRecv[idxBuffer * nDims];
@@ -285,15 +285,15 @@ public:
 				std::endl<<std::flush;
 		};
 
-		for (int layer = 1; layer <= g.dummyCellLayersX; layer++) {
+		for (int layer = 1; layer <= dummyCellLayersX; layer++) {
 			// Minus direction exchange
-			int iSend = g.iMin + layer - 1; // layer index to send
-			int iRecv = g.iMax + layer; // layer index to recv
+			int iSend = iMin + layer - 1; // layer index to send
+			int iRecv = iMax + layer; // layer index to recv
 			exchangeLayers(Direction::XDirection, iSend, rankL, iRecv, rankR);
 
 			// Plus direction exchange
-			iSend = g.iMax - layer + 1; // layer index to send
-			iRecv = g.iMin - layer; // layer index to recv
+			iSend = iMax - layer + 1; // layer index to send
+			iRecv = iMin - layer; // layer index to recv
 			exchangeLayers(Direction::XDirection, iSend, rankR, iRecv, rankL);
 		};
 
@@ -316,15 +316,15 @@ public:
 		};
 
 		
-		for (int layer = 1; layer <= g.dummyCellLayersY; layer++) {
+		for (int layer = 1; layer <= dummyCellLayersY; layer++) {
 			// Minus direction exchange
-			int iSend = g.jMin + layer - 1; // layer index to send
-			int iRecv = g.jMax + layer; // layer index to recv
+			int iSend = jMin + layer - 1; // layer index to send
+			int iRecv = jMax + layer; // layer index to recv
 			exchangeLayers(Direction::YDirection, iSend, rankL, iRecv, rankR);
 
 			// Plus direction exchange
-			iSend = g.jMax - layer + 1; // layer index to send
-			iRecv = g.jMin - layer; // layer index to recv
+			iSend = jMax - layer + 1; // layer index to send
+			iRecv = jMin - layer; // layer index to recv
 			exchangeLayers(Direction::YDirection, iSend, rankR, iRecv, rankL);
 		};
 
@@ -368,24 +368,24 @@ public:
 		//X direction
 		faceNormalL = Vector(-1.0, 0.0, 0.0);
 		faceNormalR = Vector(1.0, 0.0, 0.0);
-		if (!g.IsPeriodicX) {
-			for (j = g.jMin; j <= g.jMax; j++) {
-				for (k = g.kMin; k <= g.kMax; k++) {
+		if (!IsPeriodicX) {
+			for (j = jMin; j <= jMax; j++) {
+				for (k = kMin; k <= kMax; k++) {				
 					//Inner cell
-					cellCenter.y = g.CoordinateY[j];
-					cellCenter.z = g.CoordinateZ[k];
+					cellCenter.y = CoordinateY[j];
+					cellCenter.z = CoordinateZ[k];
 
 					//And face
-					faceCenter.y = g.CoordinateY[j];
-					faceCenter.z = g.CoordinateZ[k];
+					faceCenter.y = CoordinateY[j];
+					faceCenter.z = CoordinateZ[k];
 
-					for (int layer = 1; layer <= g.dummyCellLayersX; layer++) {
+					for (int layer = 1; layer <= dummyCellLayersX; layer++) {		
 						if (pManager->rankCart[0] == 0) {
 							//Left border
-							i = g.iMin - layer; // layer index
-							int iIn = g.iMin + layer - 1; // opposite index
-							cellCenter.x = g.CoordinateX[iIn];
-							faceCenter.x = (g.CoordinateX[iIn] + g.CoordinateX[i]) / 2.0;
+							i = iMin - layer; // layer index
+							int iIn = iMin + layer - 1; // opposite index
+							cellCenter.x = CoordinateX[iIn];
+							faceCenter.x = (CoordinateX[iIn] + CoordinateX[i]) / 2.0;
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(iIn, j, k);
 					
@@ -402,10 +402,10 @@ public:
 
 						if (pManager->rankCart[0] == pManager->dimsCart[0]-1) {
 							//Right border
-							i = g.iMax + layer; // layer index
-							int iIn = g.iMax - layer + 1; // opposite index
-							cellCenter.x = g.CoordinateX[iIn];
-							faceCenter.x = (g.CoordinateX[iIn] + g.CoordinateX[i]) / 2.0;
+							i = iMax + layer; // layer index
+							int iIn = iMax - layer + 1; // opposite index
+							cellCenter.x = CoordinateX[iIn];
+							faceCenter.x = (CoordinateX[iIn] + CoordinateX[i]) / 2.0;
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(iIn, j, k);
 					
@@ -435,24 +435,24 @@ public:
 		//Y direction		
 		faceNormalL = Vector(0.0, -1.0, 0.0);
 		faceNormalR = Vector(0.0, 1.0, 0.0);
-		for (i = g.iMin; i <= g.iMax; i++) {
-			for (k = g.kMin; k <= g.kMax; k++) {
+		for (i = iMin; i <= iMax; i++) {
+			for (k = kMin; k <= kMax; k++) {				
 				//Inner cell
-				cellCenter.x = g.CoordinateX[i];
-				cellCenter.z = g.CoordinateZ[k];
+				cellCenter.x = CoordinateX[i];
+				cellCenter.z = CoordinateZ[k];
 
 				//And face
-				faceCenter.x = g.CoordinateX[i];
-				faceCenter.z = g.CoordinateZ[k];
+				faceCenter.x = CoordinateX[i];
+				faceCenter.z = CoordinateZ[k];
 
-				for (int layer = 1; layer <= g.dummyCellLayersY; layer++) {
-					if (!g.IsPeriodicY) {
+				for (int layer = 1; layer <= dummyCellLayersY; layer++) {
+					if (!IsPeriodicY) {
 						if (pManager->rankCart[1] == 0) {
 							//Left border
-							j = g.jMin - layer; // layer index
-							int jIn = g.jMin + layer - 1; // opposite index
-							cellCenter.y = g.CoordinateY[jIn];
-							faceCenter.y = (g.CoordinateY[jIn] + g.CoordinateY[j]) / 2.0;
+							j = jMin - layer; // layer index
+							int jIn = jMin + layer - 1; // opposite index
+							cellCenter.y = CoordinateY[jIn];
+							faceCenter.y = (CoordinateY[jIn] + CoordinateY[j]) / 2.0;
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(i, jIn, k);
 											
@@ -469,10 +469,10 @@ public:
 
 						if (pManager->rankCart[1] == pManager->dimsCart[1] - 1.0) {
 							//Right border
-							j = g.jMax + layer; // layer index
-							int jIn = g.jMax - layer + 1; // opposite index
-							cellCenter.y = g.CoordinateY[jIn];
-							faceCenter.y = (g.CoordinateY[jIn] + g.CoordinateY[j]) / 2.0;
+							j = jMax + layer; // layer index
+							int jIn = jMax - layer + 1; // opposite index
+							cellCenter.y = CoordinateY[jIn];
+							faceCenter.y = (CoordinateY[jIn] + CoordinateY[j]) / 2.0;
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(i, jIn, k);
 					
@@ -502,15 +502,15 @@ public:
 	//Compute viscous Fluxes in all faces
 	void ComputeViscousFluxes(std::vector<std::vector<double>> &vfluxesX, std::vector<std::vector<double>> &vfluxesY, std::vector<std::vector<double>> &vfluxesZ) {
 		//resize storage for appropriate case
-		if(nDims == 1) vfluxesX.resize(g.nlocalX + 1 );
+		if(nDims == 1) vfluxesX.resize( nlocalX + 1 );
 		if(nDims == 2) {
-			vfluxesX.resize( (g.nlocalX + 1) * g.nlocalY + (g.nlocalY + 1) * g.nlocalX );
-			vfluxesY.resize( (g.nlocalX + 1) * g.nlocalY + (g.nlocalY + 1) * g.nlocalX );
+			vfluxesX.resize( (nlocalX + 1) * nlocalY + (nlocalY + 1) * nlocalX );
+			vfluxesY.resize( (nlocalX + 1) * nlocalY + (nlocalY + 1) * nlocalX );
 		};
 		if(nDims == 3) {
-			vfluxesX.resize( (g.nlocalX + 1) * g.nlocalY * g.nlocalZ + (g.nlocalY + 1) * g.nlocalX * g.nlocalZ + (g.nlocalZ + 1) * g.nlocalY * g.nlocalX );
-			vfluxesY.resize( (g.nlocalX + 1) * g.nlocalY * g.nlocalZ + (g.nlocalY + 1) * g.nlocalX * g.nlocalZ + (g.nlocalZ + 1) * g.nlocalY * g.nlocalX );
-			vfluxesZ.resize( (g.nlocalX + 1) * g.nlocalY * g.nlocalZ + (g.nlocalY + 1) * g.nlocalX * g.nlocalZ + (g.nlocalZ + 1) * g.nlocalY * g.nlocalX );
+			vfluxesX.resize( (nlocalX + 1) * nlocalY * nlocalZ + (nlocalY + 1) * nlocalX * nlocalZ + (nlocalZ + 1) * nlocalY * nlocalX );
+			vfluxesY.resize( (nlocalX + 1) * nlocalY * nlocalZ + (nlocalY + 1) * nlocalX * nlocalZ + (nlocalZ + 1) * nlocalY * nlocalX );
+			vfluxesZ.resize( (nlocalX + 1) * nlocalY * nlocalZ + (nlocalY + 1) * nlocalX * nlocalZ + (nlocalZ + 1) * nlocalY * nlocalX );
 		};
 
 		//second viscosity
@@ -526,9 +526,9 @@ public:
 
 		//X direction first
 		faceInd = 0;
-		for(int k = g.kMin; k <= g.kMax; k++) {
-			for(int j = g.jMin; j <= g.jMax; j++) {
-				for(int i = g.iMin; i <= g.iMax + 1; i++) {
+		for(int k = kMin; k <= kMax; k++) {
+			for(int j = jMin; j <= jMax; j++) {
+				for(int i = iMin; i <= iMax + 1; i++) {
 
 					//Compute vertical faces fluxes (left from cell ijk)
 					//Conservative variables and serial index in left and right cell 
@@ -536,7 +536,7 @@ public:
 					double* UR = getCellValues(i, j, k);
 					int sL = getSerialIndexLocal(i - 1, j, k);
 					int sR = getSerialIndexLocal(i, j, k);
-					double dx = g.CoordinateX[i - 1] - g.CoordinateX[i];
+					double dx = CoordinateX[i - 1] - CoordinateX[i];
 
 					//U component derivatives
 					Vector& graduL = gradientVelocityX[sL];
@@ -557,8 +557,8 @@ public:
 					dw.x = (getw(UR) - getw(UL)) / dx;
 
 					//compute average velocity vector
-					double l = 0.5 * g.hx[i - 1] / dx;	//weights
-					double r = 0.5 * g.hx[i] / dx;
+					double l = 0.5 * hx[i - 1] / dx;	//weights
+					double r = 0.5 * hx[i] / dx;
 					double u = 0.5 * (l * getu(UR) + r * getu(UL));
 					double v = 0.5 * (l * getv(UR) + r * getv(UL));
 					double w = 0.5 * (l * getw(UR) + r * getw(UL));
@@ -587,9 +587,9 @@ public:
 		if(nDims < 2) return;
 		//Y direction then
 		faceInd = 0;
-		for(int k = g.kMin; k <= g.kMax; k++) {
-			for(int i = g.iMin; i <= g.iMax; i++) {
-				for(int j = g.jMin; j <= g.jMax + 1; j++) {
+		for(int k = kMin; k <= kMax; k++) {
+			for(int i = iMin; i <= iMax; i++) {
+				for(int j = jMin; j <= jMax + 1; j++) {
 
 					//Compute horizontal faces fluxes (bottom from cell ijk)
 					//Conservative variables and serial index in left (bottom) and right (top) cell 
@@ -597,7 +597,7 @@ public:
 					double* UR = getCellValues(i, j, k);
 					int sL = getSerialIndexLocal(i , j - 1, k);
 					int sR = getSerialIndexLocal(i, j, k);
-					double dy = g.CoordinateY[j] - g.CoordinateY[j - 1];
+					double dy = CoordinateY[j] - CoordinateY[j - 1];
 
 					//U component derivatives
 					Vector& graduL = gradientVelocityX[sL];
@@ -618,8 +618,8 @@ public:
 					dw.y = (getw(UR) - getw(UL)) / dy;
 
 					//compute average velocity vector
-					double l = 0.5 * g.hy[j - 1] / dy;
-					double r = 0.5 * g.hy[j] / dy;
+					double l = 0.5 * hy[j - 1] / dy;
+					double r = 0.5 * hy[j] / dy;
 					double u = 0.5 * (l * getu(UR) + r * getu(UL));
 					double v = 0.5 * (l * getv(UR) + r * getv(UL));
 					double w = 0.5 * (l * getw(UR) + r * getw(UL));
@@ -648,9 +648,9 @@ public:
 		if(nDims < 3) return;
 		//Z direction then
 		faceInd = 0;
-		for(int i = g.iMin; i <= g.iMax; i++) {
-			for(int j = g.jMin; j <= g.jMax; j++) {
-				for(int k = g.kMin; k <= g.kMax + 1; k++) {
+		for(int i = iMin; i <= iMax; i++) {
+			for(int j = jMin; j <= jMax; j++) {
+				for(int k = kMin; k <= kMax + 1; k++) {
 
 					//Compute frontal faces fluxes (back from cell ijk)
 					//Conservative variables and serial index in left (back) and right (front) cell 
@@ -658,7 +658,7 @@ public:
 					double* UR = getCellValues(i, j, k);
 					int sL = getSerialIndexLocal(i , j, k - 1);
 					int sR = getSerialIndexLocal(i, j, k);
-					double dz = g.CoordinateZ[k] - g.CoordinateZ[k - 1];
+					double dz = CoordinateZ[k] - CoordinateZ[k - 1];
 
 					//U component derivatives
 					Vector& graduL = gradientVelocityX[sL];
@@ -679,8 +679,8 @@ public:
 					dw.z = (getw(UR) - getw(UL)) / dz;
 
 					//compute average velocity vector
-					double l = 0.5 * g.hz[k - 1] / dz;		//weights
-					double r = 0.5 * g.hz[k] / dz;
+					double l = 0.5 * hz[k - 1] / dz;		//weights
+					double r = 0.5 * hz[k] / dz;
 					double u = 0.5 * (l * getu(UR) + r * getu(UL));
 					double v = 0.5 * (l * getv(UR) + r * getv(UL));
 					double w = 0.5 * (l * getw(UR) + r * getw(UL));
@@ -720,37 +720,37 @@ public:
 		if (nDims > 2) zLayer = 1;
 
 		// Obtain all inner cells
-		for (int i = g.iMin; i <= g.iMax; i++) {
-			for (int j = g.jMin; j <= g.jMax; j++) {
-				for (int k = g.kMin; k <= g.kMax; k++) {
+		for (int i = iMin; i <= iMax; i++) {
+			for (int j = jMin; j <= jMax; j++) {
+				for (int k = kMin; k <= kMax; k++) {
 					std::vector<std::valarray<double> > stencil_values;		// vector of stencil values
 					std::vector<Vector> points;								// vector of stencil points
 					std::valarray<double> cell_values(std::move(ConservativeToPrimitive(getCellValues(i, j, k))));	// primitive variables in our cell
-					Vector cell_center = Vector(g.CoordinateX[i], g.CoordinateY[j], g.CoordinateZ[k]);
+					Vector cell_center = Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k]);
 
 					// X direction stencil
-					for (int iStencil = -g.dummyCellLayersX; iStencil <= g.dummyCellLayersX; iStencil++) {
+					for (int iStencil = -dummyCellLayersX; iStencil <= dummyCellLayersX; iStencil++) {
 						if (iStencil == 0) continue;
 						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i + iStencil, j, k))));
-						points.push_back(std::move(Vector(g.CoordinateX[i + iStencil], g.CoordinateY[j], g.CoordinateZ[k])));
+						points.push_back(std::move(Vector(CoordinateX[i + iStencil], CoordinateY[j], CoordinateZ[k])));
 					};
 
 					//Y direction stencil
-					for (int jStencil = -g.dummyCellLayersY; jStencil <= g.dummyCellLayersY; jStencil++) {
+					for (int jStencil = -dummyCellLayersY; jStencil <= dummyCellLayersY; jStencil++) {
 						if (jStencil == 0) continue;
 						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i, j + jStencil, k))));
-						points.push_back(std::move(Vector(g.CoordinateX[i], g.CoordinateY[j + jStencil], g.CoordinateZ[k])));
+						points.push_back(std::move(Vector(CoordinateX[i], CoordinateY[j + jStencil], CoordinateZ[k])));
 					};
 
 					//Z direction stencil
-					for (int kStencil = -g.dummyCellLayersZ; kStencil <= g.dummyCellLayersZ; kStencil++) {
+					for (int kStencil = -dummyCellLayersZ; kStencil <= dummyCellLayersZ; kStencil++) {
 						if (kStencil == 0) continue;
 						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i, j, k + kStencil))));
-						points.push_back(std::move(Vector(g.CoordinateX[i], g.CoordinateY[j], g.CoordinateZ[k + kStencil])));
+						points.push_back(std::move(Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k + kStencil])));
 					};
 
 					//we have only one or no external layer of cells reconstructions
-					reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + zLayer] = ComputeReconstruction<ReconstructionType>(stencil_values, points, cell_values, cell_center, nDims);
+					reconstructions[i - iMin + 1][j - jMin + yLayer][k - kMin + zLayer] = ComputeReconstruction<ReconstructionType>(stencil_values, points, cell_values, cell_center, nDims);
 				};
 			};
 		};
@@ -786,9 +786,9 @@ public:
 
 		//Allocate buffers
 		int msgLen = ReconstructionType::GetBufferLenght(nDims, nVariables);
-		int layerSizeX = g.nlocalY * g.nlocalZ;
-		int layerSizeY = g.nlocalX * g.nlocalZ;
-		int layerSizeZ = g.nlocalX * g.nlocalY;
+		int layerSizeX = nlocalY * nlocalZ;
+		int layerSizeY = nlocalX * nlocalZ;
+		int layerSizeZ = nlocalX * nlocalY;
 		int bufferSize = 0;
 		if(nDims < 2) bufferSize = msgLen;
 		else if (nDims < 3) bufferSize = std::max(layerSizeX, layerSizeY) * msgLen;
@@ -805,11 +805,11 @@ public:
 
 			//Fill buffer with reconstructions only from inner cells (buffer to SEND reconstruction to another core)
 			int idxBuffer = 0;
-			for (i = g.iMin; i <= g.iMax; i++) {
+			for (i = iMin; i <= iMax; i++) {
 				if ((direction == Direction::XDirection) && (i != iSend)) continue; //skip
-				for (j = g.jMin; j <= g.jMax; j++) {
+				for (j = jMin; j <= jMax; j++) {
 					if ((direction == Direction::YDirection) && (j != iSend)) continue; //skip
-					for (k = g.kMin; k <= g.kMax; k++) {
+					for (k = kMin; k <= kMax; k++) {
 						if ((direction == Direction::ZDirection) && (k != iSend)) continue; //skip
 
 						//Increase aticipating buffer size
@@ -819,9 +819,9 @@ public:
 						if (rankDest == -1) continue;
 
 						//Get indexes to send reconstruction
-						int iRec = i - g.iMin + xLayer;
-						int jRec = j - g.jMin + yLayer;
-						int kRec = k - g.kMin + zLayer;
+						int iRec = i - iMin + xLayer;
+						int jRec = j - jMin + yLayer;
+						int kRec = k - kMin + zLayer;
 						
 						//Serialize to string of doubles
 						std::valarray<double> msg = reconstructions[iRec][jRec][kRec].Serialize();
@@ -860,17 +860,17 @@ public:
 				break;
 			};
 
-			for (i = g.iMin - xDummyFlag; i <= g.iMax + xDummyFlag; i++) {
+			for (i = iMin - xDummyFlag; i <= iMax + xDummyFlag; i++) {
 				if ((direction == Direction::XDirection) && (i != iRecv)) continue; //skip
-				for (j = g.jMin - yDummyFlag; j <= g.jMax + yDummyFlag; j++) {
+				for (j = jMin - yDummyFlag; j <= jMax + yDummyFlag; j++) {
 					if ((direction == Direction::YDirection) && (j != iRecv)) continue; //skip
-					for (k = g.kMin - zDummyFlag; k <= g.kMax + zDummyFlag; k++) {
+					for (k = kMin - zDummyFlag; k <= kMax + zDummyFlag; k++) {
 						if ((direction == Direction::ZDirection) && (k != iRecv)) continue; //skip
 						
 						//Get indexes to recv reconstruction
-						int iRec = i - g.iMin + xLayer;
-						int jRec = j - g.jMin + yLayer;
-						int kRec = k - g.kMin + zLayer;
+						int iRec = i - iMin + xLayer;
+						int jRec = j - jMin + yLayer;
+						int kRec = k - kMin + zLayer;
 
 						//Extract message from bufer
 						std::valarray<double> msg(msgLen);
@@ -878,7 +878,7 @@ public:
 
 						//Deserialize from string of doubles
 						reconstructions[iRec][jRec][kRec].Deserialize(msg);
-						reconstructions[iRec][jRec][kRec].RefreshPosition({ g.CoordinateX[i], g.CoordinateY[j], g.CoordinateZ[k] });
+						reconstructions[iRec][jRec][kRec].RefreshPosition({ CoordinateX[i], CoordinateY[j], CoordinateZ[k] });
 
 						//Increase object counter
 						idxBuffer++;
@@ -906,13 +906,13 @@ public:
 		};
 	
 		// Minus direction exchange
-		int iSend = g.iMin; // layer index to send
-		int iRecv = g.iMax + 1; // layer index to recv
+		int iSend = iMin; // layer index to send
+		int iRecv = iMax + 1; // layer index to recv
 		exchangeLayers(Direction::XDirection, iSend, rankL, iRecv, rankR);
 
 		// Plus direction exchange
-		iSend = g.iMax; // layer index to send
-		iRecv = g.iMin - 1; // layer index to recv
+		iSend = iMax; // layer index to send
+		iRecv = iMin - 1; // layer index to recv
 		exchangeLayers(Direction::XDirection, iSend, rankR, iRecv, rankL);
 
 		if (DebugOutputEnabled) {
@@ -936,13 +936,13 @@ public:
 		};
 		
 		// Minus direction exchange
-		iSend = g.jMin; // layer index to send
-		iRecv = g.jMax + 1; // layer index to recv
+		iSend = jMin; // layer index to send
+		iRecv = jMax + 1; // layer index to recv
 		exchangeLayers(Direction::YDirection, iSend, rankL, iRecv, rankR);
 
 		// Plus direction exchange
-		iSend = g.jMax; // layer index to send
-		iRecv = g.jMin - 1; // layer index to recv
+		iSend = jMax; // layer index to send
+		iRecv = jMin - 1; // layer index to recv
 		exchangeLayers(Direction::YDirection, iSend, rankR, iRecv, rankL);		
 
 		if (DebugOutputEnabled) {
@@ -966,13 +966,13 @@ public:
 		};
 
 		// Minus direction exchange
-		iSend = g.kMin; // layer index to send
-		iRecv = g.kMax + 1; // layer index to recv
+		iSend = kMin; // layer index to send
+		iRecv = kMax + 1; // layer index to recv
 		exchangeLayers(Direction::ZDirection, iSend, rankL, iRecv, rankR);
 
 		// Plus direction exchange
-		iSend = g.kMax; // layer index to send
-		iRecv = g.kMin - 1; // layer index to recv
+		iSend = kMax; // layer index to send
+		iRecv = kMin - 1; // layer index to recv
 		exchangeLayers(Direction::ZDirection, iSend, rankR, iRecv, rankL);
 		if (DebugOutputEnabled) {
 			std::cout << "rank = " << pManager->getRank() << ", Exchange recontructions Z-direction executed\n";
@@ -1018,33 +1018,33 @@ public:
 		// I step
 		faceInd = 0;
 		Vector fn = Vector(1.0, 0.0, 0.0); // x direction
-		for (int k = g.kMin; k <= g.kMax; k++) {
-			for (int j = g.jMin; j <= g.jMax; j++) {
+		for (int k = kMin; k <= kMax; k++) {
+			for (int j = jMin; j <= jMax; j++) {
 				// Compute face square
 				double fS = 0;
 				if (nDims == 1) fS = 1.0;
-				if (nDims == 2) fS = g.hy[j];
-				if (nDims == 3) fS = g.hy[j] * g.hz[k];
+				if (nDims == 2) fS = hy[j];
+				if (nDims == 3) fS = hy[j] * hz[k];
 
-				for (int i = g.iMin; i <= g.iMax + 1; i++) {
+				for (int i = iMin; i <= iMax + 1; i++) {
 
 					// Set Riemann Problem arguments
-					Vector faceCenter = Vector(g.CoordinateX[i] - 0.5 * g.hx[i], g.CoordinateY[j], g.CoordinateZ[k]);
+					Vector faceCenter = Vector(CoordinateX[i] - 0.5 * hx[i], CoordinateY[j], CoordinateZ[k]);
 
 					// Apply boundary conditions
-					if ((pManager->rankCart[0] == 0) && (i == g.iMin) && (g.IsPeriodicX != true))									// Left border
+					if ((pManager->rankCart[0] == 0) && (i == iMin) && (IsPeriodicX != true))									// Left border
 					{
-						UR = PrimitiveToConservative(reconstructions[1][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(faceCenter));
+						UR = PrimitiveToConservative(reconstructions[1][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
 						UL = xLeftBC->getDummyReconstructions(&UR[0]);
 					}
-					else if ((pManager->rankCart[0] == pManager->dimsCart[0] - 1) && (i == g.iMax + 1) && (g.IsPeriodicX != true))	// Right border
+					else if ((pManager->rankCart[0] == pManager->dimsCart[0] - 1) && (i == iMax + 1) && (IsPeriodicX != true))	// Right border
 					{
-						UL = PrimitiveToConservative(reconstructions[g.iMax - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(faceCenter));
+						UL = PrimitiveToConservative(reconstructions[iMax - iMin + 1][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
 						UR = xRightBC->getDummyReconstructions(&UL[0]);
 					} else
 					{
-						UL = PrimitiveToConservative(reconstructions[i - g.iMin][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(faceCenter));
-						UR = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(faceCenter));
+						UL = PrimitiveToConservative(reconstructions[i - iMin][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
+						UR = PrimitiveToConservative(reconstructions[i - iMin + 1][j - jMin + yLayer][k - kMin + zLayer].SampleSolution(faceCenter));
 					};
 
 					// Compute convective flux
@@ -1058,14 +1058,14 @@ public:
 					for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
 
 					// Update residuals
-					if(i > g.iMin)
+					if(i > iMin)
 					{
 						// Fluxes difference equals residual
 						int idx = getSerialIndexLocal(i - 1, j, k);
 						for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += - (fr[nv] - fl[nv]) * fS;
 
 						// Compute volume of cell
-						double volume = fS * g.hx[i - 1];
+						double volume = fS * hx[i - 1];
 
 						// Add up spectral radius estimate
 						spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
@@ -1094,32 +1094,32 @@ public:
 		{
 			faceInd = 0;
 			Vector fn = Vector(0.0, 1.0, 0.0); // y direction
-			for (int k = g.kMin; k <= g.kMax; k++) {
-				for (int i = g.iMin; i <= g.iMax; i++) {
+			for (int k = kMin; k <= kMax; k++) {
+				for (int i = iMin; i <= iMax; i++) {
 					// Compute face square
-					double fS = g.hx[i];
-					if (nDims == 3) fS = g.hx[i] * g.hz[k];
+					double fS = hx[i];
+					if (nDims == 3) fS = hx[i] * hz[k];
 
-					for (int j = g.jMin; j <= g.jMax + 1; j++) {
+					for (int j = jMin; j <= jMax + 1; j++) {
 
 						// Set Riemann Problem arguments
-						Vector faceCenter = Vector(g.CoordinateX[i], g.CoordinateY[j] - 0.5 * g.hy[j], g.CoordinateZ[k]);
+						Vector faceCenter = Vector(CoordinateX[i], CoordinateY[j] - 0.5 * hy[j], CoordinateZ[k]);
 
 						// Apply boundary conditions
-						if ((pManager->rankCart[1] == 0) && (j == g.jMin) && (g.IsPeriodicY != true))									// Left border
+						if ((pManager->rankCart[1] == 0) && (j == jMin) && (IsPeriodicY != true))									// Left border
 						{
-							UR = PrimitiveToConservative(reconstructions[i - g.iMin + 1][1][k - g.kMin + zLayer].SampleSolution(faceCenter));
+							UR = PrimitiveToConservative(reconstructions[i - iMin + 1][1][k - kMin + zLayer].SampleSolution(faceCenter));
 							UL = yLeftBC->getDummyReconstructions(&UR[0]);
 						}
-						else if ((pManager->rankCart[1] == pManager->dimsCart[1] - 1) && (j == g.jMax + 1) && (g.IsPeriodicY != true))	// Right border
+						else if ((pManager->rankCart[1] == pManager->dimsCart[1] - 1) && (j == jMax + 1) && (IsPeriodicY != true))	// Right border
 						{
-							UL = PrimitiveToConservative(reconstructions[i - g.iMin + 1][g.jMax - g.jMin + 1][k - g.kMin + zLayer].SampleSolution(faceCenter));
+							UL = PrimitiveToConservative(reconstructions[i - iMin + 1][jMax - jMin + 1][k - kMin + zLayer].SampleSolution(faceCenter));
 							UR = yRightBC->getDummyReconstructions(&UL[0]);
 						}
 						else
 						{
-							UL = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin][k - g.kMin + zLayer].SampleSolution(faceCenter));
-							UR = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + 1][k - g.kMin + zLayer].SampleSolution(faceCenter));
+							UL = PrimitiveToConservative(reconstructions[i - iMin + 1][j - jMin][k - kMin + zLayer].SampleSolution(faceCenter));
+							UR = PrimitiveToConservative(reconstructions[i - iMin + 1][j - jMin + 1][k - kMin + zLayer].SampleSolution(faceCenter));
 						};
 
 						// Compute convective flux
@@ -1133,14 +1133,14 @@ public:
 						for (int nv = 0; nv < nVariables; nv++) fr[nv] -= fvisc[nv];
 
 						// Update residuals
-						if (j > g.jMin)
+						if (j > jMin)
 						{
 							// Fluxes difference equals residual
 							int idx = getSerialIndexLocal(i, j - 1, k);
 							for (int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += -(fr[nv] - fl[nv]) * fS;
 
 							// Compute volume of cell
-							double volume = fS * g.hy[j - 1];
+							double volume = fS * hy[j - 1];
 
 							// Add up spectral radius estimate
 							spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
@@ -1171,31 +1171,31 @@ public:
 		{
 			faceInd = 0;
 			Vector fn = Vector(0.0, 0.0, 1.0); // y direction
-			for (int j = g.jMin; j <= g.jMax; j++) {
-				for (int i = g.iMin; i <= g.iMax; i++) {
+			for (int j = jMin; j <= jMax; j++) {
+				for (int i = iMin; i <= iMax; i++) {
 					// Compute face square
-					double fS = g.hx[i] * g.hy[i];
+					double fS = hx[i] * hy[i];
 
-					for (int k = g.kMin; k <= g.kMax + 1; k++) {
+					for (int k = kMin; k <= kMax + 1; k++) {
 
 						// Set Riemann Problem arguments
-						Vector faceCenter = Vector(g.CoordinateX[i], g.CoordinateY[j], g.CoordinateZ[k] - 0.5 * g.hz[k]);
+						Vector faceCenter = Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k] - 0.5 * hz[k]);
 
 						// Apply boundary conditions
-						if ((pManager->rankCart[1] == 0) && (k == g.kMin) && (g.IsPeriodicZ != true))									// Left border
+						if ((pManager->rankCart[1] == 0) && (k == kMin) && (IsPeriodicZ != true))									// Left border
 						{
-							UR = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][1].SampleSolution(faceCenter));
+							UR = PrimitiveToConservative(reconstructions[i - iMin + 1][j - jMin + yLayer][1].SampleSolution(faceCenter));
 							UL = zLeftBC->getDummyReconstructions(&UR[0]);
 						}
-						else if ((pManager->rankCart[1] == pManager->dimsCart[1] - 1) && (k == g.kMax + 1) && (g.IsPeriodicZ != true))	// Right border
+						else if ((pManager->rankCart[1] == pManager->dimsCart[1] - 1) && (k == kMax + 1) && (IsPeriodicZ != true))	// Right border
 						{
-							UL = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][g.kMax - g.kMin + 1].SampleSolution(faceCenter));
+							UL = PrimitiveToConservative(reconstructions[i - iMin + 1][j - jMin + yLayer][kMax - kMin + 1].SampleSolution(faceCenter));
 							UR = zRightBC->getDummyReconstructions(&UL[0]);
 						}
 						else
 						{
-							UL = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin].SampleSolution(faceCenter));
-							UR = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + 1].SampleSolution(faceCenter));
+							UL = PrimitiveToConservative(reconstructions[i - iMin + 1][j - jMin + yLayer][k - kMin].SampleSolution(faceCenter));
+							UR = PrimitiveToConservative(reconstructions[i - iMin + 1][j - jMin + yLayer][k - kMin + 1].SampleSolution(faceCenter));
 						};
 
 						// Compute convective flux
@@ -1209,14 +1209,14 @@ public:
 						for (int nv = 0; nv < nVariables; nv++) fr[nv] -= fvisc[nv];
 
 						// Update residuals
-						if (k > g.kMin)
+						if (k > kMin)
 						{
 							// Fluxes difference equals residual
 							int idx = getSerialIndexLocal(i, j, k - 1);
 							for (int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += -(fr[nv] - fl[nv]) * fS;
 
 							// Compute volume of cell
-							double volume = fS * g.hz[k - 1];
+							double volume = fS * hz[k - 1];
 
 							// Add up spectral radius estimate
 							spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
@@ -1249,11 +1249,11 @@ public:
 	//Compute global time step
 	double ComputeTimeStep(std::vector<double>& spectralRadius) {
 		double dt = std::numeric_limits<double>::max();
-		for (int i = g.iMin; i <= g.iMax; i++) {
-			for (int j = g.jMin; j <= g.jMax; j++) {
-				for (int k = g.kMin; k <= g.kMax; k++) {
+		for (int i = iMin; i <= iMax; i++) {
+			for (int j = jMin; j <= jMax; j++) {
+				for (int k = kMin; k <= kMax; k++) {
 					//Compute cell volume
-					double volume = g.hx[i] * g.hy[j] * g.hz[k];
+					double volume = hx[i] * hy[j] * hz[k];
 					int idx = getSerialIndexLocal(i, j, k);
 					double sR = spectralRadius[idx];
 					double localdt = CFL * volume / sR; //Blazek f. 6.20

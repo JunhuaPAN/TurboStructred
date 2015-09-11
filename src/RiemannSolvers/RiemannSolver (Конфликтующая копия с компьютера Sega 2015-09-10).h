@@ -17,6 +17,9 @@ public:
 //Base class for all riemann solvers
 class RiemannSolver {
 public:
+	//Get required width of dummy cell layer
+	virtual int GetDummyCellLayerSize() = 0;
+
 	//Compute flux given stencil values by reference
 	virtual RiemannProblemSolutionResult ComputeFlux(std::vector<std::valarray<double> > &values, Vector faceNormal) = 0;
 

@@ -31,6 +31,7 @@
     <ClInclude Include="..\src\EquationsOfState\generalEOS.h" />
     <ClInclude Include="..\src\EquationsOfState\idealGasEOS.h" />
     <ClInclude Include="..\src\EquationsOfState\VOFMixture\BarotropicTwoPhaseEOS.h" />
+    <ClInclude Include="..\src\kernel\grid.h" />
     <ClInclude Include="..\src\kernel\kernel.h" />
     <ClInclude Include="..\src\kernel\KernelConfiguration.h" />
     <ClInclude Include="..\src\kernel\ParallelManager.h" />

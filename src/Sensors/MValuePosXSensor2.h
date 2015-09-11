@@ -12,7 +12,7 @@ public:
 
 	virtual void Process(const std::valarray<double>& values) override {
 		double uMax = std::numeric_limits<double>::min();
-		int iMax;
+		int iMax;			// local index of cell with maximum value
 		if (_isActive == true) {
 			// Find local maximum value of target function
 			int s = _grid.nlocalX;
@@ -30,12 +30,12 @@ public:
 
 		// choose the appropriate process. Compute maximum position and write it in the file
 		if (uMax == TotalMax) {
-			int i = _grid.iMin + iMax;
-			double xi = _grid.coordsX[i];		// position of central cell 
-			double xip = _grid.coordsX[i + 1];	// position of right cell
-			double xim = _grid.coordsX[i - 1];	// position of left cell
-			double dxp = xip - xi;				// right cell scale
-			double dxm = xi - xim;				// left one
+			int i = _grid.iMin + iMax;				// i global
+			double xi = _grid.CoordinateX[i];		// position of central cell 
+			double xip = _grid.CoordinateX[i + 1];	// position of right cell
+			double xim = _grid.CoordinateX[i - 1];	// position of left cell
+			double dxp = xip - xi;					// right cell scale
+			double dxm = xi - xim;					// left one
 			int idx = i0 + iMax;					// local index of central cell
 
 			// second order reconstruction
@@ -49,7 +49,7 @@ public:
 			double v2 = uMax - ul;		// v1 = ul - ul = 0
 			double v3 = ur - ul;
 			double adxm = v3 * dxm / ((dxm + dxp) * dxp) - v2 / dxp;	//  a * dxm
-			double bda = dxm + v2 / adxm;
+			double bda = dxm + v2 / adxm;								//  b / a
 			double xmax = xi - 0.5 * bda;
 
 			ofs.open(filename, std::ios_base::app);

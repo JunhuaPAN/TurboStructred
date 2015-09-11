@@ -179,6 +179,9 @@
     <ClInclude Include="..\src\Sensors\MValuePosXSensor2.h">
       <Filter>Header Files\Sensors</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\kernel\grid.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
