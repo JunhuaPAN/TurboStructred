@@ -1,66 +1,66 @@
 #ifndef TurboStructured_kernel_KernelConfiguration
 #define TurboStructured_kernel_KernelConfiguration
 
-#include "Methods\MethodConfiguration.h"
+#include "Methods/MethodConfiguration.h"
 #include "Vector.h"
-#include "BoundaryConditions\BoundaryConditionConfiguration.h"
+#include "BoundaryConditions/BoundaryConditionConfiguration.h"
 
 
 //Class that manages all configurable parameters
 class KernelConfiguration {
 public:
 	//Grid sizes and configuration
-	int nDims; //Number of dimensions
-	int nX; //Number of cells in x dimension
-	int nY; //Number of cells in y dimension
-	int nZ; //Number of cells in z dimension
-	bool isUniformAlongX;
-	bool isUniformAlongY;
-	bool isUniformAlongZ;
-	bool isPeriodicX; //X periodicity
-	bool isPeriodicY; //Y periodicity
-	bool isPeriodicZ; //Z periodicity
-	double LX; //X size
-	double LY; //Y size
-	double LZ; //Z size
-	double qx; //grid compression coefficient
-	double qy;
-	double qz;
+  int nDims{ 1 }; //Number of dimensions
+  int nX{ 10 }; //Number of cells in x dimension
+  int nY{ 1 }; //Number of cells in y dimension
+  int nZ{ 1 }; //Number of cells in z dimension
+  bool isUniformAlongX{ true };
+  bool isUniformAlongY{ true };
+  bool isUniformAlongZ{ true };
+  bool isPeriodicX{ true }; //X periodicity
+  bool isPeriodicY{ true }; //Y periodicity
+  bool isPeriodicZ{ true }; //Z periodicity
+  double LX{ 1.0 }; //X size
+  double LY{ 1.0 }; //Y size
+  double LZ{ 1.0 }; //Z size
+  double qx{ 1.0 }; //grid compression coefficient X-direction
+  double qy{ 1.0 }; //grid compression coefficient Y-direction
+  double qz{ 1.0 }; //grid compression coefficient Z-direction
 
 	//Gas model parameters
-	double Gamma;
-	double Viscosity;
-	double ThermalConductivity;
+  double Gamma{ 1.4 };
+  double Viscosity{ 0.0 };
+  double ThermalConductivity{ 0.0 };
 
 	//model configuration
-	bool IsViscousFlow;
-	bool IsExternalForceRequared;
-	bool IsUnifromAccelerationRequared;
+  bool IsViscousFlow{ false };
+  bool IsExternalForceRequared{ false };
+  bool IsUnifromAccelerationRequared{ false };
 
 	//Solution method parameters
-	int DummyLayerSize;
+  int DummyLayerSize{ 1 };
 	enum class Method {
 		HybridFVM,
 		ExplicitRungeKuttaFVM,
 		HybridGeneralEOSOnePhase,
 		HybridBarotropicEOSOnePhase,
 		HybridBarotropicEOSTwoPhase
-	} SolutionMethod;
+  } SolutionMethod{ Method::ExplicitRungeKuttaFVM  };
 	enum class Reconstruction {
 		PiecewiseConstant,
 		ENO2PointsStencil,
 		WENO2PointsStencil
-	} ReconstructionType;
+	} ReconstructionType { Reconstruction::PiecewiseConstant };
 
 	MethodConfiguration methodConfiguration;
 
 	//Run parameters
-	double MaxTime;
-	double MaxIteration;
-	double SaveSolutionSnapshotTime;	
-	int SaveSolutionSnapshotIterations;
-	int ResidualOutputIterations;
-	bool DebugOutputEnabled;
+	double MaxTime{ 1.0 };
+	double MaxIteration{ 1000 };
+	double SaveSolutionSnapshotTime{ 0.1 };
+	int SaveSolutionSnapshotIterations{ 0 };
+	int ResidualOutputIterations{ 0 };
+	bool DebugOutputEnabled{ true };
 	
 	//Boundary conditions configuration
 	BoundaryConditionConfiguration xLeftBoundary;
@@ -71,28 +71,12 @@ public:
 	BoundaryConditionConfiguration zRightBoundary;
 
 	//External potential forces
-	Vector Sigma;			//dP/dn
-	Vector UniformAcceleration;		// g acceleration
+	Vector Sigma{ Vector(0,0,0) };			            //!< Pressure gradient
+	Vector UniformAcceleration{ Vector(0,0,0) };		//!< Uniform external gravity field
 
 	//Computation continuation regime
-	std::string fileToLoad;
-	bool ContinueComputation;
-
-	//Default values
-	KernelConfiguration() {
-		Viscosity = 0;
-		ThermalConductivity = 0;
-
-		IsViscousFlow = false;
-		IsExternalForceRequared = false;
-		IsUnifromAccelerationRequared = false;
-		DebugOutputEnabled = false;
-		ContinueComputation = false;
-
-		isUniformAlongX = true;
-		isUniformAlongY = true;
-		isUniformAlongZ = true;
-	};
+	std::string fileToLoad{ "" };
+	bool ContinueComputation{ false };	
 };
 
 #endif

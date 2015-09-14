@@ -85,7 +85,7 @@ public:
 		//if we know normal part of value (inV) gradient
 		if(CGradient != 0)
 		{
-			int sign = (faceNormal * Vector(1, 1, 1));
+			double sign = (faceNormal * Vector(1, 1, 1));
 			res = GradTangential + (2.0 * sign * Value - GradNormal.mod()) * faceNormal;
 		};
 
@@ -107,7 +107,7 @@ public:
 	std::map<BoundaryVariableType, CompositeBoundaryConditionInfo> boundaryConditions;
 
 	// Get dummy cell values
-	virtual std::valarray<double> getDummyValues(double* values, Vector& faceNormal, Vector& faceCenter, Vector& cellCenter) {		
+	virtual std::valarray<double> getDummyValues(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) {		
 		//Compute dummy values
 		double ro = values[0];
 		double u = values[1] / values[0];

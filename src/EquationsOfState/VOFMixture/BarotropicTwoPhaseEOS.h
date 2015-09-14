@@ -1,7 +1,7 @@
 #ifndef TurboStructured_EquationsOfState_VOFMixture_BaratropicTwoPhaseEOS
 #define TurboStructured_EquationsOfState_VOFMixture_BaratropicTwoPhaseEOS
 
-#include "EquationsOfState\generalEOS.h"
+#include "EquationsOfState/generalEOS.h"
 
 class BarotropicTwoPhaseEOS : public GeneralEOS {
 private:

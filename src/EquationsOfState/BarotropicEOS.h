@@ -3,7 +3,6 @@
 
 #include "generalEOS.h"
 
-
 class BarotropicEOS : public GeneralEOS {
 public:
 	double E;	//modul Yunga

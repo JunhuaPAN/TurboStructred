@@ -21,7 +21,7 @@
 #include "BoundaryConditions/BCGeneral.h"
 #include "Sensors/Sensors.h"
 
-#include "cgnslib.h"
+//#include "cgnslib.h"
 
 //Step info
 class StepInfo {
@@ -86,6 +86,7 @@ public:
 		return sI;
 	};
 
+  //Get local index for cell
 	inline int getSerialIndexLocal(int i, int j, int k) {
 		int sI = (k - g.kMin + g.dummyCellLayersZ) * g.nlocalXAll * g.nlocalYAll + (j - g.jMin + g.dummyCellLayersY) * g.nlocalXAll + (i - g.iMin + g.dummyCellLayersX);
 		return sI;
@@ -118,6 +119,7 @@ public:
 
 		return std::move(res);
 	};
+	
 	inline std::valarray<double> PrimitiveToConservative(std::valarray<double> &vals) {
 		std::valarray<double> res(nVariables);
 		double rho_e = vals[0] / (gamma - 1.0);
@@ -138,15 +140,15 @@ public:
 	};
 
 	//Calculation parameters	
-	double MaxIteration;
+	int MaxIteration;
 	double MaxTime;
 	double SaveSolutionSnapshotTime;
 	int SaveSolutionSnapshotIterations;
 	int ResidualOutputIterations;
 	bool ContinueComputation;
+	bool DebugOutputEnabled{ true };
 
-	bool DebugOutputEnabled;
-
+	//Array of sensors in use
 	std::vector<std::unique_ptr<Sensor>> Sensors;
 
 	//Constructor
@@ -166,6 +168,9 @@ public:
 					int sBegin = getSerialIndexLocal(i, j, k) * nVariables;
 					std::vector<double> U = initF(Vector(x, y, z));
 					for (int varn = 0; varn < nVariables; varn++) values[sBegin + varn] = U[varn];
+
+//          std::cout << "rank = " << rank << ", x = " << x << ", i = " << i << std::endl << std::flush; //MPI DebugMessage
+//          std::cout << "rank = " << rank << ", sBegin = " << sBegin << ", ro = " << values[sBegin] << std::endl << std::flush; //MPI DebugMessage
 				};
 			};
 		};
@@ -211,6 +216,7 @@ public:
 		//Sync
 		pManager->Barrier();
 
+    if (nDims < 3) Lz = 0;
 		//Initialize gas model parameters and Riemann solver
 		gamma = config.Gamma;
 		viscosity = config.Viscosity;
@@ -218,21 +224,18 @@ public:
 		if (config.IsViscousFlow == true) {
 			isViscousFlow = true;
 			isGradientRequired = true;
-		}
-		else {
+		} else {
 			isViscousFlow = false;
 			isGradientRequired = false;
 		};
 		if (config.IsExternalForceRequared == true) {
 			isExternalForce = true;
-		}
-		else {
+		} else {
 			isExternalForce = false;
 		};
 		if (config.IsUnifromAccelerationRequared == true) {
 			isExternalAccelaration = true;
-		}
-		else {
+		} else {
 			isExternalAccelaration = false;
 		};
 		ContinueComputation = config.ContinueComputation;
@@ -359,8 +362,8 @@ public:
 		//Buffers
 		std::vector<double> bufferToRecv;
 		std::vector<double> bufferToSend;
-		int rankLeft; // if equals -1 no left neighbour
-		int rankRight; // if equals -1 no right neighbour
+		int rankLeft{ -1 }; // if equals -1 no left neighbour
+		int rankRight{ -1 }; // if equals -1 no right neighbour
 
 		//X direction exchange		
 
@@ -392,7 +395,7 @@ public:
 				for (j = g.jMin; j <= g.jMax; j++) {
 					for (k = g.kMin; k <= g.kMax; k++) {
 						int idxBuffer = (j - g.jMin) + (k - g.kMin)* g.nlocalY; //Exclude x index
-						double *U = getCellValues(iSend, j, k);
+						double* U = getCellValues(iSend, j, k);
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = U[nv];
 					};
 				};
@@ -417,7 +420,7 @@ public:
 			for (j = g.jMin; j <= g.jMax; j++) {
 				for (k = g.kMin; k <= g.kMax; k++) {
 					int idxBuffer = (j - g.jMin) + (k - g.kMin)* g.nlocalY; //Exclude x index
-					double *U = getCellValues(iRecv, j, k);
+					double* U = getCellValues(iRecv, j, k);
 					for (int nv = 0; nv < nVariables; nv++) U[nv] = bufferToRecv[idxBuffer * nVariables + nv];
 				};
 			};
@@ -499,7 +502,7 @@ public:
 				nSend = layerSize * nVariables;
 				for (i = g.iMin; i <= g.iMax; i++) {
 					for (k = g.kMin; k <= g.kMax; k++) {
-						int idxBuffer = (i - g.iMin) + (k - g.kMin) * g.nX; //Exclude y index
+						int idxBuffer = (i - g.iMin) + (k - g.kMin) * g.nlocalX; //Exclude y index
 						int idxValues = getSerialIndexLocal(i, jSend, k);
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
 					};
@@ -946,47 +949,80 @@ public:
 	};
 
 	virtual void SaveSolution(std::string fname) {
-		//Tecplot version
-		std::ofstream ofs(fname);
+  
+	virtual void SaveSolutionSega(std::string fname) {	
+    //Tecplot version    
+    int rank = pManager->getRank();
 
 		//1D tecplot style
-		if (nDims == 1)
+		if(nDims == 1)
 		{
-			//Header				
-			ofs << "VARIABLES = ";
-			ofs << "\"" << "X" << "\" ";
-			ofs << "\"" << "ro" << "\" ";
-			ofs << "\"" << "u" << "\" ";
-			ofs << "\"" << "v" << "\" ";
-			ofs << "\"" << "w" << "\" ";
-			ofs << "\"" << "P" << "\" ";
-			ofs << "\"" << "e" << "\" ";
-			ofs << std::endl;
+      if (pManager->IsMaster()) {
+        //Create file
+        std::ofstream ofs(fname);
+        ofs << std::scientific;
 
-			//Solution
+        //Header				
+        ofs << "VARIABLES = ";
+        ofs << "\"" << "X" << "\" ";
+        ofs << "\"" << "ro" << "\" ";
+        ofs << "\"" << "u" << "\" ";
+        ofs << "\"" << "v" << "\" ";
+        ofs << "\"" << "w" << "\" ";
+        ofs << "\"" << "P" << "\" ";
+        ofs << "\"" << "e" << "\" ";
+        ofs << std::endl;
+      }
+      else {        
+        //Wait for previous process to finish writing
+        pManager->Wait(rank - 1);
+      };
+      
+      {
+        //Reopen file for writing
+        std::ofstream ofs(fname, std::ios_base::app);
+        ofs << std::scientific;
+        
+        std::cout << "rank = " << rank << ", iMin = " << iMin << ", iMax = " << iMax << std::endl; //MPI DebugMessage
+
+        std::cout << "rank = " << rank << " CoordinateX {" << std::endl;
+        int counter{ 0 };
+        for (auto x : CoordinateX) std::cout << "x[" << counter++ << "] = " << x << std::endl; //MPI DebugMessage        
+        std::cout << "}" << std::endl << std::flush;
+
+        //Solution
 			for (int i = g.iMin; i <= g.iMax; i++) {
-				//Obtain cell data
+          //Obtain cell data
 				double x = g.CoordinateX[i];
 				double* U = getCellValues(i, g.jMin, g.kMin);
-				double ro = U[0];
-				double u = U[1] / ro;
-				double v = U[2] / ro;
-				double w = U[3] / ro;
-				double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
-				double P = (gamma - 1.0) * ro * e;
+          double ro = U[0];
+          double u = U[1] / ro;
+          double v = U[2] / ro;
+          double w = U[3] / ro;
+          double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
+          double P = (gamma - 1.0) * ro * e;
 
-				//Write to file
-				ofs << x << " ";
-				ofs << ro << " ";
-				ofs << u << " ";
-				ofs << v << " ";
-				ofs << w << " ";
-				ofs << P << " ";
-				ofs << e << " ";
-				ofs << std::endl;
-			};	//end cycle
+          std::cout << "rank = " << rank << ", ro = " << ro << ", i = " << i << std::endl << std::flush; //MPI DebugMessage
 
-			ofs.close();
+          //Write to file
+          ofs << x << " ";
+          ofs << ro << " ";
+          ofs << u << " ";
+          ofs << v << " ";
+          ofs << w << " ";
+          ofs << P << " ";
+          ofs << e << " ";
+          ofs << std::endl;
+        };	//end cycle
+      }
+
+      //Signal to next process to begin writing
+      if (rank != pManager->getProcessorNumber() - 1) {
+        pManager->Signal(rank + 1);
+      };
+
+      //Syncronize
+      pManager->Barrier();			
 			return;
 		};	//end if
 
@@ -1041,7 +1077,7 @@ public:
 			};	//end for ijk
 		};	//end if
 
-		ofs.close();
+		//ofs.close();
 		return;
 	};
 
@@ -1050,7 +1086,7 @@ public:
 		//Calculate snapshot times order of magnitude
 		int snapshotTimePrecision = 0;
 		if (SaveSolutionSnapshotTime > 0) {
-			snapshotTimePrecision = 1 - std::floor(std::log10(SaveSolutionSnapshotTime));
+			snapshotTimePrecision = static_cast<int>(1 - std::floor(std::log10(SaveSolutionSnapshotTime)));
 		};
 
 		//Open history file

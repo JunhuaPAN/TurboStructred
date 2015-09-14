@@ -3,8 +3,8 @@
 
 #include <valarray>
 #include <vector>
-#include "utility\Vector.h"
-#include <Reconstruction\IReconstruction.h>
+#include "utility/Vector.h"
+#include <Reconstruction/IReconstruction.h>
 
 
 //Reconstruction by convex combination of 2 points stencil reconstructions
@@ -75,17 +75,17 @@ public:
 		center_ = Vector(_values[nValues], _values[nValues + 1], _values[nValues + 2]);
 
 		gradientsL_.resize(nValues * 3);
-		for (int i = 0; i < gradientsL_.size(); i++) {
+		for (auto i = 0; i < gradientsL_.size(); i++) {
 			gradientsL_[i] = Vector(_values[nValues + 3 * (i + 1)], _values[nValues + 3 * (i + 1) + 1], _values[nValues + 3 * (i + 1) + 2]);
 		};
 		gradientsR_.resize(nValues * 3);
-		for (int i = gradientsR_.size(); i < 2 * gradientsR_.size(); i++) {
+		for (auto i = gradientsR_.size(); i < 2 * gradientsR_.size(); i++) {
 			gradientsR_[i - gradientsR_.size()] = Vector(_values[nValues + 3 * (i + 1)], _values[nValues + 3 * (i + 1) + 1], _values[nValues + 3 * (i + 1) + 2]);
 		};
 
 		weights_.resize(0);
-		int idx = nValues + 3 + 6 * gradientsR_.size();
-		for (int i = idx; i < _values.size(); i += 2) {
+		auto idx = nValues + 3 + 6 * gradientsR_.size();
+		for (auto i = idx; i < _values.size(); i += 2) {
 			weights_.push_back(std::valarray<double> {_values[i], _values[i + 1]});
 		};
 
@@ -101,7 +101,7 @@ public:
 template<>
 WENO2PointsStencil ComputeReconstruction<WENO2PointsStencil>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
 	//compute Gradients
-	int size = value.size();
+	auto size = value.size();
 	std::valarray< Vector > gradientsL(size), gradientsR(size);		//for 1D case only
 	std::vector< std::valarray < double> > weights;
 

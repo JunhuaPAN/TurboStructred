@@ -2,13 +2,13 @@
 #define TurboStructured_Methods_ExplicitRungeKuttaFVM
 
 #include "KernelConfiguration.h"
-#include "utility\Vector.h"
-#include "utility\Matrix.h"
-#include "utility\Timer.h"
-#include "utility\GeomFunctions.h"
-#include "RiemannSolvers\RoeSolverPerfectGasEOS.h"
+#include "utility/Vector.h"
+#include "utility/Matrix.h"
+#include "utility/Timer.h"
+#include "utility/GeomFunctions.h"
+#include "RiemannSolvers/RoeSolverPerfectGasEOS.h"
 #include "kernel.h"
-#include "Reconstruction\ReconstructorsList.h"
+#include "Reconstruction/ReconstructorsList.h"
 
 //Base class for all solution methods that desribe iterations process in detail
 template <typename ReconstructionType>
@@ -785,12 +785,12 @@ public:
 		std::vector<double> bufferToSend;
 
 		//Allocate buffers
-		int msgLen = ReconstructionType::GetBufferLenght(nDims, nVariables);
-		int layerSizeX = g.nlocalY * g.nlocalZ;
-		int layerSizeY = g.nlocalX * g.nlocalZ;
-		int layerSizeZ = g.nlocalX * g.nlocalY;
-		int bufferSize = 0;
-		if(nDims < 2) bufferSize = msgLen;
+		auto msgLen = ReconstructionType::GetBufferLenght(nDims, nVariables);
+		auto layerSizeX = nlocalY * nlocalZ;
+		auto layerSizeY = nlocalX * nlocalZ;
+		auto layerSizeZ = nlocalX * nlocalY;
+		size_t bufferSize{ 0 };size_t bufferSize{ 0 };
+		if (nDims < 2) bufferSize = msgLen;
 		else if (nDims < 3) bufferSize = std::max(layerSizeX, layerSizeY) * msgLen;
 		else bufferSize = std::max(std::max(layerSizeX, layerSizeY), layerSizeZ) * msgLen;
 		bufferToSend.resize(bufferSize);
@@ -800,8 +800,8 @@ public:
 
 		//! Main layer exchanging procedure //TO DO lift from lambda to member
 		auto exchangeLayers = [&](Direction direction, int iSend, int rankDest, int iRecv, int rankSource) {
-			int nRecv = 0;
-			int nSend = 0;
+			size_t nRecv{ 0 };
+			size_t nSend{ 0 };
 
 			//Fill buffer with reconstructions only from inner cells (buffer to SEND reconstruction to another core)
 			int idxBuffer = 0;
@@ -844,7 +844,7 @@ public:
 			};
 
 			//Make exchange
-			pManager->SendRecvDouble(comm, rankDest, rankSource, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
+			pManager->SendRecvDouble(comm, rankDest, rankSource, &bufferToSend.front(), int(nSend), &bufferToRecv.front(), int(nRecv));
 
 			//Write recieved values back
 			idxBuffer = 0;
@@ -1174,7 +1174,7 @@ public:
 			for (int j = g.jMin; j <= g.jMax; j++) {
 				for (int i = g.iMin; i <= g.iMax; i++) {
 					// Compute face square
-					double fS = g.hx[i] * g.hy[i];
+					double fS = g.hx[i] * g.hy[j];
 
 					for (int k = g.kMin; k <= g.kMax + 1; k++) {
 

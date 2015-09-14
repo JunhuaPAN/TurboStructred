@@ -3,8 +3,8 @@
 
 #include <valarray>
 #include <vector>
-#include "utility\Vector.h"
-#include <Reconstruction\IReconstruction.h>
+#include "utility/Vector.h"
+#include <Reconstruction/IReconstruction.h>
 
 
 //Reconstruction by ENO interpolation procedure for 2 points stencil
@@ -17,11 +17,11 @@ protected:
 public:
 	//ENO second order reconstruction
 	virtual inline std::valarray<double> SampleSolution(Vector const& point) {
-		int&& size = gradients_.size();
+		size_t&& size = gradients_.size();
 		std::valarray<double> res(size);
 
 		Vector dr = (point - center_);
-		for (int i = 0; i < size; i++) res[i] = dr * gradients_[i];
+		for (auto i = 0; i < size; i++) res[i] = dr * gradients_[i];
 		return std::move(values_ + res);
 	};
 
@@ -68,13 +68,13 @@ public:
 template<>
 ENO2PointsStencil ComputeReconstruction<ENO2PointsStencil>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
 	//compute Gradients
-	int size = value.size();
+  size_t size = value.size();
 	std::valarray< Vector > gradients(size);
 	double grad_l, grad_r;		// spatial derivatives computed by two neighbour stencils
 
 	//1D case
 	if (nDim == 1) {
-		for (int i = 0; i < size; i++) {
+		for (auto i = 0; i < size; i++) {
 			grad_l = (value[i] - values[0][i]) / (point.x - points[0].x);
 			grad_r = (values[1][i] - value[i]) / (points[1].x - point.x);
 			if (std::abs(grad_l) < std::abs(grad_r)) gradients[i] = Vector(grad_l, 0, 0);
@@ -84,7 +84,7 @@ ENO2PointsStencil ComputeReconstruction<ENO2PointsStencil>(std::vector<std::vala
 
 	//2D case
 	if (nDim == 2) {
-		for (int i = 0; i < size; i++) {
+		for (auto i = 0; i < size; i++) {
 			grad_l = (value[i] - values[2][i]) / (point.y - points[2].y);
 			grad_r = (values[3][i] - value[i]) / (points[3].y - point.y);
 			if (std::abs(grad_l) < std::abs(grad_r)) gradients[i] = gradients[i] + Vector(0, grad_l, 0);

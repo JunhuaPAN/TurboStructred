@@ -2,7 +2,7 @@
 #define TurboStructured_Reconstruction_Reconstruction
 
 #include <valarray>
-#include "utility\Vector.h"
+#include "utility/Vector.h"
 
 //Basic class for all reconstruction classes
 class IReconstruction {
@@ -29,7 +29,8 @@ public:
 
 template<typename T>
 T ComputeReconstruction(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
-	static_assert(false, "We dont have required function.");
+	//static_assert(false, "We dont have required function.");
+	throw std::runtime_error("We dont have required function.");
 };
 
 #endif
