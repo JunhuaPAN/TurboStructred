@@ -45,6 +45,11 @@ public:
 	RoeSolverPerfectGasEOS(double gamma, double eps, double opPressure) : _gamma(gamma), _eps(eps), _operatingPressure(opPressure) {
 	};
 
+	//Get required width of dummy cell layer
+	virtual int GetDummyCellLayerSize() override {
+		return 1;
+	};
+
 	//Solve riemann problem
 	virtual RiemannProblemSolutionResult ComputeFlux(std::vector<std::valarray<double> > &values, Vector fn) override {
 		RiemannProblemSolutionResult result;

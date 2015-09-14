@@ -3,7 +3,6 @@
 
 #include "mpi.h"
 #include <chrono>
-#include "grid.h"
 
 enum class Direction {
 	XDirection = 0,
@@ -14,6 +13,21 @@ enum class Direction {
 enum class SubDirection {
 	Left = -1,
 	Right = 1
+};
+
+struct StructuredGridInfo {
+	int nDims;
+	int nX;
+	int nY;
+	int nZ;
+	bool IsPeriodicX;
+	bool IsPeriodicY;
+	bool IsPeriodicZ;
+	
+	//compression coefficient of grid sizes towards the borders in X Y and Z directions (as geometric progression)
+	double qx;
+	double qy;
+	double qz;
 };
 
 class ParallelManager {
@@ -63,9 +77,9 @@ public:
 		return rank;
 	};
 
-	void InitCartesianTopology(Grid& g) {
+	void InitCartesianTopology(StructuredGridInfo info) {
 		//Simple one dimensional topology for now
-		_nDims = g.nDims;
+		_nDims = info.nDims;				
 		dimsCart[0] = 0;
 		dimsCart[1] = 1;
 		if (_nDims > 1) dimsCart[1] = 0;		
@@ -78,9 +92,9 @@ public:
 		//if (_nDims == 2) dimsCart[1] = _nProcessors;
 		//if (_nDims == 3) dimsCart[2] = _nProcessors;
 
-		periodic[0] = g.IsPeriodicX;
-		periodic[1] = g.IsPeriodicY;
-		periodic[2] = g.IsPeriodicZ;	
+		periodic[0] = info.IsPeriodicX;
+		periodic[1] = info.IsPeriodicY;
+		periodic[2] = info.IsPeriodicZ;	
 
 		//Determine grid dimensions (could be optimized)
 		MPI_Dims_create(_nProcessors, _nDims, dimsCart);

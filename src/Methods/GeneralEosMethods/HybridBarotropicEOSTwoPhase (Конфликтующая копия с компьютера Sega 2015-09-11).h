@@ -280,7 +280,7 @@
 //	};
 //
 //	//Save solution to TecPlot
-//	virtual void SaveSolution(std::string fname) override {
+//	virtual void SaveSolutionSega(std::string fname) override {
 //		//Tecplot version
 //		std::ofstream ofs(fname);
 //

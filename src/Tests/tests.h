@@ -267,7 +267,7 @@ void RunContactDisconTest1D(int argc, char *argv[]) {
 	kernel->SetInitialConditions(initD);
 
 	//save solution
-	kernel->SaveSolutionSega("init.dat");
+	kernel->SaveSolution("init.dat");
 
 	//run computation
 	kernel->Run();
@@ -327,7 +327,7 @@ void RunShockWave1D(int argc, char *argv[]) {
 	kernel->SetInitialConditions(initD);
 
 	//save solution
-	kernel->SaveSolutionSega("init.dat");
+	kernel->SaveSolution("init.dat");
 
 	//run computation
 	kernel->Run();
@@ -746,7 +746,7 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	kernel->SetInitialConditions(initD);
 
 	//save solution
-	kernel->SaveSolutionSega("init.dat");
+	kernel->SaveSolution("init.dat");
 
 	//Set sensor at center
 	//auto GetXVel = [](std::valarray<double> vals) {
@@ -836,7 +836,7 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	kernel->SetInitialConditions(initD);
 
 	//save solution
-	kernel->SaveSolutionSega("init.dat");
+	kernel->SaveSolution("init.dat");
 
 	//run computation
 	kernel->Run();
@@ -927,7 +927,7 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	kernel->SetInitialConditions(initD);
 
 	//save solution
-	kernel->SaveSolutionSega("init.dat");
+	kernel->SaveSolution("init.dat");
 
 	//Set sensors
 	//auto GetXVel = [](std::valarray<double> vals) {
@@ -1041,7 +1041,7 @@ void RunRTI2D(int argc, char *argv[]) {
 	kernel->SetInitialConditions(initD);
 
 	// Save initial solution
-	kernel->SaveSolutionSega("init.dat");
+	kernel->SaveSolution("init.dat");
 
 	// Run computation
 	kernel->Run();

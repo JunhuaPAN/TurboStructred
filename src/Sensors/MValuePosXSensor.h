@@ -5,7 +5,7 @@
 
 class MValuePosXSensor : public Sensor {
 protected:
-	int i0;							//first index of cell sequence
+	int i0;							// local index of first inner cell in slice
 	int nVariables;					
 	std::function<double(const std::valarray<double>&)> getValue;		// target function
 public:
@@ -17,33 +17,33 @@ public:
 		// check active or not
 		if ((j_slice >= _grid.jMin) && (j_slice <= _grid.jMax) && (k_slice >= _grid.kMin) && (k_slice <= _grid.kMax)) {
 			_isActive = true;
-			i0 = k_slice * _grid.nXAll * _grid.nYAll + j_slice * _grid.nXAll + _grid.iMin;	// TO DO FIX
+			i0 = (k_slice - _grid.kMin + _grid.dummyCellLayersZ) * _grid.nlocalXAll * _grid.nlocalYAll + (j_slice - _grid.jMin + _grid.dummyCellLayersY) * _grid.nlocalXAll + _grid.dummyCellLayersX;
 			nVariables = _nVariables;
 		};
 	};
 
 	virtual void Process(const std::valarray<double>& values) override {
-		double vMax = std::numeric_limits<double>::min();
-		int iMax;
+		double uMax = std::numeric_limits<double>::min();
+		int iMax;		// local index of cell with maximum value
 		if (_isActive == true) {
 			// Find local maximum value of target function
 			int s = _grid.nlocalX;
 			for (auto i = 0; i < s; i++) {
-				int idx = i0 + i;		// local index of cell
+				int idx = i0 + i;				// local cell index
 				std::valarray<double> U = values[std::slice(idx * nVariables, nVariables, 1)];	//slice appropriate part of values array
-				double v = getValue(U);
-				if (v > vMax) {
-					vMax = v;
+				double u = getValue(U);
+				if (u > uMax) {
+					uMax = u;
 					iMax = i;
 				};
 			};	// end of Find
 		};
-		double TotalMax = _parM.Max(vMax);	// choose the biggest one
+		double TotalMax = _parM.Max(uMax);	// choose the biggest one
 
 		// choose the appropriate process and write the result
-		if (vMax == TotalMax) {
+		if (uMax == TotalMax) {
 			ofs.open(filename, std::ios_base::app);
-			ofs << iteration << ' ' << _grid.coordsX[_grid.iMin + iMax] << ' ' << timer;
+			ofs << iteration << ' ' << _grid.CoordinateX[_grid.iMin + iMax] << ' ' << timer;
 			std::endl(ofs);
 			ofs.close();
 		};

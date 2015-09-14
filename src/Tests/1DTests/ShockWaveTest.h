@@ -150,7 +150,7 @@ namespace ShockWaveTest
 			return res;
 		};
 		kernel->SetInitialConditions(initD);
-		kernel->SaveSolutionSega("init.dat");
+		kernel->SaveSolution("init.dat");
 
 		// Run computation
 		kernel->Run();
