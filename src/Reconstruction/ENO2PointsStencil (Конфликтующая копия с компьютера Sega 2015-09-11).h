@@ -93,14 +93,6 @@ ENO2PointsStencil ComputeReconstruction<ENO2PointsStencil>(std::vector<std::vala
 	};
 
 	//3D case
-	if (nDim == 3) {
-		for (int i = 0; i < size; i++) {
-			grad_l = (value[i] - values[4][i]) / (point.z - points[4].z);
-			grad_r = (values[5][i] - value[i]) / (points[5].z - point.z);
-			if (std::abs(grad_l) < std::abs(grad_r)) gradients[i] = gradients[i] + Vector(0, 0, grad_l);
-			else gradients[i] = gradients[i] + Vector(0, 0, grad_r);
-		};
-	};
 	
 	//ENO2PointsStencil res = ENO2PointsStencil(value, point, gradients);
 	return std::move(ENO2PointsStencil(value, point, gradients));

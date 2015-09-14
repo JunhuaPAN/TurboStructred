@@ -88,8 +88,8 @@ namespace AleshinExp {
 	void RunSingleExperiment(int modeNumber, double TotalTime, Parameters& par, int argc, char *argv[]) {
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 400;
-		conf.nY = 200;
+		conf.nX = 500;
+		conf.nY = 300;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
@@ -231,9 +231,9 @@ namespace AleshinExp {
 
 		KernelConfiguration conf;
 		conf.nDims = 3;
-		conf.nX = 100;
-		conf.nY = 50;
-		conf.nZ = 50;
+		conf.nX = 200;
+		conf.nY = 60;
+		conf.nZ = 40;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.LZ = conf.LY / modeNumber;
@@ -266,8 +266,8 @@ namespace AleshinExp {
 		// init kernel
 		std::unique_ptr<Kernel> kernel;
 		if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-			//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+			//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 		};
 		kernel->Init(conf);
 
@@ -332,6 +332,21 @@ namespace AleshinExp {
 
 		//save solution
 		kernel->SaveSolution("init.dat");
+
+		// Set sensors if needed
+		kernel->isSensorEnable = true;
+		kernel->SaveSensorRecordIterations = 1;
+
+		// Init target function
+		auto GetInEnergy = [](std::valarray<double> vals) {
+			double roe = vals[4] - 0.5 * (vals[1] * vals[1] + vals[2] * vals[2]) / vals[0];
+			return roe / vals[0];
+		};
+		
+		// Create a sensor
+		std::unique_ptr<MValuePosXSensor2> sen1 = std::make_unique<MValuePosXSensor2>("border_pos.dat", *kernel->pManager, kernel->g, GetInEnergy);
+		sen1->SetSensor((int)(0.5 * conf.nY / modeNumber), (int)(0.5 * conf.nZ), kernel->nVariables);
+		kernel->Sensors.push_back(std::move(sen1));
 
 		//run computation
 		kernel->Run();
