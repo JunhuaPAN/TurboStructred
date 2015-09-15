@@ -154,7 +154,8 @@ public:
 
 		//fill cell centers positions and edges sizes
 		double h_x = Lx / nX;			//uniform grid case
-		if (qx != 1) h_x = 0.5 * Lx * (1.0 - qx) / (1.0 - pow(qx, 0.5 * nX));	//X step around the border
+		if ((qx != 1) && (nX % 2 == 0)) h_x = 0.5 * Lx * (1.0 - qx) / (1.0 - pow(qx, 0.5 * nX));	// X step around the border for even cells number
+		if ((qx != 1) && (nX % 2 == 1)) h_x = Lx * (1.0 - qx) / (2.0 - pow(qx, 0.5 * (nX - 1)) * (1.0 + qx));		// for odd cell numbers
 		double xl = -(dummyCellLayersX * h_x) + 0.5 * h_x;				//left cell (global) position
 		double xr = Lx + dummyCellLayersX * h_x - 0.5 * h_x;			//right cell (global) position
 		for (int i = 0; i < dummyCellLayersX; i++) {
@@ -166,7 +167,7 @@ public:
 			xr -= h_x;
 		};
 
-		for (int i = iMin; i < 0.5 * (iMax + iMin + 1); i++) {
+		for (int i = dummyCellLayersX; i <= 0.5 * (nX + 1); i++) {
 			CoordinateX[i] = xl;
 			CoordinateX[nXAll - 1 - i] = xr;
 			hx[i] = h_x;
@@ -177,7 +178,8 @@ public:
 		};
 
 		double h_y = Ly / nY;			//uniform grid case
-		if (qy != 1) h_y = 0.5 * Ly * (1.0 - qy) / (1.0 - pow(qy, 0.5 * nY));	//Y step around the border
+		if ((qy != 1) && (nY % 2 == 0)) h_y = 0.5 * Ly * (1.0 - qy) / (1.0 - pow(qy, 0.5 * nY));	// Y step around the border for even cells number
+		if ((qy != 1) && (nY % 2 == 1)) h_y = Ly * (1.0 - qy) / (2.0 - pow(qy, 0.5 * (nY - 1)) * (1.0 + qy));		// for odd cell numbers in Y direction
 		double yl = -(dummyCellLayersY * h_y) + 0.5 * h_y;			//	left cell (global) position
 		double yr = Ly + dummyCellLayersY * h_y - 0.5 * h_y;		//	right cell (global) position
 		for (int i = 0; i < dummyCellLayersY; i++) {
@@ -189,7 +191,7 @@ public:
 			yr -= h_y;
 		};
 
-		for (int j = jMin; j < 0.5 * (jMax + jMin + 1); j++) {
+		for (int j = dummyCellLayersY; j <= 0.5 * (nY + 1); j++) {
 			CoordinateY[j] = yl;
 			CoordinateY[nYAll - 1 - j] = yr;
 			hy[j] = h_y;
@@ -200,7 +202,8 @@ public:
 		};
 
 		double h_z = Lz / nZ;			//uniform grid case
-		if (qz != 1) h_z = 0.5 * Lz * (1.0 - qz) / (1.0 - pow(qz, 0.5 * nZ));	//Y step around the border
+		if ((qz != 1) && (nZ % 2 == 0)) h_z = 0.5 * Lz * (1.0 - qz) / (1.0 - pow(qz, 0.5 * nZ));	// Z step around the border for even cells number
+		if ((qz != 1) && (nZ % 2 == 1)) h_z = Lz * (1.0 - qz) / (2.0 - pow(qz, 0.5 * (nZ - 1)) * (1.0 + qz));		// for odd cell numbers in Z direction
 		double zl = -(dummyCellLayersZ * h_z) + 0.5 * h_z;				//left cell (global) position
 		double zr = Lz + dummyCellLayersZ * h_z - 0.5 * h_z;			//right cell (global) position
 		for (int i = 0; i < dummyCellLayersZ; i++) {
@@ -212,7 +215,7 @@ public:
 			zr -= h_z;
 		};
 
-		for (int k = kMin; k < 0.5 * (kMax + kMin + 1); k++) {
+		for (int k = dummyCellLayersZ; k <= 0.5 * (dummyCellLayersZ + 1); k++) {
 			CoordinateZ[k] = zl;
 			CoordinateZ[nZAll - 1 - k] = zr;
 			hz[k] = h_z;

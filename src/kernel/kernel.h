@@ -146,7 +146,7 @@ public:
 	int SaveSolutionSnapshotIterations;
 	int ResidualOutputIterations;
 	bool ContinueComputation;
-	bool DebugOutputEnabled{ true };
+	bool DebugOutputEnabled;
 
 	//Array of sensors in use
 	std::vector<std::unique_ptr<Sensor>> Sensors;
@@ -216,7 +216,6 @@ public:
 		//Sync
 		pManager->Barrier();
 
-    if (nDims < 3) Lz = 0;
 		//Initialize gas model parameters and Riemann solver
 		gamma = config.Gamma;
 		viscosity = config.Viscosity;
@@ -312,7 +311,7 @@ public:
 					for (int nv = 0; nv < nVariables; nv++) {
 						values[idx * nVariables + nv] += residual[idx * nVariables + nv] * dt / volume;
 						//Compute total residual
-						stepInfo.Residual[nv] += abs(residual[idx * nVariables + nv]);
+						stepInfo.Residual[nv] += abs(residual[idx * nVariables + nv]);			// L1 norm
 					};
 				};
 			};
@@ -949,86 +948,82 @@ public:
 	};
 
 	virtual void SaveSolution(std::string fname) {
-  
-	virtual void SaveSolutionSega(std::string fname) {	
-    //Tecplot version    
-    int rank = pManager->getRank();
+		//Tecplot version    
+		int rank = pManager->getRank();
 
 		//1D tecplot style
-		if(nDims == 1)
-		{
-      if (pManager->IsMaster()) {
-        //Create file
-        std::ofstream ofs(fname);
-        ofs << std::scientific;
+		if(nDims == 1) {
 
-        //Header				
-        ofs << "VARIABLES = ";
-        ofs << "\"" << "X" << "\" ";
-        ofs << "\"" << "ro" << "\" ";
-        ofs << "\"" << "u" << "\" ";
-        ofs << "\"" << "v" << "\" ";
-        ofs << "\"" << "w" << "\" ";
-        ofs << "\"" << "P" << "\" ";
-        ofs << "\"" << "e" << "\" ";
-        ofs << std::endl;
-      }
-      else {        
-        //Wait for previous process to finish writing
-        pManager->Wait(rank - 1);
-      };
+			// Open the file
+			if (pManager->IsMaster()) {
+				//Create file
+				std::ofstream ofs(fname);
+				ofs << std::scientific;
+
+				// Header				
+				ofs << "VARIABLES = ";
+				ofs << "\"" << "X" << "\" ";
+				ofs << "\"" << "ro" << "\" ";
+				ofs << "\"" << "u" << "\" ";
+				ofs << "\"" << "v" << "\" ";
+				ofs << "\"" << "w" << "\" ";
+				ofs << "\"" << "P" << "\" ";
+				ofs << "\"" << "e" << "\" ";
+				ofs << std::endl;
+				ofs.close();
+			} else {        
+				//Wait for previous process to finish writing
+				pManager->Wait(rank - 1);
+			};
       
-      {
-        //Reopen file for writing
-        std::ofstream ofs(fname, std::ios_base::app);
-        ofs << std::scientific;
+			//Reopen file for writing
+			std::ofstream ofs(fname, std::ios_base::app);
+			ofs << std::scientific;
         
-        std::cout << "rank = " << rank << ", iMin = " << iMin << ", iMax = " << iMax << std::endl; //MPI DebugMessage
+			//	std::cout << "rank = " << rank << ", iMin = " << iMin << ", iMax = " << iMax << std::endl; //MPI DebugMessage
+			//	std::cout << "rank = " << rank << " CoordinateX {" << std::endl;
+			//	int counter{ 0 };
+			//	for (auto x : CoordinateX) std::cout << "x[" << counter++ << "] = " << x << std::endl; //MPI DebugMessage        
+			//	std::cout << "}" << std::endl << std::flush;
 
-        std::cout << "rank = " << rank << " CoordinateX {" << std::endl;
-        int counter{ 0 };
-        for (auto x : CoordinateX) std::cout << "x[" << counter++ << "] = " << x << std::endl; //MPI DebugMessage        
-        std::cout << "}" << std::endl << std::flush;
-
-        //Solution
+			//Solution
 			for (int i = g.iMin; i <= g.iMax; i++) {
-          //Obtain cell data
+				//Obtain cell data
 				double x = g.CoordinateX[i];
 				double* U = getCellValues(i, g.jMin, g.kMin);
-          double ro = U[0];
-          double u = U[1] / ro;
-          double v = U[2] / ro;
-          double w = U[3] / ro;
-          double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
-          double P = (gamma - 1.0) * ro * e;
+				double ro = U[0];
+				double u = U[1] / ro;
+				double v = U[2] / ro;
+				double w = U[3] / ro;
+				double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
+				double P = (gamma - 1.0) * ro * e;
 
-          std::cout << "rank = " << rank << ", ro = " << ro << ", i = " << i << std::endl << std::flush; //MPI DebugMessage
+				//std::cout << "rank = " << rank << ", ro = " << ro << ", i = " << i << std::endl << std::flush; //MPI DebugMessage
 
-          //Write to file
-          ofs << x << " ";
-          ofs << ro << " ";
-          ofs << u << " ";
-          ofs << v << " ";
-          ofs << w << " ";
-          ofs << P << " ";
-          ofs << e << " ";
-          ofs << std::endl;
-        };	//end cycle
-      }
+				//Write to file
+				ofs << x << " ";
+				ofs << ro << " ";
+				ofs << u << " ";
+				ofs << v << " ";
+				ofs << w << " ";
+				ofs << P << " ";
+				ofs << e << " ";
+				ofs << std::endl;
+			};	//	end cycle
 
-      //Signal to next process to begin writing
-      if (rank != pManager->getProcessorNumber() - 1) {
-        pManager->Signal(rank + 1);
-      };
+			//Signal to next process to begin writing
+			if (rank != pManager->getProcessorNumber() - 1) {
+			pManager->Signal(rank + 1);
+			};
 
-      //Syncronize
-      pManager->Barrier();			
-			return;
-		};	//end if
+			//Syncronize
+			pManager->Barrier();			
+				return;
+			};	//end if
 
-			//2D/3D tecplot style
-		if (nDims > 1)
-		{
+		//2D-3D tecplot style  NEED TO implement correct parallel algorithm
+		if (nDims > 1) {
+			std::ofstream ofs(fname);
 			//Header				
 			ofs << "VARIABLES = ";
 			ofs << "\"" << "X" << "\" ";
@@ -1100,8 +1095,7 @@ public:
 			ofs << "\"" << "rouR" << "\" ";
 			if (nDims > 1) ofs << "\"" << "rovR" << "\" ";
 			if (nDims > 2) ofs << "\"" << "rowR" << "\" ";
-			ofs << "\"" << "roeR" << "\" ";
-			ofs << "\"" << "uMax" << "\" ";
+			if (nVariables > 4) ofs << "\"" << "roeR" << "\" ";
 			ofs << std::endl;
 		};
 

@@ -60,7 +60,7 @@ public:
 	double SaveSolutionSnapshotTime{ 0.1 };
 	int SaveSolutionSnapshotIterations{ 0 };
 	int ResidualOutputIterations{ 0 };
-	bool DebugOutputEnabled{ true };
+	bool DebugOutputEnabled{ false };
 	
 	//Boundary conditions configuration
 	BoundaryConditionConfiguration xLeftBoundary;

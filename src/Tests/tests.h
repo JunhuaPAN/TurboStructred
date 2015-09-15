@@ -671,10 +671,10 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	//sigma = 0.16;
 
 	//Test parameters
-	//ro_init = 1.0;
-	//Pave = 20.0;
-	//sigma = 1.0;
-	//viscosity = 0.25;
+	ro_init = 1.0;
+	Pave = 20.0;
+	sigma = 1.0;
+	viscosity = 0.25;
 
 	KernelConfiguration conf;
 	conf.nDims = 2;
@@ -685,7 +685,7 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	conf.isPeriodicX = true;
 	conf.isPeriodicY = false;
 	conf.isUniformAlongY = true;
-	conf.qy = 1.0;
+	//conf.qy = 1.2;
 
 	conf.Gamma = 1.4;
 	conf.IsViscousFlow = true;

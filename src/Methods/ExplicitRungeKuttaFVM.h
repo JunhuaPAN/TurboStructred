@@ -786,10 +786,10 @@ public:
 
 		//Allocate buffers
 		auto msgLen = ReconstructionType::GetBufferLenght(nDims, nVariables);
-		auto layerSizeX = nlocalY * nlocalZ;
-		auto layerSizeY = nlocalX * nlocalZ;
-		auto layerSizeZ = nlocalX * nlocalY;
-		size_t bufferSize{ 0 };size_t bufferSize{ 0 };
+		auto layerSizeX = g.nlocalY * g.nlocalZ;
+		auto layerSizeY = g.nlocalX * g.nlocalZ;
+		auto layerSizeZ = g.nlocalX * g.nlocalY;
+		size_t bufferSize{ 0 };
 		if (nDims < 2) bufferSize = msgLen;
 		else if (nDims < 3) bufferSize = std::max(layerSizeX, layerSizeY) * msgLen;
 		else bufferSize = std::max(std::max(layerSizeX, layerSizeY), layerSizeZ) * msgLen;
