@@ -37,9 +37,9 @@ namespace AleshinExp {
 		par.xShock = 0.029;
 		par.uReff = -400;		// frame of refference moves in left direction
 		par.Ly = 7.2e-2;
-		par.p0 = 5.0e4;		// a half of one barr
-		par.roR = 1.784;			// argon
-		par.roL = 5.894;			// xenon
+		par.p0 = 5.0e4;			// a half of one barr
+		par.roR = 1.784;		// argon
+		par.roL = 5.894;		// xenon
 	};
 
 	// compute state after shock		
@@ -88,8 +88,8 @@ namespace AleshinExp {
 	void RunSingleExperiment(int modeNumber, double TotalTime, Parameters& par, int argc, char *argv[]) {
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 500;
-		conf.nY = 300;
+		conf.nX = 400;
+		conf.nY = 200;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;

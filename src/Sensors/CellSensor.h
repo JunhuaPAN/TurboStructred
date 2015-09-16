@@ -19,7 +19,7 @@ public:
 		// check active or not
 		if ((i >= _grid.iMin) && (i <= _grid.iMax) && (j >= _grid.jMin) && (j <= _grid.jMax) && (k >= _grid.kMin) && (k <= _grid.kMax)) {
 			_isActive = true;
-			_idx = (k * _grid.nXAll * _grid.nYAll + j * _grid.nXAll + i);		// TO DO FIX
+			_idx = (k * _grid.nlocalXAll * _grid.nlocalYAll + j * _grid.nlocalXAll + i);
 			nVariables = _nVariables;
 		};
 	};

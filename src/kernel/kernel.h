@@ -154,6 +154,7 @@ public:
 	//Constructor
 	Kernel(int* argc, char **argv[]) : pManager(new ParallelManager(argc, argv)) {
 		nVariables = 5;	//default value
+		rank = pManager->getRank();
 	};
 
 	//Set initial conditions
@@ -169,8 +170,8 @@ public:
 					std::vector<double> U = initF(Vector(x, y, z));
 					for (int varn = 0; varn < nVariables; varn++) values[sBegin + varn] = U[varn];
 
-//          std::cout << "rank = " << rank << ", x = " << x << ", i = " << i << std::endl << std::flush; //MPI DebugMessage
-//          std::cout << "rank = " << rank << ", sBegin = " << sBegin << ", ro = " << values[sBegin] << std::endl << std::flush; //MPI DebugMessage
+        //  std::cout << "rank = " << rank << ", x = " << x << ", i = " << i << std::endl << std::flush; //MPI DebugMessage
+        //  std::cout << "rank = " << rank << ", sBegin = " << sBegin << ", ro = " << values[sBegin] << ", rou = " << values[sBegin + 1] << std::endl << std::flush; //MPI DebugMessage
 				};
 			};
 		};
@@ -1016,63 +1017,119 @@ public:
 			pManager->Signal(rank + 1);
 			};
 
-			//Syncronize
-			pManager->Barrier();			
-				return;
-			};	//end if
+		//Syncronize
+		pManager->Barrier();			
+		return;
+		};	//end if
 
-		//2D-3D tecplot style  NEED TO implement correct parallel algorithm
-		if (nDims > 1) {
-			std::ofstream ofs(fname);
-			//Header				
-			ofs << "VARIABLES = ";
-			ofs << "\"" << "X" << "\" ";
-			ofs << "\"" << "Y" << "\" ";
-			ofs << "\"" << "Z" << "\" ";
-			ofs << "\"" << "ro" << "\" ";
-			ofs << "\"" << "u" << "\" ";
-			ofs << "\"" << "v" << "\" ";
-			ofs << "\"" << "w" << "\" ";
-			ofs << "\"" << "P" << "\" ";
-			ofs << "\"" << "e" << "\" ";
-			ofs << std::endl;
+		//2D tecplot style
+		if (nDims == 2) {
+			// Open the file
+			if (pManager->IsMaster()) {
+				//Create file
+				std::ofstream ofs(fname);
+				ofs << std::scientific;
 
-			ofs << "ZONE T=\"1\"\nI=" << g.nX << "J=" << g.nY << "K=" << g.nZ << "F=POINT\n";
-			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
+				// Header				
+				ofs << "VARIABLES = ";
+				ofs << R"("X" )";
+				ofs << R"("Y" )";
+				ofs << R"("Rho" )";
+				ofs << R"("u" )";
+				ofs << R"("v" )";
+				ofs << R"("w" )";
+				ofs << R"("P" )";
+				ofs << R"("e")";
+				ofs << std::endl;
+				ofs << R"(ZONE T=")" << stepInfo.Time << R"(")";
+				ofs << std::endl;
+				ofs << "N=" << (g.nX + 1) * (g.nY + 1) << ", E=" << g.nX * g.nY * g.nZ << ", F=FEBLOCK, ET=QUADRILATERAL";
+				ofs << std::endl;
+				ofs << "VARLOCATION = (NODAL, NODAL";
+				ofs << ", CELLCENTERED";
+				ofs << ", CELLCENTERED";
+				ofs << ", CELLCENTERED";
+				ofs << ", CELLCENTERED";
+				ofs << ", CELLCENTERED";
+				ofs << ", CELLCENTERED)";
+				ofs << std::endl;
 
-			//Solution
-			for (int k = g.kMin; k <= g.kMax; k++) {
-				for (int j = g.jMin; j <= g.jMax; j++) {
-					for (int i = g.iMin; i <= g.iMax; i++) {
-						//Obtain cell data
-						double x = g.CoordinateX[i];
-						double y = g.CoordinateY[j];
-						double z = g.CoordinateZ[k];
-						double* U = getCellValues(i, j, k);
-						double ro = U[0];
-						double u = U[1] / ro;
-						double v = U[2] / ro;
-						double w = U[3] / ro;
-						double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
-						double P = (gamma - 1.0) * ro * e;
-
-						//Write to file
-						ofs << x << " ";
-						ofs << y << " ";
-						ofs << z << " ";
-						ofs << ro << " ";
-						ofs << u << " ";
-						ofs << v << " ";
-						ofs << w << " ";
-						ofs << P << " ";
-						ofs << e << " ";
+				// Write coordinates
+				for (int j = g.dummyCellLayersY; j <= g.dummyCellLayersY + g.nY; j++) {
+					for (int i = g.dummyCellLayersX; i <= g.dummyCellLayersX + g.nX; i++) {
+						ofs << g.CoordinateX[i] - 0.5 * g.hx[i];
 						ofs << std::endl;
 					};
 				};
-			};	//end for ijk
-		};	//end if
+				for (int j = g.dummyCellLayersY; j <= g.dummyCellLayersY + g.nY; j++) {
+					for (int i = g.dummyCellLayersX; i <= g.dummyCellLayersX + g.nX; i++) {
+						ofs << g.CoordinateY[j] - 0.5 * g.hy[j];
+						ofs << std::endl;
+					};
+				};
+				ofs.close();
+			};
+			pManager->Barrier();
 
-		//ofs.close();
+			// Compute variables
+			auto idx_first = getSerialIndexLocal(g.iMin, g.jMin, 0);
+			//auto nCells = g.nlocalX * g.nlocalY;
+			std::size_t sizes[] = { g.nlocalY, g.nlocalX };
+			std::size_t strides[] = { g.nlocalXAll * nVariables, nVariables };
+			std::valarray<size_t> s{ size_t(g.nlocalY), size_t(g.nlocalX) };
+			std::valarray<size_t> str{ size_t(g.nlocalXAll * nVariables), size_t(nVariables) };
+			//std::valarray<double> rho = values[std::gslice(idx_first * nVariables, std::valarray<size_t>(sizes, 2), std::valarray<size_t>(strides, 2))];
+			std::valarray<double> rho = values[std::gslice(idx_first * nVariables, s, str)];
+
+			//std::valarray<double> u = values[std::slice(idx_first * nVariables + 1, nCells, nVariables)];
+			std::valarray<double> u = values[std::gslice(idx_first * nVariables + 1, s, str)];
+			u = u / rho;
+			//std::valarray<double> v = values[std::slice(idx_first * nVariables + 2, nCells, nVariables)];
+			std::valarray<double> v = values[std::gslice(idx_first * nVariables + 2, s, str)];
+			v = v / rho;
+			//std::valarray<double> w = values[std::slice(idx_first * nVariables + 3, nCells, nVariables)];
+			std::valarray<double> w = values[std::gslice(idx_first * nVariables + 3, s, str)];
+			w = w / rho;
+			//std::valarray<double> e = values[std::slice(idx_first * nVariables + 4, nCells, nVariables)];
+			std::valarray<double> e = values[std::gslice(idx_first * nVariables + 4, s, str)];
+			e = e - 0.5 * (u * u + v * v + w * w);
+			std::valarray<double> P = (gamma - 1.0) * (rho * e);
+
+			// write all data
+			pManager->WriteData(rho, fname);
+			pManager->WriteData(u, fname);
+			pManager->WriteData(v, fname);
+			pManager->WriteData(w, fname);
+			pManager->WriteData(P, fname);
+			pManager->WriteData(e, fname);
+
+			if (!pManager->IsFirstNode()) pManager->Wait(rank - 1);
+
+			// Reopen file for writing
+			std::ofstream ofs(fname, std::ios_base::app);
+
+			// write connectivity list
+			int bl, br, ul, ur;		// indexes for left/right tob/bottom nodes
+			for (int j = g.jMin; j <= g.jMax; j++) {
+				bl = (g.nX + 1) * (j - g.dummyCellLayersY) + (g.iMin -  g.dummyCellLayersX) + 1;		// indexes starts from 1 in Tecplot format
+				for (int i = g.iMin; i <= g.iMax; i++) {
+					br = bl + 1;
+					ul = bl + (g.nX + 1);
+					ur = ul + 1;
+					ofs << bl << ' ';
+					ofs << ul << ' ';
+					ofs << ur << ' ';
+					ofs << br;
+					ofs << std::endl;
+					bl++;
+				};
+			};
+			ofs.close();
+
+			if(!pManager->IsLastNode()) pManager->Signal(rank + 1);
+			pManager->Barrier();
+		};	//end 2D
+
 		return;
 	};
 

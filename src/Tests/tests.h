@@ -860,7 +860,6 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	conf.nY = 20;
 	conf.LX = 0.5;
 	conf.LY = 0.1;	
-	//conf.LY = 6.0;
 	conf.isPeriodicX = true;
 	conf.isPeriodicY = false;
 	conf.isUniformAlongY = true;
@@ -886,6 +885,7 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	conf.SaveSolutionSnapshotTime = 0.5;
 	conf.SaveSolutionSnapshotIterations = 0;
 	conf.ResidualOutputIterations = 100;
+	conf.DebugOutputEnabled = false;
 
 	conf.Viscosity = viscosity;
 	conf.Sigma = Vector(sigma, 0, 0);
