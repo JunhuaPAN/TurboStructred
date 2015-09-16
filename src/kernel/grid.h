@@ -215,7 +215,7 @@ public:
 			zr -= h_z;
 		};
 
-		for (int k = dummyCellLayersZ; k <= 0.5 * (dummyCellLayersZ + 1); k++) {
+		for (int k = dummyCellLayersZ; k <= 0.5 * (nZ + 1); k++) {
 			CoordinateZ[k] = zl;
 			CoordinateZ[nZAll - 1 - k] = zr;
 			hz[k] = h_z;

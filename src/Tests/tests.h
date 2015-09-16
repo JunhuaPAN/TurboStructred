@@ -882,7 +882,7 @@ void RunShearFlow2D(int argc, char *argv[]) {
 
 	conf.MaxTime = 5.0;
 	conf.MaxIteration = 10000000;
-	conf.SaveSolutionSnapshotTime = 0.5;
+	conf.SaveSolutionSnapshotTime = 0.05;
 	conf.SaveSolutionSnapshotIterations = 0;
 	conf.ResidualOutputIterations = 100;
 	conf.DebugOutputEnabled = false;

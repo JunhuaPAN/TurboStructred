@@ -1043,7 +1043,7 @@ public:
 				ofs << std::endl;
 				ofs << R"(ZONE T=")" << stepInfo.Time << R"(")";
 				ofs << std::endl;
-				ofs << "N=" << (g.nX + 1) * (g.nY + 1) << ", E=" << g.nX * g.nY * g.nZ << ", F=FEBLOCK, ET=QUADRILATERAL";
+				ofs << "N=" << (g.nX + 1) * (g.nY + 1) << ", E=" << g.nX * g.nY << ", F=FEBLOCK, ET=QUADRILATERAL";
 				ofs << std::endl;
 				ofs << "VARLOCATION = (NODAL, NODAL";
 				ofs << ", CELLCENTERED";
@@ -1073,24 +1073,25 @@ public:
 
 			// Compute variables
 			auto idx_first = getSerialIndexLocal(g.iMin, g.jMin, 0);
-			//auto nCells = g.nlocalX * g.nlocalY;
-			std::size_t sizes[] = { g.nlocalY, g.nlocalX };
-			std::size_t strides[] = { g.nlocalXAll * nVariables, nVariables };
 			std::valarray<size_t> s{ size_t(g.nlocalY), size_t(g.nlocalX) };
 			std::valarray<size_t> str{ size_t(g.nlocalXAll * nVariables), size_t(nVariables) };
-			//std::valarray<double> rho = values[std::gslice(idx_first * nVariables, std::valarray<size_t>(sizes, 2), std::valarray<size_t>(strides, 2))];
+
+			// Density
 			std::valarray<double> rho = values[std::gslice(idx_first * nVariables, s, str)];
 
-			//std::valarray<double> u = values[std::slice(idx_first * nVariables + 1, nCells, nVariables)];
+			// X Velocity
 			std::valarray<double> u = values[std::gslice(idx_first * nVariables + 1, s, str)];
 			u = u / rho;
-			//std::valarray<double> v = values[std::slice(idx_first * nVariables + 2, nCells, nVariables)];
+
+			// Y Velocity
 			std::valarray<double> v = values[std::gslice(idx_first * nVariables + 2, s, str)];
 			v = v / rho;
-			//std::valarray<double> w = values[std::slice(idx_first * nVariables + 3, nCells, nVariables)];
+
+			// Z Velocity
 			std::valarray<double> w = values[std::gslice(idx_first * nVariables + 3, s, str)];
 			w = w / rho;
-			//std::valarray<double> e = values[std::slice(idx_first * nVariables + 4, nCells, nVariables)];
+
+			// Internal Energy and Pressure
 			std::valarray<double> e = values[std::gslice(idx_first * nVariables + 4, s, str)];
 			e = e - 0.5 * (u * u + v * v + w * w);
 			std::valarray<double> P = (gamma - 1.0) * (rho * e);
@@ -1109,7 +1110,7 @@ public:
 			std::ofstream ofs(fname, std::ios_base::app);
 
 			// write connectivity list
-			int bl, br, ul, ur;		// indexes for left/right tob/bottom nodes
+			int bl, br, ul, ur;		// indexes for left/right top/bottom nodes
 			for (int j = g.jMin; j <= g.jMax; j++) {
 				bl = (g.nX + 1) * (j - g.dummyCellLayersY) + (g.iMin -  g.dummyCellLayersX) + 1;		// indexes starts from 1 in Tecplot format
 				for (int i = g.iMin; i <= g.iMax; i++) {
@@ -1127,6 +1128,138 @@ public:
 			ofs.close();
 
 			if(!pManager->IsLastNode()) pManager->Signal(rank + 1);
+			pManager->Barrier();
+		};	//end 2D
+
+		//3D tecplot style
+		if (nDims == 3) {
+			// Open the file
+			if (pManager->IsMaster()) {
+				//Create file
+				std::ofstream ofs(fname);
+				ofs << std::scientific;
+
+				// Header				
+				ofs << "VARIABLES = ";
+				ofs << R"("X" )";
+				ofs << R"("Y" )";
+				ofs << R"("Z" )";
+				ofs << R"("Rho" )";
+				ofs << R"("u" )";
+				ofs << R"("v" )";
+				ofs << R"("w" )";
+				ofs << R"("P" )";
+				ofs << R"("e")";
+				ofs << std::endl;
+				ofs << R"(ZONE T=")" << stepInfo.Time << R"(")";
+				ofs << std::endl;
+				ofs << "N=" << (g.nX + 1) * (g.nY + 1) * (g.nZ + 1) << ", E=" << g.nX * g.nY * g.nZ << ", F=FEBLOCK, ET=BRICK";
+				ofs << std::endl;
+				ofs << "VARLOCATION = (NODAL, NODAL, NODAL";
+				ofs << ", CELLCENTERED";
+				ofs << ", CELLCENTERED";
+				ofs << ", CELLCENTERED";
+				ofs << ", CELLCENTERED";
+				ofs << ", CELLCENTERED";
+				ofs << ", CELLCENTERED)";
+				ofs << std::endl;
+
+				// Write coordinates
+				for (int k = g.dummyCellLayersZ; k <= g.dummyCellLayersZ + g.nZ; k++) {
+					for (int j = g.dummyCellLayersY; j <= g.dummyCellLayersY + g.nY; j++) {
+						for (int i = g.dummyCellLayersX; i <= g.dummyCellLayersX + g.nX; i++) {
+							ofs << g.CoordinateX[i] - 0.5 * g.hx[i];
+							ofs << std::endl;
+						};
+					};
+				};
+				for (int k = g.dummyCellLayersZ; k <= g.dummyCellLayersZ + g.nZ; k++) {
+					for (int j = g.dummyCellLayersY; j <= g.dummyCellLayersY + g.nY; j++) {
+						for (int i = g.dummyCellLayersX; i <= g.dummyCellLayersX + g.nX; i++) {
+							ofs << g.CoordinateY[j] - 0.5 * g.hy[j];
+							ofs << std::endl;
+						};
+					};
+				};
+				for (int k = g.dummyCellLayersZ; k <= g.dummyCellLayersZ + g.nZ; k++) {
+					for (int j = g.dummyCellLayersY; j <= g.dummyCellLayersY + g.nY; j++) {
+						for (int i = g.dummyCellLayersX; i <= g.dummyCellLayersX + g.nX; i++) {
+							ofs << g.CoordinateZ[k] - 0.5 * g.hz[k];
+							ofs << std::endl;
+						};
+					};
+				};
+				ofs.close();
+			};
+			pManager->Barrier();
+
+			// Compute variables
+			auto idx_first = getSerialIndexLocal(g.iMin, g.jMin, g.kMin);
+			std::valarray<size_t> s{ size_t(g.nlocalZ), size_t(g.nlocalY), size_t(g.nlocalX) };
+			std::valarray<size_t> str{ size_t(g.nlocalYAll * g.nlocalXAll * nVariables), size_t(g.nlocalXAll * nVariables), size_t(nVariables) };
+
+			// Density
+			std::valarray<double> rho = values[std::gslice(idx_first * nVariables, s, str)];
+
+			// X Velocity
+			std::valarray<double> u = values[std::gslice(idx_first * nVariables + 1, s, str)];
+			u = u / rho;
+
+			// Y Velocity
+			std::valarray<double> v = values[std::gslice(idx_first * nVariables + 2, s, str)];
+			v = v / rho;
+
+			// Z Velocity
+			std::valarray<double> w = values[std::gslice(idx_first * nVariables + 3, s, str)];
+			w = w / rho;
+
+			// Internal Energy and Pressure
+			std::valarray<double> e = values[std::gslice(idx_first * nVariables + 4, s, str)];
+			e = e - 0.5 * (u * u + v * v + w * w);
+			std::valarray<double> P = (gamma - 1.0) * (rho * e);
+
+			// write all data
+			pManager->WriteData(rho, fname);
+			pManager->WriteData(u, fname);
+			pManager->WriteData(v, fname);
+			pManager->WriteData(w, fname);
+			pManager->WriteData(P, fname);
+			pManager->WriteData(e, fname);
+
+			if (!pManager->IsFirstNode()) pManager->Wait(rank - 1);
+
+			// Reopen file for writing
+			std::ofstream ofs(fname, std::ios_base::app);
+
+			// write connectivity list
+			int fbl, fbr, ful, fur, bbl, bbr, bul, bur;		// indexes for front/back, top/bottom, left/right nodes
+			for (int k = g.kMin; k <= g.kMax; k++) {
+				for (int j = g.jMin; j <= g.jMax; j++) {
+					fbl = (g.nX + 1) * (g.nY + 1) * (k - g.dummyCellLayersZ) + (g.nX + 1) * (j - g.dummyCellLayersY) + (g.iMin - g.dummyCellLayersX) + 1;		// indexes starts from 1 in Tecplot format
+					for (int i = g.iMin; i <= g.iMax; i++) {
+						fbr = fbl + 1;
+						ful = fbl + (g.nX + 1);
+						fur = ful + 1;
+						bbl = fbl + (g.nX + 1) * (g.nY + 1);
+						bbr = bbl + 1;
+						bul = bbl + (g.nX + 1);
+						bur = bul + 1;
+						ofs << bbr << ' ';
+						ofs << bur << ' ';
+						ofs << bul << ' ';
+						ofs << bbl << ' ';
+						ofs << fbr << ' ';
+						ofs << fur << ' ';
+						ofs << ful << ' ';
+						ofs << fbl;
+						ofs << std::endl;
+						fbl++;
+					};
+				};
+			};
+			ofs.close();
+
+			if (!pManager->IsLastNode()) pManager->Signal(rank + 1);
 			pManager->Barrier();
 		};	//end 2D
 
@@ -1188,8 +1321,8 @@ public:
 		if (nDims > 2) {
 			std::cout <<
 				"rankZ = " << pManager->rankCart[2] <<
-				", jMin = " << g.jMin <<
-				", jMax = " << g.jMax
+				", kMin = " << g.jMin <<
+				", kMax = " << g.jMax
 				<< std::endl;
 		};
 		if (!pManager->IsLastNode()) pManager->Signal(rank + 1);
