@@ -167,7 +167,7 @@ public:
 			xr -= h_x;
 		};
 
-		for (int i = dummyCellLayersX; i <= 0.5 * (nX + 1); i++) {
+		for (int i = dummyCellLayersX; i <= 0.5 * (nX - 1) + dummyCellLayersX; i++) {
 			CoordinateX[i] = xl;
 			CoordinateX[nXAll - 1 - i] = xr;
 			hx[i] = h_x;
@@ -191,7 +191,7 @@ public:
 			yr -= h_y;
 		};
 
-		for (int j = dummyCellLayersY; j <= 0.5 * (nY + 1); j++) {
+		for (int j = dummyCellLayersY; j <= 0.5 * (nY - 1) + dummyCellLayersY; j++) {
 			CoordinateY[j] = yl;
 			CoordinateY[nYAll - 1 - j] = yr;
 			hy[j] = h_y;
@@ -215,7 +215,7 @@ public:
 			zr -= h_z;
 		};
 
-		for (int k = dummyCellLayersZ; k <= 0.5 * (nZ + 1); k++) {
+		for (int k = dummyCellLayersZ; k <= 0.5 * (nZ - 1) + dummyCellLayersZ; k++) {
 			CoordinateZ[k] = zl;
 			CoordinateZ[nZAll - 1 - k] = zr;
 			hz[k] = h_z;
