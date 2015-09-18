@@ -88,8 +88,8 @@ namespace AleshinExp {
 	void RunSingleExperiment(int modeNumber, double TotalTime, Parameters& par, int argc, char *argv[]) {
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 800;
-		conf.nY = 400;
+		conf.nX = 500;
+		conf.nY = 300;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
@@ -190,7 +190,7 @@ namespace AleshinExp {
 
 		// create a sensor
 		std::unique_ptr<MValuePosXSensor2> sen1 = std::make_unique<MValuePosXSensor2>("border_pos.dat", *kernel->pManager, kernel->g, GetInEnergy);
-		sen1->SetSensor((int)(0.5 * conf.nY / modeNumber), 0, kernel->nVariables);
+		sen1->SetSensor((int)(0.5 * conf.nY / modeNumber + 1), 0, kernel->nVariables);
 		kernel->Sensors.push_back(std::move(sen1));
 
 		//run computation
@@ -231,9 +231,9 @@ namespace AleshinExp {
 
 		KernelConfiguration conf;
 		conf.nDims = 3;
-		conf.nX = 200;
-		conf.nY = 120;
-		conf.nZ = 60;
+		conf.nX = 300;
+		conf.nY = 160;
+		conf.nZ = 80;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.LZ = conf.LY / modeNumber;
@@ -334,8 +334,8 @@ namespace AleshinExp {
 		kernel->SaveSolution("init.dat");
 
 		// Set sensors if needed
-		//kernel->isSensorEnable = true;
-		//kernel->SaveSensorRecordIterations = 1;
+		kernel->isSensorEnable = true;
+		kernel->SaveSensorRecordIterations = 1;
 
 		// Init target function
 		auto GetInEnergy = [](std::valarray<double> vals) {
@@ -344,9 +344,9 @@ namespace AleshinExp {
 		};
 		
 		// Create a sensor
-		//std::unique_ptr<MValuePosXSensor2> sen1 = std::make_unique<MValuePosXSensor2>("border_pos.dat", *kernel->pManager, kernel->g, GetInEnergy);
-		//sen1->SetSensor((int)(0.5 * conf.nY / modeNumber), (int)(0.5 * conf.nZ), kernel->nVariables);
-		//kernel->Sensors.push_back(std::move(sen1));
+		std::unique_ptr<MValuePosXSensor2> sen1 = std::make_unique<MValuePosXSensor2>("border_pos.dat", *kernel->pManager, kernel->g, GetInEnergy);
+		sen1->SetSensor((int)(0.5 * conf.nY / modeNumber + 1), (int)(0.5 * conf.nZ + 1), kernel->nVariables);
+		kernel->Sensors.push_back(std::move(sen1));
 
 		//run computation
 		kernel->Run();

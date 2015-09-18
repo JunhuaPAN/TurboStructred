@@ -1081,18 +1081,19 @@ public:
 
 			// X Velocity
 			std::valarray<double> u = values[std::gslice(idx_first * nVariables + 1, s, str)];
-			u = u / rho;
+			u /= rho;
 
 			// Y Velocity
 			std::valarray<double> v = values[std::gslice(idx_first * nVariables + 2, s, str)];
-			v = v / rho;
+			v /= rho;
 
 			// Z Velocity
 			std::valarray<double> w = values[std::gslice(idx_first * nVariables + 3, s, str)];
-			w = w / rho;
+			w /= rho;
 
 			// Internal Energy and Pressure
 			std::valarray<double> e = values[std::gslice(idx_first * nVariables + 4, s, str)];
+			e /= rho;
 			e = e - 0.5 * (u * u + v * v + w * w);
 			std::valarray<double> P = (gamma - 1.0) * (rho * e);
 
@@ -1203,18 +1204,19 @@ public:
 
 			// X Velocity
 			std::valarray<double> u = values[std::gslice(idx_first * nVariables + 1, s, str)];
-			u = u / rho;
+			u /= rho;
 
 			// Y Velocity
 			std::valarray<double> v = values[std::gslice(idx_first * nVariables + 2, s, str)];
-			v = v / rho;
+			v /= rho;
 
 			// Z Velocity
 			std::valarray<double> w = values[std::gslice(idx_first * nVariables + 3, s, str)];
-			w = w / rho;
+			w /= rho;
 
 			// Internal Energy and Pressure
 			std::valarray<double> e = values[std::gslice(idx_first * nVariables + 4, s, str)];
+			e /= rho;
 			e = e - 0.5 * (u * u + v * v + w * w);
 			std::valarray<double> P = (gamma - 1.0) * (rho * e);
 
@@ -1321,8 +1323,8 @@ public:
 		if (nDims > 2) {
 			std::cout <<
 				"rankZ = " << pManager->rankCart[2] <<
-				", kMin = " << g.jMin <<
-				", kMax = " << g.jMax
+				", kMin = " << g.kMin <<
+				", kMax = " << g.kMax
 				<< std::endl;
 		};
 		if (!pManager->IsLastNode()) pManager->Signal(rank + 1);
