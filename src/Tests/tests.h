@@ -718,8 +718,8 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 	};
 	kernel->Init(conf);
 	
@@ -860,7 +860,6 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	conf.nY = 20;
 	conf.LX = 0.5;
 	conf.LY = 0.1;	
-	//conf.LY = 6.0;
 	conf.isPeriodicX = true;
 	conf.isPeriodicY = false;
 	conf.isUniformAlongY = true;
@@ -883,9 +882,10 @@ void RunShearFlow2D(int argc, char *argv[]) {
 
 	conf.MaxTime = 5.0;
 	conf.MaxIteration = 10000000;
-	conf.SaveSolutionSnapshotTime = 0.5;
+	conf.SaveSolutionSnapshotTime = 0.05;
 	conf.SaveSolutionSnapshotIterations = 0;
 	conf.ResidualOutputIterations = 100;
+	conf.DebugOutputEnabled = false;
 
 	conf.Viscosity = viscosity;
 	conf.Sigma = Vector(sigma, 0, 0);

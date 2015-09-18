@@ -23,7 +23,7 @@ public:
 
 	Sensor(std::string _filename, ParallelManager& parM, Grid& grid) : filename(_filename), _parM(parM), _grid(grid) {
 		_isActive = false;
-		if (_parM.getRank() == 0) {
+		if (_parM.IsMaster()) {
 			ofs.open(filename);
 			ofs.close();
 		};

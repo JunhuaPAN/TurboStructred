@@ -261,6 +261,23 @@ public:
 			MPI_Gather(&N, 1, MPI_INT, NULL, 1, MPI_INT, 0, _comm);
 		};		
 	};
+
+	//Write in data in file
+	void WriteData(std::valarray<double>& data, std::string filename) {
+		// path this part in order (wait signal from previous node)
+		if (!IsMaster()) Wait(_rank - 1);
+
+		//Reopen file for writing
+		std::ofstream ofs(filename, std::ios_base::app);
+		ofs << std::scientific;
+
+		for (auto& r : data) ofs << r << '\n';
+		ofs.close();
+		if (!IsLastNode()) Signal(_rank + 1);
+
+		Barrier();
+		return;
+	};
 };
 
 #endif

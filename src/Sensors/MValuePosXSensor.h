@@ -15,7 +15,11 @@ public:
 
 	inline void SetSensor(int j_slice, int k_slice, int _nVariables) {
 		// check active or not
-		if ((j_slice >= _grid.jMin) && (j_slice <= _grid.jMax) && (k_slice >= _grid.kMin) && (k_slice <= _grid.kMax)) {
+		if (	(j_slice >= _grid.jMin - _grid.dummyCellLayersY)
+			&&	(j_slice <= _grid.jMax - _grid.dummyCellLayersY)
+			&&	(k_slice >= _grid.kMin - _grid.dummyCellLayersZ)
+			&&	(k_slice <= _grid.kMax - _grid.dummyCellLayersZ) )
+		{
 			_isActive = true;
 			i0 = (k_slice - _grid.kMin + _grid.dummyCellLayersZ) * _grid.nlocalXAll * _grid.nlocalYAll + (j_slice - _grid.jMin + _grid.dummyCellLayersY) * _grid.nlocalXAll + _grid.dummyCellLayersX;
 			nVariables = _nVariables;
@@ -23,7 +27,7 @@ public:
 	};
 
 	virtual void Process(const std::valarray<double>& values) override {
-		double uMax = std::numeric_limits<double>::min();
+		double uMax = -std::numeric_limits<double>::max();
 		int iMax;		// local index of cell with maximum value
 		if (_isActive == true) {
 			// Find local maximum value of target function
@@ -36,8 +40,9 @@ public:
 					uMax = u;
 					iMax = i;
 				};
-			};	// end of Find
+			};	// end of local maximum value search
 		};
+		_parM.Barrier();
 		double TotalMax = _parM.Max(uMax);	// choose the biggest one
 
 		// choose the appropriate process and write the result

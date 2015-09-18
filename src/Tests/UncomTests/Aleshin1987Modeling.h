@@ -37,9 +37,9 @@ namespace AleshinExp {
 		par.xShock = 0.029;
 		par.uReff = -400;		// frame of refference moves in left direction
 		par.Ly = 7.2e-2;
-		par.p0 = 5.0e4;		// a half of one barr
-		par.roR = 1.784;			// argon
-		par.roL = 5.894;			// xenon
+		par.p0 = 5.0e4;			// a half of one barr
+		par.roR = 1.784;		// argon
+		par.roL = 5.894;		// xenon
 	};
 
 	// compute state after shock		
@@ -190,7 +190,7 @@ namespace AleshinExp {
 
 		// create a sensor
 		std::unique_ptr<MValuePosXSensor2> sen1 = std::make_unique<MValuePosXSensor2>("border_pos.dat", *kernel->pManager, kernel->g, GetInEnergy);
-		sen1->SetSensor((int)(0.5 * conf.nY / modeNumber), 0, kernel->nVariables);
+		sen1->SetSensor((int)(0.5 * conf.nY / modeNumber + 1), 0, kernel->nVariables);
 		kernel->Sensors.push_back(std::move(sen1));
 
 		//run computation
@@ -231,9 +231,9 @@ namespace AleshinExp {
 
 		KernelConfiguration conf;
 		conf.nDims = 3;
-		conf.nX = 200;
-		conf.nY = 60;
-		conf.nZ = 40;
+		conf.nX = 300;
+		conf.nY = 160;
+		conf.nZ = 80;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.LZ = conf.LY / modeNumber;
@@ -345,7 +345,7 @@ namespace AleshinExp {
 		
 		// Create a sensor
 		std::unique_ptr<MValuePosXSensor2> sen1 = std::make_unique<MValuePosXSensor2>("border_pos.dat", *kernel->pManager, kernel->g, GetInEnergy);
-		sen1->SetSensor((int)(0.5 * conf.nY / modeNumber), (int)(0.5 * conf.nZ), kernel->nVariables);
+		sen1->SetSensor((int)(0.5 * conf.nY / modeNumber + 1), (int)(0.5 * conf.nZ + 1), kernel->nVariables);
 		kernel->Sensors.push_back(std::move(sen1));
 
 		//run computation

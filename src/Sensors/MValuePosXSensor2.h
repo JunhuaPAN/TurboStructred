@@ -11,8 +11,8 @@ public:
 	MValuePosXSensor2(std::string _filename, ParallelManager& _parM, Grid& _grid, std::function<double(const std::valarray<double>&)> _getValue) : MValuePosXSensor(_filename, _parM, _grid, _getValue) {};
 
 	virtual void Process(const std::valarray<double>& values) override {
-		double uMax = std::numeric_limits<double>::min();
-		int iMax;			// local index of cell with maximum value
+		double uMax = -std::numeric_limits<double>::max();
+		int idxMax;			// local index of cell with maximum value
 		if (_isActive == true) {
 			// Find local maximum value of target function
 			int s = _grid.nlocalX;
@@ -22,35 +22,46 @@ public:
 				double u = getValue(U);
 				if (u > uMax) {
 					uMax = u;
-					iMax = i;
+					idxMax = i;
 				};
 			};	// end of Find
 		};
+		_parM.Barrier();
 		double TotalMax = _parM.Max(uMax);	// choose the biggest one
 
 		// choose the appropriate process. Compute maximum position and write it in the file
 		if (uMax == TotalMax) {
-			int i = _grid.iMin + iMax;				// i global
-			double xi = _grid.CoordinateX[i];		// position of central cell 
-			double xip = _grid.CoordinateX[i + 1];	// position of right cell
-			double xim = _grid.CoordinateX[i - 1];	// position of left cell
-			double dxp = xip - xi;					// right cell scale
-			double dxm = xi - xim;					// left one
-			int idx = i0 + iMax;					// local index of central cell
+			double xmax;
+			// left position case
+			if (idxMax == 0) {
+				xmax = _grid.CoordinateX[_grid.iMin] - 0.5 * _grid.hx[_grid.iMin];
+			} // right position
+			else if (idxMax == _grid.nlocalX - 1) {
+				xmax = _grid.CoordinateX[_grid.iMax] + 0.5 * _grid.hx[_grid.iMax];
+			} // ordinary case
+			else {		
+				int i = _grid.iMin + idxMax;			// i global
+				double xi = _grid.CoordinateX[i];		// position of central cell 
+				double xip = _grid.CoordinateX[i + 1];	// position of right cell
+				double xim = _grid.CoordinateX[i - 1];	// position of left cell
+				double dxp = xip - xi;					// right cell scale
+				double dxm = xi - xim;					// left one
+				int idx = i0 + idxMax;					// local index of central cell
 
-			// second order reconstruction
-			// U = a (x - xi) (x - xi) + b (x - xi) + (u2 - u1)
+				// second order reconstruction
+				// U = a (x - xi) (x - xi) + b (x - xi) + (u2 - u1)
 
-			// find (a * dxm) and (b/a)
-			std::valarray<double> U = values[std::slice((idx - 1) * nVariables, nVariables, 1)];
-			double ul = getValue(U);
-			U = values[std::slice((idx + 1) * nVariables, nVariables, 1)];
-			double ur = getValue(U);
-			double v2 = uMax - ul;		// v1 = ul - ul = 0
-			double v3 = ur - ul;
-			double adxm = v3 * dxm / ((dxm + dxp) * dxp) - v2 / dxp;	//  a * dxm
-			double bda = dxm + v2 / adxm;								//  b / a
-			double xmax = xi - 0.5 * bda;
+				// find (a * dxm) and (b/a)
+				std::valarray<double> U = values[std::slice((idx - 1) * nVariables, nVariables, 1)];
+				double ul = getValue(U);
+				U = values[std::slice((idx + 1) * nVariables, nVariables, 1)];
+				double ur = getValue(U);
+				double v2 = uMax - ul;		// v1 = ul - ul = 0
+				double v3 = ur - ul;
+				double adxm = v3 * dxm / ((dxm + dxp) * dxp) - v2 / dxp;	//  a * dxm
+				double bda = dxm + v2 / adxm;								//  b / a
+				xmax = xi - 0.5 * bda;
+			}; // end of maximum position computing
 
 			ofs.open(filename, std::ios_base::app);
 			ofs << iteration << ' ' << xmax << ' ' << timer;
