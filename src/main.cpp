@@ -1,12 +1,14 @@
 #include "Tests/tests.h"
+#include <conio.h>
 //#include <valarray>
 
 
 int main(int argc, char *argv[])
 {
 	//main function
+	ContactDisTest::RunExperiment(argc, argv);
 	//ShockWaveTest::RunExperiment(argc, argv);
-	AleshinExp::Run3DExperiment(argc, argv);
+	//AleshinExp::Run3DExperiment(argc, argv);
 	//AleshinExp::RunExperiment(argc, argv);
 	//RunRTI2D(argc, argv);
 	//RunTriplePointRoe2D(argc, argv);
@@ -19,8 +21,7 @@ int main(int argc, char *argv[])
 	//RunSODTestRoe1D(argc, argv);
 	//RunShearFlow2D(argc, argv);
 	//RunPoiseuille3D(argc, argv);
-	
-	
+		
 	//RunSODTestHybrid1DGeneral(argc, argv);
 	//RunSODTestRoe2DX(argc, argv);
 	//RunFluxesTest2D(argc, argv);
@@ -37,5 +38,6 @@ int main(int argc, char *argv[])
 	//RunReleighTaylor2D(argc, argv);
 	//RunDoludenko2D(argc, argv);
 
+	getch();
 	return 0;
 };

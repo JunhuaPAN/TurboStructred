@@ -1,5 +1,5 @@
-#ifndef TurboStructured_Tests_1DToroTests_IToroTest
-#define TurboStructured_Tests_1DToroTestsIToroTest
+#ifndef TurboStructured_Tests_1DTests_ShockWaveTest
+#define TurboStructured_Tests_1DTests_ShockWaveTest
 
 #include <iostream>
 #include <vector>

@@ -3,5 +3,6 @@
 
 #include "Tests/1DTests/ShockWaveTest.h"
 #include "Tests/1DTests/ToroTests.h"
+#include "Tests/1DTests/ContactDisTest.h"
 
 #endif

@@ -182,6 +182,9 @@
     <ClInclude Include="..\src\kernel\grid.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\Tests\1DTests\ContactDisTest.h">
+      <Filter>Header Files\Tests\1DTests</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
