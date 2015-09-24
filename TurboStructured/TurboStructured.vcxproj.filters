@@ -167,9 +167,6 @@
     <ClInclude Include="..\src\Tests\1DTests\ToroTests.h">
       <Filter>Header Files\Tests\1DTests</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Tests\1DTests\ShockWaveTest.h">
-      <Filter>Header Files\Tests\1DTests</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\Tests\1DTests\testlist.h">
       <Filter>Header Files\Tests\1DTests</Filter>
     </ClInclude>
@@ -181,6 +178,12 @@
     </ClInclude>
     <ClInclude Include="..\src\kernel\grid.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\1DTests\ContactDisTest.h">
+      <Filter>Header Files\Tests\1DTests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\1DTests\TestsUtility.h">
+      <Filter>Header Files\Tests\1DTests</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

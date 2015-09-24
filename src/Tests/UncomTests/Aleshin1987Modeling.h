@@ -213,7 +213,7 @@ namespace AleshinExp {
 		RunSingleExperiment(modeNumber, TotalTime, par, argc, argv);
 
 		//end of experiments
-		std::cout << "Aleshin's experiment simulation is complited";
+		std::cout << "Aleshin's experiment simulation is completed";
 		std::cout << std::endl;
 		return;
 	};
@@ -355,7 +355,7 @@ namespace AleshinExp {
 		kernel->Finalize();
 
 		//end of experiments
-		std::cout << "Aleshin's experiment 3D simulation is complited";
+		std::cout << "Aleshin's experiment 3D simulation is completed";
 		std::cout << std::endl;
 	};
 }
