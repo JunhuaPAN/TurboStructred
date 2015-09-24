@@ -5,6 +5,7 @@
 #include <vector>
 #include "kernel\kernel.h"
 #include "Methods\ExplicitRungeKuttaFVM.h"
+#include "TestsUtility.h"
 
 // single contact discontinuity test
 // roL = 1.0 || roR = 0.125
@@ -13,82 +14,6 @@
 
 namespace ContactDisTest
 {
-	const int nVar = 5;
-	const double gamma1 = 0.4;
-	std::valarray<double> exact_solution;
-
-	// Error norm functions
-	std::vector<double> ComputeL2Error(std::valarray<double>& comp_val, Grid& g, ParallelManager& par) {
-		std::vector<double> res_temp(nVar, 0);
-		std::vector<double> res(nVar, 0);
-		for (int i = 0; i < comp_val.size(); i++) {
-			double err = comp_val[i] - exact_solution[i];
-			res_temp[i % nVar] += (err * err) * g.hx[g.iMin + i / nVar];
-		};
-		par.Barrier();
-		for (int i = 0; i < nVar; i++) res[i] = par.Sum(res_temp[i]);
-		for (int i = 0; i < nVar; i++) res[i] = sqrt(res[i]);
-		return res;
-	}
-
-	std::vector<double> ComputeLinfError(std::valarray<double>& comp_val, Grid& g, ParallelManager& par) {
-		std::vector<double> res_temp(nVar, 0);
-		std::vector<double> res(nVar, 0);
-		for (int i = 0; i < comp_val.size(); i++) {
-			double err = comp_val[i] - exact_solution[i];
-			if (res_temp[i % nVar] < abs(err)) res_temp[i % nVar] = abs(err);
-		};
-		par.Barrier();
-		for (int i = 0; i < nVar; i++) res[i] = par.Max(res_temp[i]);
-
-		return res;
-	}
-
-	// Save both solutions
-	void SaveExactSolution(std::string fname, Grid& g, ParallelManager& pManager) {
-		//Tecplot version    
-		int rank = pManager.getRank();
-		
-		// Open the file
-		if (!pManager.IsFirstNode()) pManager.Wait(rank - 1);
-
-		//Reopen file for writing
-		std::ofstream ofs(fname, std::ios_base::app);
-		ofs << R"(ZONE T="Exact solution")";
-		ofs << std::endl;
-		ofs << std::scientific;
-
-		// Exact solution
-		for (int i = 0; i < g.nlocalX; i++) {
-			//Obtain cell data
-			double rho = exact_solution[i * nVar];
-			double u = exact_solution[i * nVar + 1] / rho;
-			double v = 0;
-			double w = 0;
-			double e = exact_solution[i * nVar + 4] / rho - 0.5 * u * u;
-			double P = gamma1 * rho * e;
-
-			//Write to file
-			ofs << g.CoordinateX[g.iMin + i] << " ";
-			ofs << rho << " ";
-			ofs << u << " ";
-			ofs << v << " ";
-			ofs << w << " ";
-			ofs << P << " ";
-			ofs << e << " ";
-			ofs << std::endl;
-		};	//	end cycle
-
-			//Signal to next process to begin writing
-		if (!pManager.IsLastNode()) {
-			pManager.Signal(rank + 1);
-		};
-
-		//Syncronize
-		pManager.Barrier();
-		return;
-	};
-
 	// IC structure
 	struct ShockTubeParameters {
 		double roL;
@@ -111,7 +36,7 @@ namespace ContactDisTest
 		conf.isPeriodicX = false;
 		conf.isUniformAlongX = true;
 		conf.qx = 1.00;
-		conf.Gamma = gamma1 + 1;
+		conf.Gamma = TestsUtility::gamma1 + 1;
 
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 		conf.ReconstructionType = KernelConfiguration::Reconstruction::PiecewiseConstant;
@@ -135,7 +60,7 @@ namespace ContactDisTest
 		return conf;
 	};
 
-	ShockTubeParameters DefaultStates() {
+	ShockTubeParameters DefaultState() {
 		ShockTubeParameters params;
 		params.roL = 1.0;
 		params.roR = 0.125;
@@ -149,19 +74,19 @@ namespace ContactDisTest
 	};
 
 	std::valarray<double> ComputeExactSolution(ShockTubeParameters& pars, Grid& g, double time) {
-		double x_disc = pars.x0 + 1.0 * time;		// uL = uR = 1
-		std::valarray<double> res(g.nlocalX * nVar);
-		double u = 1.0;
+		double u = 1.0 - pars.ref_velocity;
+		double x_disc = pars.x0 + u * time;		// uL = uR = 1
 		double p = pars.P;
+		std::valarray<double> res(g.nlocalX * TestsUtility::nVar);
 		for (int i = 0; i < g.nlocalX; i++) {
 			double rho = pars.roR;
 			if (g.CoordinateX[g.iMin + i] <= x_disc) rho = pars.roL;
-			double e = p / (gamma1 * rho);
-			res[i * nVar] = rho;
-			res[i * nVar + 1] = rho*u;
-			res[i * nVar + 2] = 0;
-			res[i * nVar + 3] = 0;
-			res[i * nVar + 4] = rho * e + 0.5 * rho * u * u;
+			double e = p / (TestsUtility::gamma1 * rho);
+			res[i * TestsUtility::nVar] = rho;
+			res[i * TestsUtility::nVar + 1] = rho*u;
+			res[i * TestsUtility::nVar + 2] = 0;
+			res[i * TestsUtility::nVar + 3] = 0;
+			res[i * TestsUtility::nVar + 4] = rho * e + 0.5 * rho * u * u;
 		};
 		return res;
 	};
@@ -173,7 +98,7 @@ namespace ContactDisTest
 
 		// Use default settings
 		KernelConfiguration conf = DefaultSettings();
-		ShockTubeParameters params = DefaultStates();
+		ShockTubeParameters params = DefaultState();
 		conf.nX = Nx;
 		conf.MaxTime = MaxTime;
 		conf.ReconstructionType = RecType;
@@ -203,11 +128,11 @@ namespace ContactDisTest
 			double u = 0;
 			double ro = 0;
 			if (r.x < params.x0) {
-				u = params.uL;
+				u = params.uL - params.ref_velocity;
 				ro = params.roL;
 			}
 			else {
-				u = params.uR;
+				u = params.uR - params.ref_velocity;
 				ro = params.roR;
 			};
 
@@ -216,26 +141,25 @@ namespace ContactDisTest
 			res[1] = ro * u;
 			res[2] = 0;
 			res[3] = 0;
-			res[4] = p / (conf.Gamma - 1.0) + 0.5 * ro * u * u;
+			res[4] = p / TestsUtility::gamma1 + 0.5 * ro * u * u;
 			return res;
 		};
 		kernel->SetInitialConditions(initD);
-		kernel->SaveSolution("init.dat");
 
 		// Run computation
 		kernel->Run();
 
 		// Compute exact solution
-		exact_solution = ComputeExactSolution(params, kernel->g, conf.MaxTime);
+		TestsUtility::exact_solution = ComputeExactSolution(params, kernel->g, conf.MaxTime);
 
 		// Compute accuracy
-		std::valarray<double> inner_values(&(kernel->values[nVar * kernel->g.dummyCellLayersX]), kernel->g.nlocalX * kernel->nVariables);
-		std::vector<double> L2 = ComputeL2Error(inner_values, kernel->g, *(kernel->pManager));
-		std::vector<double> Linf = ComputeLinfError(inner_values, kernel->g, *(kernel->pManager));
+		std::valarray<double> inner_values(&(kernel->values[TestsUtility::nVar * kernel->g.dummyCellLayersX]), kernel->g.nlocalX * kernel->nVariables);
+		std::vector<double> L2 = TestsUtility::ComputeL2Error(inner_values, kernel->g, *(kernel->pManager));
+		std::vector<double> L1 = TestsUtility::ComputeL1Error(inner_values, kernel->g, *(kernel->pManager));
 
 		// Write in errors
 		errors = L2;
-		for (int i = 0; i < nVar; i++) errors.push_back(Linf[i]);
+		for (int i = 0; i < TestsUtility::nVar; i++) errors.push_back(L1[i]);
 
 		// Show the errors
 		if (kernel->pManager->IsMaster()) {
@@ -244,7 +168,7 @@ namespace ContactDisTest
 			std::cout << "ReconstructionType: " << fname.str();
 			std::cout << ", Nx = " << Nx << std::endl;
 			std::cout << "L2_rho = " << L2[0];
-			std::cout << ", Linf_rho = " << Linf[0];
+			std::cout << ", L1_rho = " << L1[0];
 			std::cout << std::endl;
 		};
 		
@@ -256,7 +180,7 @@ namespace ContactDisTest
 		fname << ".dat";
 		std::string filename = fname.str();
 		kernel->SaveSolution(filename);
-		SaveExactSolution(filename, kernel->g, *(kernel->pManager));
+		TestsUtility::SaveExactSolution(filename, kernel->g, *(kernel->pManager));
 
 		// Finalize kernel
 		kernel->Finalize();
@@ -273,7 +197,7 @@ namespace ContactDisTest
 
 		// collect all errors in file
 		std::vector<double> err;
-		//ofs << R"(VARIABLES = "Nx" "L2_rho" "L2_rhou" "L2_rhoE" "Linf_rho" "Linf_rhou" "Linf_rhoE")" << std::endl;
+		//ofs << R"(VARIABLES = "Nx" "L2_rho" "L2_rhou" "L2_rhoE" "L1_rho" "L1_rhou" "L1_rhoE")" << std::endl;
 		err = RunSingleExperiment(argc, argv, Nx, MaxTime, RecType);
 
 		// write result in file
@@ -283,9 +207,9 @@ namespace ContactDisTest
 		ofs << err[0] << ' ';
 		ofs << err[1] << ' ';
 		ofs << err[4] << ' ';
-		ofs << err[nVar] << ' ';
-		ofs << err[nVar + 1] << ' ';
-		ofs << err[nVar + 4] << ' ';
+		ofs << err[TestsUtility::nVar] << ' ';
+		ofs << err[TestsUtility::nVar + 1] << ' ';
+		ofs << err[TestsUtility::nVar + 4] << ' ';
 		ofs << std::endl;
 		ofs.close();
 	};

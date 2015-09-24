@@ -6,6 +6,7 @@
 #include "kernel\kernel.h"
 #include "Methods\ExplicitRungeKuttaFVM.h"
 
+// not realized yet
 namespace ShockWaveTest
 {
 	enum ShockDirection { left, right };
