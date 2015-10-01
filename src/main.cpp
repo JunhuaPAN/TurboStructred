@@ -6,8 +6,8 @@
 int main(int argc, char *argv[])
 {
 	//main function
-	ToroTests::RunExperiment(argc, argv);
-	//ContactDisTest::RunExperiment(argc, argv);
+	//ToroTests::RunExperiment(argc, argv);
+	ContactDisTest::RunExperiment(argc, argv);
 	//ShockWaveTest::RunExperiment(argc, argv);
 	//AleshinExp::Run3DExperiment(argc, argv);
 	//AleshinExp::RunExperiment(argc, argv);
@@ -39,6 +39,6 @@ int main(int argc, char *argv[])
 	//RunReleighTaylor2D(argc, argv);
 	//RunDoludenko2D(argc, argv);
 
-	getch();
+	_getch();
 	return 0;
 };

@@ -195,7 +195,7 @@ namespace ContactDisTest
 	};
 
 	void RunExperiment(int argc, char *argv[]) {
-		int Nx = 1600;
+		int Nx = 400;
 		double MaxTime = 0.2;
 
 		// Reconstruction type

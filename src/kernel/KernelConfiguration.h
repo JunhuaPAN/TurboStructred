@@ -46,8 +46,8 @@ public:
 	MethodConfiguration methodConfiguration;
 
 	//Run parameters
+	int MaxIteration{ 1000 };
 	double MaxTime{ 1.0 };
-	double MaxIteration{ 1000 };
 	double SaveSolutionSnapshotTime{ 0.1 };
 	int SaveSolutionSnapshotIterations{ 0 };
 	int ResidualOutputIterations{ 0 };

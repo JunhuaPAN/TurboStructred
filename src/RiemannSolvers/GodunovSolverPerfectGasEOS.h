@@ -244,7 +244,7 @@ class GodunovSolverPerfectGasEOS : public RiemannSolver {
 
 			//Determine shock propagation speed			
 			result.SR = sqrt((_gamma + 1) * pRatioR / (2 * _gamma) + (_gamma - 1) / (2 * _gamma));
-			result.SR = uL + aR * result.SR;
+			result.SR = uR + aR * result.SR;
 
 			result.MaxSpeed = max(result.MaxSpeed, std::abs(result.SR));
 		}
@@ -256,7 +256,7 @@ class GodunovSolverPerfectGasEOS : public RiemannSolver {
 			result.roStarR = roR * pow(pRatioR, 1.0 / _gamma);
 
 			//Determine rarefaction head propagation speed		
-			result.SHR = uL + aR;
+			result.SHR = uR + aR;
 
 			//Determine rarefaction tail propagation speed		
 			double aStarR = aR * pow(pRatioL, (_gamma - 1) / (2 * _gamma));
@@ -278,12 +278,7 @@ public:
 		RiemannProblemSolutionResult result;
 		result.Fluxes.resize(5);
 
-		// Calculate symmetric flux part
-		std::vector<double> FL = F(UL, fn);
-		std::vector<double> FR = F(UR, fn);
-		for (int i = 0; i < nVariables; i++) result.Fluxes[i] = 0.5 * (FL[i] + FR[i]);
-
-		// Density and pressure
+		// Left and right states
 		double roL = UL[0];
 		double roR = UR[0];
 		double pL = GetPressure(UL);
@@ -298,11 +293,138 @@ public:
 		double uR = velocityR * fn;
 
 		// Star region variables
-		StarVariables starV = ComputeStarVariables(roL, uL, pL, roR, uR, pR);
+		StarVariables starValues = ComputeStarVariables(roL, uL, pL, roR, uR, pR);
+		
+		//Compute flux (Toro p. 219) 
+		//Sample exact solution at S = x/t
+		double S = 0;
+		double ro;
+		double u;
+		double p;
+		double gamma{ _gamma };
 
-		result.MaxEigenvalue = starV.MaxSpeed;
-		result.Pressure = starV.pStar;
-		result.Velocity = starV.uStar * fn;
+		if (starValues.uStar >= S) {
+			//Left side of contact
+			//Shock wave
+			if (starValues.leftWave == WaveType::Shock) {
+				if (starValues.SL >= S) {
+					// Case a1
+					// Left of the shock
+					ro = roL;
+					u = uL;
+					p = pL;
+				}
+				else {
+					// Case a2
+					// Right of the shock shock
+					ro = starValues.roStarL;
+					u = starValues.uStar;
+					p = starValues.pStar;
+				};
+			};
+
+			//Rarefaction wave
+			if (starValues.leftWave == WaveType::Rarefaction) {
+				if (starValues.SHL > S) {
+					//Left region
+					ro = roL;
+					u = uL;
+					p = pL;
+				}
+				else if (S > starValues.STL) {
+					//Star region
+					ro = starValues.roStarL;
+					u = starValues.uStar;
+					p = starValues.pStar;
+				}
+				else {
+					//Rarefaction fan region
+					double aL = sqrt(gamma * pL / roL);
+					double CL = 2.0 / (gamma + 1) + (gamma - 1) * (uL - S) / ((gamma + 1) * aL);
+					double CLRo = pow(CL, 2.0 / (gamma - 1));
+					double CLP = pow(CL, 2.0 * gamma / (gamma - 1));
+
+					//Density
+					ro = CLRo * roL;
+
+					//Velocity
+					u = aL + 0.5 * (gamma - 1) * uL + S;
+					u *= 2 / (gamma + 1);
+
+					//Pressure					
+					p = CLP * pL;
+				};
+			};
+
+		} else {
+			//Right side of contact
+
+			//Shock wave
+			if (starValues.rightWave == WaveType::Shock) {
+				if (starValues.SR <= S) {
+					//Case a1
+					//Supersonic shock
+					ro = roR;
+					u = uR;
+					p = pR;
+				}
+				else {
+					//Case a2
+					//Subsonic shock
+					ro = starValues.roStarR;
+					u = starValues.uStar;
+					p = starValues.pStar;
+				};
+			};
+
+			//Rarefaction wave
+			if (starValues.rightWave == WaveType::Rarefaction) {
+				if (starValues.SHR < S) {
+					//Right region
+					ro = roR;
+					u = uR;
+					p = pR;
+				}
+				else if (S < starValues.STR) {
+					//Star region
+					ro = starValues.roStarR;
+					u = starValues.uStar;
+					p = starValues.pStar;
+				}
+				else {
+					//Rarefaction fan region
+					double aR = sqrt(gamma * pR / roR);
+					double CR = 2.0 / (gamma + 1) - (gamma - 1) * (uR - S) / ((gamma + 1) * aR);
+					double CRRo = pow(CR, 2.0 / (gamma - 1));
+					double CRP = pow(CR, 2.0 * gamma / (gamma - 1));
+
+					//Density
+					ro = CRRo * roR;
+
+					//Velocity
+					u = -aR + (gamma - 1) * uR / 2.0 + S;
+					u *= 2 / (gamma + 1);
+
+					//Pressure					
+					p = CRP * pR;
+				};
+			};
+		};
+
+		// Create conservative variables vector
+		Vector Vst = starValues.uStar * fn;
+		std::valarray<double> Ustar(nVariables);
+		Ustar[0] = ro;
+		Ustar[1] = ro * Vst.x;
+		Ustar[2] = ro * Vst.y;
+		Ustar[3] = ro * Vst.z;
+		Ustar[4] = ro * (p / (ro * (gamma - 1.0) + 0.5 * u * u));
+
+		// write result
+		result.Fluxes = F(Ustar, fn);
+		result.MaxEigenvalue = starValues.MaxSpeed;
+		result.Pressure = starValues.pStar;
+		result.Velocity = Vst;
 
 		return result;
 	};
