@@ -5,6 +5,13 @@
 #include <valarray>
 #include "utility/Vector.h"
 
+// All type of Riemann's Problem solvers
+enum class RPSolver {
+	GodunovSolver,
+	RoePikeSolver,
+	NoSolver
+};
+
 //Solution information structure
 class RiemannProblemSolutionResult {
 public:
@@ -14,12 +21,11 @@ public:
 	double Pressure; //Interface pressure estimate
 };
 
-//Base class for all riemann solvers
+//Base class for all Riemann solvers
 class RiemannSolver {
 public:
-	//Compute flux given stencil values by reference
-	virtual RiemannProblemSolutionResult ComputeFlux(std::vector<std::valarray<double> > &values, Vector faceNormal) = 0;
 
+	//	Compute flux given stencil values by reference
 	virtual RiemannProblemSolutionResult ComputeFlux(std::valarray<double> &valueL, std::valarray<double> &valueR, Vector faceNormal) = 0;
 
 };

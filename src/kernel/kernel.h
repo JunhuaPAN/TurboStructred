@@ -17,13 +17,13 @@
 #include "utility/Vector.h"
 #include "utility/Matrix.h"
 #include "utility/Timer.h"
-#include "RiemannSolvers/RoeSolverPerfectGasEOS.h"
+#include "RiemannSolvers/RiemannSolversList.h"
 #include "BoundaryConditions/BCGeneral.h"
 #include "Sensors/Sensors.h"
 
-//#include "cgnslib.h"
+// #include "cgnslib.h"
 
-//Step info
+// Step info
 class StepInfo {
 public:
 	double Time;
@@ -34,12 +34,12 @@ public:
 };
 
 
-//Calculation kernel
+// Calculation kernel
 class Kernel {
 public:
 	virtual void IterationStep() = 0; // main function
 
-	//Parallel run information
+	// Parallel run information
 	std::unique_ptr<ParallelManager> pManager;
 	int rank; //Rank of process
 
@@ -47,10 +47,10 @@ public:
 	int nDims;
 	Grid g;
 
-	//Current step information
+	// Current step information
 	StepInfo stepInfo;
 
-	//Gas model information
+	// Gas model information
 	int nVariables; // number of conservative variables
 	double gamma;
 	double thermalConductivity;
@@ -60,15 +60,15 @@ public:
 	bool isExternalAccelaration;
 	bool isExternalForce;
 
-	//sensors operating
-	bool isSensorEnable;
-	int SaveSensorRecordIterations;
+	// Sensors operating
+	bool isSensorEnable{ false };
+	int SaveSensorRecordIterations{ 1 };
 
-	//External forces
+	// External forces
 	Vector Sigma; //Potential force like presure gradient
 	Vector UniformAcceleration;	//external uniform acceleration
 
-	//Boundary conditions
+	// Boundary conditions
 	std::unique_ptr<BoundaryConditions::BCGeneral> xLeftBC;
 	std::unique_ptr<BoundaryConditions::BCGeneral> xRightBC;
 	std::unique_ptr<BoundaryConditions::BCGeneral> yLeftBC;
@@ -76,23 +76,23 @@ public:
 	std::unique_ptr<BoundaryConditions::BCGeneral> zLeftBC;
 	std::unique_ptr<BoundaryConditions::BCGeneral> zRightBC;
 
-	//Solution data
+	// Solution data
 	std::valarray<double> values;
 	std::valarray<double> residual;
 
-	//Get serial index for cell
+	// Get serial index for cell
 	inline int getSerialIndexGlobal(int i, int j, int k) {
 		int sI = (k * g.nXAll * g.nYAll + j * g.nXAll + i);
 		return sI;
 	};
 
-  //Get local index for cell
+	// Get local index for cell
 	inline int getSerialIndexLocal(int i, int j, int k) {
 		int sI = (k - g.kMin + g.dummyCellLayersZ) * g.nlocalXAll * g.nlocalYAll + (j - g.jMin + g.dummyCellLayersY) * g.nlocalXAll + (i - g.iMin + g.dummyCellLayersX);
 		return sI;
 	};
 
-	//Get cell values
+	// Get cell values
 	inline double* getCellValues(int i, int j, int k) {
 		int sBegin = getSerialIndexLocal(i, j, k) * nVariables;
 		return &values[sBegin];
@@ -139,7 +139,7 @@ public:
 		return std::move(res);
 	};
 
-	//Calculation parameters	
+	// Calculation parameters	
 	int MaxIteration;
 	double MaxTime;
 	double SaveSolutionSnapshotTime;
@@ -188,13 +188,14 @@ public:
 	virtual void Init(KernelConfiguration& config) {
 		// Initialize MPI		
 		nDims = config.nDims;
+
 		// Output settings 
 		DebugOutputEnabled = config.DebugOutputEnabled;
 
-		// initialize global grid
+		// Initialize global grid
 		g.InitGlobal(config);
 
-		//Initialize cartezian topology
+		// Initialize cartezian topology
 		pManager->InitCartesianTopology(g);
 
 		// Compute local gris sizes
@@ -260,9 +261,6 @@ public:
 		//External forces
 		Sigma = config.Sigma;
 		UniformAcceleration = config.UniformAcceleration;
-
-		isSensorEnable = false;			//by default
-		SaveSensorRecordIterations = 1;	//by default
 
 		if (DebugOutputEnabled) {
 			std::cout << "rank = " << pManager->getRank() << ", Kernel initialized\n";
@@ -694,7 +692,7 @@ public:
 
 	}; // function
 
-	   //Compute dummy cell values as result of boundary conditions and interprocessor exchange communication
+	//Compute dummy cell values as result of boundary conditions and interprocessor exchange communication
 	void ComputeDummyCellValues() {
 		//Index variables
 		int i = 0;
@@ -897,7 +895,7 @@ public:
 		pManager->Barrier();
 	};
 
-	//compute source terms
+	//Compute source terms
 	virtual void ProcessExternalForces() {
 		//right handside part - mass foces
 		for (int i = g.iMin; i <= g.iMax; i++) {

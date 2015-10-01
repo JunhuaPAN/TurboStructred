@@ -4,10 +4,13 @@
 #include <iostream>
 #include <vector>
 #include <random>
+
+
 #include "kernel/kernel.h"
 #include "Methods/ExplicitRungeKuttaFVM.h"
 #include "Tests/1DTests/testlist.h"
 #include "Tests/UncomTests/Aleshin1987Modeling.h"
+#include "RiemannSolvers/RiemannSolversList.h"
 
 #define PI 3.14159265359
 
@@ -1049,7 +1052,6 @@ void RunRTI2D(int argc, char *argv[]) {
 	// Finalize kernel
 	kernel->Finalize();
 };
-
 
 
 #endif

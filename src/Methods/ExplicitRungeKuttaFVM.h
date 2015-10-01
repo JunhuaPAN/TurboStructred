@@ -6,9 +6,10 @@
 #include "utility/Matrix.h"
 #include "utility/Timer.h"
 #include "utility/GeomFunctions.h"
-#include "RiemannSolvers/RoeSolverPerfectGasEOS.h"
+#include "RiemannSolvers/RiemannSolversList.h"
 #include "kernel.h"
 #include "Reconstruction/ReconstructorsList.h"
+
 
 //Base class for all solution methods that desribe iterations process in detail
 template <typename ReconstructionType>
@@ -41,9 +42,16 @@ public:
 
 		//Method specific part
 		MethodConfiguration config = kernelConfig.methodConfiguration;
-		_riemannSolver = (std::unique_ptr<RiemannSolver>)std::move(new RoeSolverPerfectGasEOS(kernelConfig.Gamma, config.Eps, 0.0));
+		assert(config.RungeKuttaOrder != 0);			// Runge-Kutta order is not initialized
+		assert(config.RiemannProblemSolver != RPSolver::NoSolver);		// No solver was choosen
 		CFL = config.CFL;
 		RungeKuttaOrder = config.RungeKuttaOrder;
+		if (config.RiemannProblemSolver == RPSolver::RoePikeSolver) {
+			_riemannSolver = (std::unique_ptr<RiemannSolver>)std::move(new RoeSolverPerfectGasEOS(kernelConfig.Gamma, config.Eps, config.OperatingPresure));
+		};
+		if (config.RiemannProblemSolver == RPSolver::GodunovSolver)	{
+			_riemannSolver = (std::unique_ptr<RiemannSolver>)std::move(new GodunovSolverPerfectGasEOS(kernelConfig.Gamma, config.Eps, config.OperatingPresure));
+		};
 		
 		//Allocate memory for values and residual
 		spectralRadius.resize(g.nCellsLocalAll);

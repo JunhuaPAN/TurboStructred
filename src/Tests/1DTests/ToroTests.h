@@ -23,7 +23,7 @@ namespace ToroTests
 	};
 
 	//Types of nonlinear waves
-	enum WaveType {
+	enum class WaveType {
 		Shock,
 		Rarefaction
 	};
@@ -63,12 +63,13 @@ namespace ToroTests
 		conf.Gamma = TestsUtility::gamma1 + 1;
 
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-		conf.ReconstructionType = KernelConfiguration::Reconstruction::PiecewiseConstant;
-		//conf.ReconstructionType = KernelConfiguration::Reconstruction::ENO2PointsStencil;
+
 		conf.DummyLayerSize = 1;
 		conf.methodConfiguration.CFL = 0.45;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
+		conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
+		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 
 		conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
 		conf.xLeftBoundary.Gamma = 1.4;
@@ -383,7 +384,7 @@ namespace ToroTests
 	};
 
 	// Collision of two media
-	std::vector<double> RunSingleExperiment(int argc, char *argv[], int Ntest, int Nx, KernelConfiguration::Reconstruction RecType) {
+	std::vector<double> RunSingleExperiment(int argc, char *argv[], int Ntest, int Nx, Reconstruction RecType, RPSolver _RPsolver) {
 		// Result
 		std::vector<double> errors;
 
@@ -392,22 +393,23 @@ namespace ToroTests
 		ShockTubeParameters params = DefaultState(Ntest);
 		conf.nX = Nx;
 		conf.MaxTime = params.t_res;
-		conf.ReconstructionType = RecType;
+		conf.methodConfiguration.ReconstructionType = RecType;
+		conf.methodConfiguration.RiemannProblemSolver = _RPsolver;
 
 		// Solution file
 		std::ostringstream fname;
 
 		// Init kernel
 		std::unique_ptr<Kernel> kernel;
-		if (conf.ReconstructionType == KernelConfiguration::Reconstruction::PiecewiseConstant) {
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 			fname << "PWConstant";
 		};
-		if (conf.ReconstructionType == KernelConfiguration::Reconstruction::ENO2PointsStencil) {
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 			fname << "ENO2";
 		};
-		if (conf.ReconstructionType == KernelConfiguration::Reconstruction::WENO2PointsStencil) {
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
 			fname << "WENO2";
 		};
@@ -470,6 +472,11 @@ namespace ToroTests
 		kernel->SaveSolution(filename);
 		TestsUtility::SaveExactSolution(filename, kernel->g, *(kernel->pManager));
 
+		// Save the errors
+		std::stringstream fname2;
+		fname2 << "ToroTest_" << Ntest << ".dat";
+		TestsUtility::WriteErrors(fname2.str(), errors, kernel->g, *(kernel->pManager));
+
 		// Finalize kernel
 		kernel->Finalize();
 
@@ -477,30 +484,22 @@ namespace ToroTests
 	};
 	
 	void RunExperiment(int argc, char *argv[]) {
-		int Ntest = 4;	// Toro test number
-		int Nx = 6400;
+		int Ntest = 1;	// Toro test number
+		int Nx = 400;
 
-		//KernelConfiguration::Reconstruction RecType = KernelConfiguration::Reconstruction::PiecewiseConstant;
-		KernelConfiguration::Reconstruction RecType = KernelConfiguration::Reconstruction::ENO2PointsStencil;
-		//KernelConfiguration::Reconstruction RecType = KernelConfiguration::Reconstruction::WENO2PointsStencil;
+		// Reconstruction type
+		Reconstruction RecType{ Reconstruction::PiecewiseConstant };
+		//Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
+
+		// RP solver
+		RPSolver rSolver{ RPSolver::GodunovSolver };
+		//RPSolver rSolver{};
 
 		// collect all errors in file
 		std::vector<double> err;
-		err = RunSingleExperiment(argc, argv, Ntest, Nx, RecType);
+		err = RunSingleExperiment(argc, argv, Ntest, Nx, RecType, rSolver);
 
-		// write result in file
-		std::stringstream fname;
-		fname << "ToroTest_" << Ntest << ".dat";
-		std::ofstream ofs(fname.str(), std::ios_base::app);
-		ofs << Nx << ' ';
-		ofs << err[0] << ' ';
-		ofs << err[1] << ' ';
-		ofs << err[4] << ' ';
-		ofs << err[TestsUtility::nVar] << ' ';
-		ofs << err[TestsUtility::nVar + 1] << ' ';
-		ofs << err[TestsUtility::nVar + 4] << ' ';
-		ofs << std::endl;
-		ofs.close();
+		return;
 	};
 	
 }	//end of namespace area

@@ -10,47 +10,38 @@
 class KernelConfiguration {
 public:
 	//Grid sizes and configuration
-  int nDims{ 1 }; //Number of dimensions
-  int nX{ 10 }; //Number of cells in x dimension
-  int nY{ 1 }; //Number of cells in y dimension
-  int nZ{ 1 }; //Number of cells in z dimension
-  bool isUniformAlongX{ true };
-  bool isUniformAlongY{ true };
-  bool isUniformAlongZ{ true };
-  bool isPeriodicX{ true }; //X periodicity
-  bool isPeriodicY{ true }; //Y periodicity
-  bool isPeriodicZ{ true }; //Z periodicity
-  double LX{ 1.0 }; //X size
-  double LY{ 1.0 }; //Y size
-  double LZ{ 1.0 }; //Z size
-  double qx{ 1.0 }; //grid compression coefficient X-direction
-  double qy{ 1.0 }; //grid compression coefficient Y-direction
-  double qz{ 1.0 }; //grid compression coefficient Z-direction
+	int nDims{ 1 }; //Number of dimensions
+	int nX{ 10 }; //Number of cells in x dimension
+	int nY{ 1 }; //Number of cells in y dimension
+	int nZ{ 1 }; //Number of cells in z dimension
+	bool isUniformAlongX{ true };
+	bool isUniformAlongY{ true };
+	bool isUniformAlongZ{ true };
+	bool isPeriodicX{ true }; //X periodicity
+	bool isPeriodicY{ true }; //Y periodicity
+	bool isPeriodicZ{ true }; //Z periodicity
+	double LX{ 1.0 }; //X size
+	double LY{ 1.0 }; //Y size
+	double LZ{ 1.0 }; //Z size
+	double qx{ 1.0 }; //grid compression coefficient X-direction
+	double qy{ 1.0 }; //grid compression coefficient Y-direction
+	double qz{ 1.0 }; //grid compression coefficient Z-direction
 
 	//Gas model parameters
-  double Gamma{ 1.4 };
-  double Viscosity{ 0.0 };
-  double ThermalConductivity{ 0.0 };
+	double Gamma{ 1.4 };
+	double Viscosity{ 0.0 };
+	double ThermalConductivity{ 0.0 };
 
 	//model configuration
-  bool IsViscousFlow{ false };
-  bool IsExternalForceRequared{ false };
-  bool IsUnifromAccelerationRequared{ false };
+	bool IsViscousFlow{ false };
+	bool IsExternalForceRequared{ false };
+	bool IsUnifromAccelerationRequared{ false };
 
 	//Solution method parameters
-  int DummyLayerSize{ 1 };
+	int DummyLayerSize{ 1 };
 	enum class Method {
-		HybridFVM,
 		ExplicitRungeKuttaFVM,
-		HybridGeneralEOSOnePhase,
-		HybridBarotropicEOSOnePhase,
-		HybridBarotropicEOSTwoPhase
-  } SolutionMethod{ Method::ExplicitRungeKuttaFVM  };
-	enum class Reconstruction {
-		PiecewiseConstant,
-		ENO2PointsStencil,
-		WENO2PointsStencil
-	} ReconstructionType { Reconstruction::PiecewiseConstant };
+  } SolutionMethod { Method::ExplicitRungeKuttaFVM  };
 
 	MethodConfiguration methodConfiguration;
 

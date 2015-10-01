@@ -100,6 +100,25 @@ namespace TestsUtility{
 		pManager.Barrier();
 		return;
 	};
+
+	// write errors in file
+	void WriteErrors(std::string fname, std::vector<double>& err, Grid& g, ParallelManager& pManager) { 		// write result in file
+		if (pManager.IsMaster()) {
+			std::ofstream ofs(fname, std::ios_base::app);
+			ofs << g.nX << ' ';
+			ofs << log(g.hx[0]) << ' ';				// X size of first element of the grid
+			ofs << log(err[0]) << ' ';
+			ofs << log(err[1]) << ' ';
+			ofs << log(err[4]) << ' ';
+			ofs << log(err[TestsUtility::nVar]) << ' ';
+			ofs << log(err[TestsUtility::nVar + 1]) << ' ';
+			ofs << log(err[TestsUtility::nVar + 4]);
+			ofs << std::endl;
+			ofs.close();
+		};
+
+		pManager.Barrier();
+	};
 };
 
 #endif
