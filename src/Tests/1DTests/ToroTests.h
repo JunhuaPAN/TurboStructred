@@ -160,7 +160,7 @@ namespace ToroTests
 			break;
 		case 2:
 			starValues.leftWave = WaveType::Rarefaction;
-			starValues.rightWave = WaveType::Shock;
+			starValues.rightWave = WaveType::Rarefaction;
 			starValues.pStar = 0.00189;
 			starValues.uStar = 0.0;
 			starValues.roStarL = 0.02185;
@@ -484,12 +484,13 @@ namespace ToroTests
 	};
 	
 	void RunExperiment(int argc, char *argv[]) {
-		int Ntest = 1;	// Toro test number
-		int Nx = 400;
+		int Ntest = 3;	// Toro test number
+		int Nx = 1600;
 
 		// Reconstruction type
-		Reconstruction RecType{ Reconstruction::PiecewiseConstant };
-		//Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
+		//Reconstruction RecType{ Reconstruction::PiecewiseConstant };
+		//Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
+		Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
 
 		// RP solver
 		RPSolver rSolver{ RPSolver::GodunovSolver };

@@ -259,7 +259,7 @@ class GodunovSolverPerfectGasEOS : public RiemannSolver {
 			result.SHR = uR + aR;
 
 			//Determine rarefaction tail propagation speed		
-			double aStarR = aR * pow(pRatioL, (_gamma - 1) / (2 * _gamma));
+			double aStarR = aR * pow(pRatioR, (_gamma - 1) / (2 * _gamma));
 			result.STR = result.uStar + aStarR;
 
 			result.MaxSpeed = max(result.MaxSpeed, std::abs(result.SHR));
@@ -276,7 +276,7 @@ public:
 	//Solve riemann problem
 	virtual RiemannProblemSolutionResult ComputeFlux(std::valarray<double> &UL, std::valarray<double> &UR, Vector fn) override {
 		RiemannProblemSolutionResult result;
-		result.Fluxes.resize(5);
+		result.Fluxes.resize(nVariables);
 
 		// Left and right states
 		double roL = UL[0];
@@ -363,14 +363,12 @@ public:
 			if (starValues.rightWave == WaveType::Shock) {
 				if (starValues.SR <= S) {
 					//Case a1
-					//Supersonic shock
 					ro = roR;
 					u = uR;
 					p = pR;
 				}
 				else {
 					//Case a2
-					//Subsonic shock
 					ro = starValues.roStarR;
 					u = starValues.uStar;
 					p = starValues.pStar;
@@ -402,7 +400,7 @@ public:
 					ro = CRRo * roR;
 
 					//Velocity
-					u = -aR + (gamma - 1) * uR / 2.0 + S;
+					u = -aR + 0.5 * (gamma - 1) * uR + S;
 					u *= 2 / (gamma + 1);
 
 					//Pressure					
@@ -412,19 +410,19 @@ public:
 		};
 
 		// Create conservative variables vector
-		Vector Vst = starValues.uStar * fn;
-		std::valarray<double> Ustar(nVariables);
-		Ustar[0] = ro;
-		Ustar[1] = ro * Vst.x;
-		Ustar[2] = ro * Vst.y;
-		Ustar[3] = ro * Vst.z;
-		Ustar[4] = ro * (p / (ro * (gamma - 1.0) + 0.5 * u * u));
+		Vector Vface = u * fn;
+		std::valarray<double> Uface(nVariables);
+		Uface[0] = ro;
+		Uface[1] = ro * Vface.x;
+		Uface[2] = ro * Vface.y;
+		Uface[3] = ro * Vface.z;
+		Uface[4] = ro * (p / (ro * (gamma - 1.0)) + 0.5 * u * u);
 
 		// write result
-		result.Fluxes = F(Ustar, fn);
+		result.Fluxes = F(Uface, fn);
 		result.MaxEigenvalue = starValues.MaxSpeed;
-		result.Pressure = starValues.pStar;
-		result.Velocity = Vst;
+		result.Pressure = p;
+		result.Velocity = Vface;
 
 		return result;
 	};

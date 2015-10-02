@@ -998,9 +998,9 @@ public:
 		for (double& r : residual) r = 0; //Nullify residual
 
 		// Fluxes temporary storage
-		std::vector<double> fl(5,0); //left flux -1/2
-		std::vector<double> fr(5,0); //right flux +1/2
-		std::vector<double> fvisc(5,0); //right flux +1/2		
+		std::vector<double> fl(nVariables,0); //left flux -1/2
+		std::vector<double> fr(nVariables,0); //right flux +1/2
+		std::vector<double> fvisc(nVariables,0); //right flux +1/2		
 
 		// Viscous part
 		int faceInd = 0;
