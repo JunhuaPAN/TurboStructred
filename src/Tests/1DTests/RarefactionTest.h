@@ -1,5 +1,5 @@
-#ifndef TurboStructured_Tests_1DTests_ToroTest
-#define TurboStructured_Tests_1DTests_ToroTest
+#ifndef TurboStructured_Tests_1DTests_RarefactionTest
+#define TurboStructured_Tests_1DTests_RarefactionTest
 
 #include <iostream>
 #include <vector>
@@ -7,8 +7,15 @@
 #include "Methods\ExplicitRungeKuttaFVM.h"
 #include "TestsUtility.h"
 
-namespace ToroTests
+//	The base of this test is Test #3 from E.Toro book (p. 129)					//
+//	In that Riemann problem we have one rarefaction wave folowing to the left	//
+//	We consider only inner part of the rarefaction for order estimation			//
+
+namespace RarefactionTest
 {
+	// special variable for rarefaction segment length
+	double subgrid_length;
+
 	// Parameters structure
 	struct ShockTubeParameters {
 		double gamma;
@@ -19,7 +26,6 @@ namespace ToroTests
 		double PR;
 		double uR;
 		double x0;
-		double t_res;
 	};
 
 	//Types of nonlinear waves
@@ -76,8 +82,8 @@ namespace ToroTests
 		conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
 		conf.xRightBoundary.Gamma = 1.4;
 
-		conf.MaxTime = 0.2;
-		conf.MaxIteration = 1000000;
+		conf.MaxTime = 0.012;
+		conf.MaxIteration = 100000;
 		conf.SaveSolutionSnapshotTime = 0;
 		conf.SaveSolutionSnapshotIterations = 0;
 		conf.ResidualOutputIterations = 100;
@@ -85,152 +91,79 @@ namespace ToroTests
 		return conf;
 	};
 
-	ShockTubeParameters DefaultState(int Nexp) {
+	ShockTubeParameters DefaultState() {
 		ShockTubeParameters params;
 		params.gamma = TestsUtility::gamma1 + 1;
-		switch (Nexp) {
-		case 1:
-			params.roL = 1.0;
-			params.roR = 0.125;
-			params.PL = 1.0;
-			params.uL = 0.0;
-			params.uR = 0.0;
-			params.PR = 0.1;
-			params.x0 = 0.5;		// initial discontinuity position
-			params.t_res = 0.25;	// solution time
-			break;
-		case 2:
-			params.roL = 1.0;
-			params.uL = -2.0;
-			params.PL = 0.4;
-			params.roR = 1.0;
-			params.uR = 2.0;
-			params.PR = 0.4;
-			params.x0 = 0.5;
-			params.t_res = 0.15;
-			break;
-		case 3:
-			params.roL = 1.0;
-			params.uL = 0.0;
-			params.PL = 1000.0;
-			params.roR = 1.0;
-			params.uR = 0.0;
-			params.PR = 0.01;
-			params.x0 = 0.5;
-			params.t_res = 0.012;
-			break;
-		case 4:
-			params.roL = 1.0;
-			params.uL = 0.0;
-			params.PL = 0.01;
-			params.roR = 1.0;
-			params.uR = 0.0;
-			params.PR = 100.0;
-			params.x0 = 0.5;
-			params.t_res = 0.035;
-			break;
-		case 5:
-			params.roL = 5.99924;
-			params.uL = 19.5975;
-			params.PL = 460.894;
-			params.roR = 5.99242;
-			params.uR = -6.19633;
-			params.PR = 46.0950;
-			params.x0 = 0.5;
-			params.t_res = 0.035;
-			break;
-		default:
-			std::cout << "Toro test number is not correct" << std::endl;
-			break;
-		};
-
+		params.roL = 1.0;
+		params.uL = 0.0;
+		params.PL = 1000.0;
+		params.roR = 1.0;
+		params.uR = 0.0;
+		params.PR = 0.01;
+		params.x0 = 0.6;
 		return params;
 	};
 
+	// Create a subgrid that contain cells with rarefaction fan
+	Grid GetRarefactionCells(StarVariables& starV, Grid& g, double time, double x0, double Lx) {
+		Grid res;
+		double cut_factor = 0.1;	// to cut both end of rarefaction fan
+
+		// define head and tail speeds
+		double velL = starV.SHL;
+		double velR = starV.STL;
+
+		// define head and tail coordinates
+		double xl = x0 + velL * time;
+		double xr = x0 + velR * time;
+
+		// define indexes of ends of rarefaction cell set
+		double deltax = xr - xl;
+		xl += cut_factor * deltax;
+		xr -= cut_factor * deltax;
+		int iMin = (int)(xl * g.nX / Lx) + g.dummyCellLayersX;
+		int iMax = (int)(xr * g.nX / Lx) + g.dummyCellLayersX;
+
+		// store segment length
+		subgrid_length = g.CoordinateX[iMax] - g.CoordinateX[iMin] + 0.5 * (g.hx[iMax] + g.hx[iMin]);
+
+		// create subgrid for each processors
+		res = CreateSubGrid(iMin, iMax, g.jMin, g.jMax, g.kMin, g.kMax, g);
+		return std::move(res);
+	};
+
 	// Choose star values for N test
-	void SetStarValues(int N, ShockTubeParameters& params) {
-		switch (N) {
-		case 1:
-			starValues.leftWave = WaveType::Rarefaction;
-			starValues.rightWave = WaveType::Rarefaction;
-			starValues.pStar = 0.30313;
-			starValues.uStar = 0.92745;
-			starValues.roStarL = 0.42632;
-			starValues.roStarR = 0.26557;
-			break;
-		case 2:
-			starValues.leftWave = WaveType::Rarefaction;
-			starValues.rightWave = WaveType::Rarefaction;
-			starValues.pStar = 0.00189;
-			starValues.uStar = 0.0;
-			starValues.roStarL = 0.02185;
-			starValues.roStarR = 0.02185;
-			break;
-		case 3:
-			starValues.leftWave = WaveType::Rarefaction;
-			starValues.rightWave = WaveType::Shock;
-			starValues.pStar = 460.894;
-			starValues.uStar = 19.5975;
-			starValues.roStarL = 0.57506;
-			starValues.roStarR = 5.99924;
-			break;
-		case 4:
-			starValues.leftWave = WaveType::Shock;
-			starValues.rightWave = WaveType::Rarefaction;
-			starValues.pStar = 46.0950;
-			starValues.uStar = -6.19633;
-			starValues.roStarL = 5.99242;
-			starValues.roStarR = 0.57511;
-			break;
-		case 5:
-			starValues.leftWave = WaveType::Shock;
-			starValues.rightWave = WaveType::Shock;
-			starValues.pStar = 1691.64;
-			starValues.uStar = 8.68975;
-			starValues.roStarL = 14.2823;
-			starValues.roStarR = 31.0426;
-		default:
-			std::cout << "Toro test number is not correct!" << std::endl;
-			break;
-		};
-		
+	void SetStarValues(ShockTubeParameters& params) {
+
+		// Write approximate solution
+		starValues.leftWave = WaveType::Rarefaction;
+		starValues.rightWave = WaveType::Shock;
+		starValues.pStar = 460.894;
+		starValues.uStar = 19.5975;
+		starValues.roStarL = 0.57506;
+		starValues.roStarR = 5.99924;
+
 		// compute speeds of three waves
 		double gamma = params.gamma;
 
 		//Left side of contact
 		double pRatioL = starValues.pStar / params.PL;
 		double aL = sqrt(gamma * params.PL / params.roL);
-		if (starValues.leftWave == WaveType::Shock) {
-			//Determine shock propagation speed			
-			starValues.SL = sqrt((gamma + 1) * pRatioL / (2 * gamma) + (gamma - 1) / (2 * gamma));
-			starValues.SL = params.uL - aL * starValues.SL;
-		}	
-		else {
-			//Left rarefaction
-			starValues.SHL = params.uL - aL;
 
-			//Determine rarefaction tail propagation speed		
-			double aStarL = aL * pow(pRatioL, (gamma - 1) / (2 * gamma));
-			starValues.STL = starValues.uStar - aStarL;
-		};
+		//Left rarefaction head
+		starValues.SHL = params.uL - aL;
+
+		//Determine rarefaction tail propagation speed		
+		double aStarL = aL * pow(pRatioL, (gamma - 1) / (2 * gamma));
+		starValues.STL = starValues.uStar - aStarL;
 
 		//Right side of contact
 		double pRatioR = starValues.pStar / params.PR;
 		double aR = sqrt(gamma * params.PR / params.roR);
-		if (starValues.rightWave == WaveType::Shock) {
 
-			//Determine shock propagation speed			
-			starValues.SR = sqrt((gamma + 1) * pRatioR / (2 * gamma) + (gamma - 1) / (2 * gamma));
-			starValues.SR = params.uR + aR * starValues.SR;
-		}
-		else {
-			//Determine rarefaction head propagation speed		
-			starValues.SHR = params.uR + aR;
-
-			//Determine rarefaction tail propagation speed		
-			double aStarR = aR * pow(pRatioR, (gamma - 1) / (2 * gamma));
-			starValues.STR = starValues.uStar + aStarR;
-		};
+		//Determine shock propagation speed			
+		starValues.SR = sqrt((gamma + 1) * pRatioR / (2 * gamma) + (gamma - 1) / (2 * gamma));
+		starValues.SR = params.uR + aR * starValues.SR;
 	};
 
 	// compute exact solution in Cell
@@ -359,12 +292,12 @@ namespace ToroTests
 	};
 
 	// Comput exact solution for test N
-	std::valarray<double> ComputeExactSolution(int Nexp, ShockTubeParameters& pars, Grid& g, double t) {
+	std::valarray<double> ComputeExactSolution(ShockTubeParameters& pars, Grid& g, double t) {
 		// init result valarray
 		std::valarray<double> res(g.nlocalX * TestsUtility::nVar);
 
 		// Compute star state from Toro book p. 133
-		SetStarValues(Nexp, pars);
+		SetStarValues(pars);
 
 		// Compute exact solution in every cell and write the result valarray
 		for (int i = 0; i < g.nlocalX; i++) {
@@ -384,15 +317,14 @@ namespace ToroTests
 	};
 
 	// Collision of two media
-	std::vector<double> RunSingleExperiment(int argc, char *argv[], int Ntest, int Nx, Reconstruction RecType, RPSolver _RPsolver) {
+	std::vector<double> RunSingleExperiment(int argc, char *argv[], int Nx, Reconstruction RecType, RPSolver _RPsolver) {
 		// Result
 		std::vector<double> errors;
 
 		// Use default settings
 		KernelConfiguration conf = DefaultSettings();
-		ShockTubeParameters params = DefaultState(Ntest);
+		ShockTubeParameters params = DefaultState();
 		conf.nX = Nx;
-		conf.MaxTime = params.t_res;
 		conf.methodConfiguration.ReconstructionType = RecType;
 		conf.methodConfiguration.RiemannProblemSolver = _RPsolver;
 
@@ -439,13 +371,16 @@ namespace ToroTests
 		// Run computation
 		kernel->Run();
 
-		// Compute exact solution
-		TestsUtility::exact_solution = ComputeExactSolution(Ntest, params, kernel->g, kernel->stepInfo.Time);
+		// Compute exact solution in rarefaction part
+		SetStarValues(params);
+		Grid rarefGrid = GetRarefactionCells(starValues, kernel->g, kernel->stepInfo.Time, params.x0, conf.LX);
+		TestsUtility::exact_solution = ComputeExactSolution(params, rarefGrid, kernel->stepInfo.Time);
 
 		// Compute accuracy
-		std::valarray<double> inner_values(&(kernel->values[TestsUtility::nVar * kernel->g.dummyCellLayersX]), kernel->g.nlocalX * kernel->nVariables);
-		std::vector<double> L2 = TestsUtility::ComputeL2Error(inner_values, kernel->g, *(kernel->pManager));
-		std::vector<double> L1 = TestsUtility::ComputeL1Error(inner_values, kernel->g, *(kernel->pManager));
+		int local_iMin = kernel->g.dummyCellLayersX + rarefGrid.iMin - kernel->g.iMin;
+		std::valarray<double> inner_values(&(kernel->values[TestsUtility::nVar * local_iMin]), rarefGrid.nlocalX * kernel->nVariables);
+		std::vector<double> L2 = TestsUtility::ComputeL2Error(inner_values, rarefGrid, *(kernel->pManager), subgrid_length);
+		std::vector<double> L1 = TestsUtility::ComputeL1Error(inner_values, rarefGrid, *(kernel->pManager), subgrid_length);
 
 		// Write in errors
 		errors = L2;
@@ -453,7 +388,7 @@ namespace ToroTests
 
 		// Show the errors
 		if (kernel->pManager->IsMaster()) {
-			std::cout << "Toro test has finished. ";
+			std::cout << "Rarefaction test has finished. ";
 			std::cout << std::endl;
 			std::cout << "ReconstructionType: " << fname.str();
 			std::cout << ", Nx = " << Nx << std::endl;
@@ -466,15 +401,16 @@ namespace ToroTests
 		fname << ", Nx=";
 		fname << Nx;
 		fname << ", t=";
-		fname << params.t_res;
+		fname << conf.MaxTime;
 		fname << ".dat";
 		std::string filename = fname.str();
 		kernel->SaveSolution(filename);
+		TestsUtility::exact_solution = ComputeExactSolution(params, kernel->g, kernel->stepInfo.Time);
 		TestsUtility::SaveExactSolution(filename, kernel->g, *(kernel->pManager));
 
 		// Save the errors
 		std::stringstream fname2;
-		fname2 << "ToroTest_" << Ntest << ".dat";
+		fname2 << "Rarefaction_test.dat";
 		TestsUtility::WriteErrors(fname2.str(), errors, kernel->g, *(kernel->pManager));
 
 		// Finalize kernel
@@ -482,15 +418,14 @@ namespace ToroTests
 
 		return errors;
 	};
-	
+
 	void RunExperiment(int argc, char *argv[]) {
-		int Ntest = 3;	// Toro test number
-		int Nx = 1600;
+		int Nx = 6400;
 
 		// Reconstruction type
-		//Reconstruction RecType{ Reconstruction::PiecewiseConstant };
+		Reconstruction RecType{ Reconstruction::PiecewiseConstant };
 		//Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
-		Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
+		//Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
 
 		// RP solver
 		RPSolver rSolver{ RPSolver::GodunovSolver };
@@ -498,11 +433,11 @@ namespace ToroTests
 
 		// collect all errors in file
 		std::vector<double> err;
-		err = RunSingleExperiment(argc, argv, Ntest, Nx, RecType, rSolver);
+		err = RunSingleExperiment(argc, argv, Nx, RecType, rSolver);
 
 		return;
 	};
-	
+
 }	//end of namespace area
 
 

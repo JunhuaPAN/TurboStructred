@@ -6,9 +6,10 @@
 int main(int argc, char *argv[])
 {
 	//main function
+	RarefactionTest::RunExperiment(argc, argv);
 	//RunSODTestRoe1D(argc, argv);
 	//RunContactDisconTest1D(argc, argv);
-	ToroTests::RunExperiment(argc, argv);
+	//ToroTests::RunExperiment(argc, argv);
 	//ContactDisTest::RunExperiment(argc, argv);
 	//ShockWaveTest::RunExperiment(argc, argv);
 	//AleshinExp::Run3DExperiment(argc, argv);
