@@ -257,6 +257,9 @@
     <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\stdafx.h">
       <Filter>Header Files\ExternalLibs\Alglib</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\Tests\1DTests\RarefactionTest.h">
+      <Filter>Header Files\Tests\1DTests</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />

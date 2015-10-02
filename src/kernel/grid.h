@@ -4,7 +4,7 @@
 #include "KernelConfiguration.h"
 #include <cassert>
 
-//Calculation kernel
+// Calculation kernel
 class Grid {
 public:
 	int nDims;
@@ -229,6 +229,69 @@ public:
 		if (nDims < 3) hz[0] = 1.0;
 	}
 
+};
+
+// Create new grid as part of initial grid
+Grid CreateSubGrid(int iMin, int iMax, int jMin,int jMax, int kMin, int kMax, Grid& g) {
+	Grid res;
+
+	// define min and max indexes of subgrid in all directions 
+	// X first
+	if ((iMin > g.iMax) || (iMax < g.iMin)) {
+		// no intersection case
+		res.nlocalX = 0;
+		res.iMin = g.iMin;
+		g.iMax = g.iMin - 1;
+	} else {
+		// default (subgrid includes full grid g )
+		res.iMin = g.iMin;
+		res.iMax = g.iMax;
+		if ((iMin >= g.iMin) && (iMin <= g.iMax)) res.iMin = iMin;
+		if ((iMax >= g.iMin) && (iMax <= g.iMax)) res.iMax = iMax;
+		res.nlocalX = res.iMax - res.iMin + 1;
+	};
+
+	// Y first
+	if ((jMin > g.jMax) || (jMax < g.jMin)) {
+		// no intersection case
+		res.nlocalY = 0;
+		res.jMin = g.jMin;
+		g.jMax = g.jMin - 1;
+	}
+	else {
+		// default (subgrid includes full grid g )
+		res.jMin = g.jMin;
+		res.jMax = g.jMax;
+		if ((jMin >= g.jMin) && (jMin <= g.jMax)) res.jMin = jMin;
+		if ((jMax >= g.jMin) && (jMax <= g.jMax)) res.jMax = jMax;
+		res.nlocalY = res.jMax - res.jMin + 1;
+	};
+	
+	// Z first
+	if ((kMin > g.kMax) || (kMax < g.kMin)) {
+		// no intersection case
+		res.nlocalZ = 0;
+		res.kMin = g.kMin;
+		g.kMax = g.kMin - 1;
+	}
+	else {
+		// default (subgrid includes full grid g )
+		res.kMin = g.kMin;
+		res.kMax = g.kMax;
+		if ((kMin >= g.kMin) && (kMin <= g.kMax)) res.kMin = kMin;
+		if ((kMax >= g.kMin) && (kMax <= g.kMax)) res.kMax = kMax;
+		res.nlocalZ = res.kMax - res.kMin + 1;
+	};
+	
+	// define coordinates and space steps
+	res.CoordinateX = g.CoordinateX; //Cell center coordinates			// grid par
+	res.CoordinateY = g.CoordinateY; //Cell center coordinates			// grid par
+	res.CoordinateZ = g.CoordinateZ; //Cell center coordinates			// grid par
+	res.hx = g.hx;
+	res.hy = g.hy;
+	res.hz = g.hz;
+
+	return res;
 };
 
 

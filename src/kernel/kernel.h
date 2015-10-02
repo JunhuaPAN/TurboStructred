@@ -970,10 +970,11 @@ public:
 				ofs << "\"" << "e" << "\" ";
 				ofs << std::endl;
 				ofs.close();
-			} else {        
-				//Wait for previous process to finish writing
-				pManager->Wait(rank - 1);
 			};
+			pManager->Barrier();
+
+			//Wait for previous process to finish writing
+			if (!pManager->IsFirstNode()) pManager->Wait(rank - 1);
       
 			//Reopen file for writing
 			std::ofstream ofs(fname, std::ios_base::app);

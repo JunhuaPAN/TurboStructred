@@ -14,7 +14,7 @@ namespace TestsUtility{
 	std::valarray<double> exact_solution;
 	
 	// Error norm functions
-	std::vector<double> ComputeL2Error(std::valarray<double>& comp_val, Grid& g, ParallelManager& par) {
+	std::vector<double> ComputeL2Error(std::valarray<double>& comp_val, Grid& g, ParallelManager& par, double normVal = 1.0) {
 		std::vector<double> res_temp(nVar, 0);
 		std::vector<double> res(nVar, 0);
 		for (int i = 0; i < comp_val.size(); i++) {
@@ -24,10 +24,11 @@ namespace TestsUtility{
 		par.Barrier();
 		for (int i = 0; i < nVar; i++) res[i] = par.Sum(res_temp[i]);
 		for (int i = 0; i < nVar; i++) res[i] = sqrt(res[i]);
+		for (int i = 0; i < nVar; i++) res[i] /= normVal;
 		return res;
 	};
 
-	std::vector<double> ComputeL1Error(std::valarray<double>& comp_val, Grid& g, ParallelManager& par) {
+	std::vector<double> ComputeL1Error(std::valarray<double>& comp_val, Grid& g, ParallelManager& par, double normVal = 1.0) {
 		std::vector<double> res_temp(nVar, 0);
 		std::vector<double> res(nVar, 0);
 		for (int i = 0; i < comp_val.size(); i++) {
@@ -36,6 +37,8 @@ namespace TestsUtility{
 		};
 		par.Barrier();
 		for (int i = 0; i < nVar; i++) res[i] = par.Sum(res_temp[i]);
+		for (int i = 0; i < nVar; i++) res[i] /= normVal;
+
 		return res;
 	};
 
