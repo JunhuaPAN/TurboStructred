@@ -39,12 +39,13 @@ namespace ContactDisTest
 		conf.Gamma = TestsUtility::gamma1 + 1;
 
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-		conf.ReconstructionType = KernelConfiguration::Reconstruction::PiecewiseConstant;
-		//conf.ReconstructionType = KernelConfiguration::Reconstruction::ENO2PointsStencil;
+
 		conf.DummyLayerSize = 1;
 		conf.methodConfiguration.CFL = 0.45;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
+		conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
+		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 
 		conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
 		conf.xLeftBoundary.Gamma = 1.4;
@@ -92,7 +93,7 @@ namespace ContactDisTest
 	};
 
 	// Collision of two media
-	std::vector<double> RunSingleExperiment(int argc, char *argv[], int Nx, double MaxTime, KernelConfiguration::Reconstruction RecType) {
+	std::vector<double> RunSingleExperiment(int argc, char *argv[], int Nx, double MaxTime, Reconstruction RecType, RPSolver rpSolver) {
 		// Result
 		std::vector<double> errors;
 
@@ -101,22 +102,23 @@ namespace ContactDisTest
 		ShockTubeParameters params = DefaultState();
 		conf.nX = Nx;
 		conf.MaxTime = MaxTime;
-		conf.ReconstructionType = RecType;
+		conf.methodConfiguration.ReconstructionType = RecType;
+		conf.methodConfiguration.RiemannProblemSolver = rpSolver;
 
 		// Solution file
 		std::ostringstream fname;
 
 		// Init kernel
 		std::unique_ptr<Kernel> kernel;
-		if (conf.ReconstructionType == KernelConfiguration::Reconstruction::PiecewiseConstant) {
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 			fname << "PWConstant";
 		};
-		if (conf.ReconstructionType == KernelConfiguration::Reconstruction::ENO2PointsStencil) {
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 			fname << "ENO2";
 		};
-		if (conf.ReconstructionType == KernelConfiguration::Reconstruction::WENO2PointsStencil) {
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
 			fname << "WENO2";
 		};
@@ -182,6 +184,10 @@ namespace ContactDisTest
 		kernel->SaveSolution(filename);
 		TestsUtility::SaveExactSolution(filename, kernel->g, *(kernel->pManager));
 
+		// Save the errors
+		std::string fname2("Test-ContactDiscontinuity.dat");
+		TestsUtility::WriteErrors(fname2, errors, kernel->g, *(kernel->pManager));
+
 		// Finalize kernel
 		kernel->Finalize();
 
@@ -189,29 +195,22 @@ namespace ContactDisTest
 	};
 
 	void RunExperiment(int argc, char *argv[]) {
-		int Nx = 1600;
+		int Nx = 400;
 		double MaxTime = 0.2;
-		//KernelConfiguration::Reconstruction RecType = KernelConfiguration::Reconstruction::PiecewiseConstant;
-		//KernelConfiguration::Reconstruction RecType = KernelConfiguration::Reconstruction::ENO2PointsStencil;
-		KernelConfiguration::Reconstruction RecType = KernelConfiguration::Reconstruction::WENO2PointsStencil;
+
+		// Reconstruction type
+		//Reconstruction RecType{ Reconstruction::PiecewiseConstant };
+		//Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
+		Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
+
+		// RP solver
+		RPSolver rSolver{ RPSolver::GodunovSolver };
 
 		// collect all errors in file
 		std::vector<double> err;
-		//ofs << R"(VARIABLES = "Nx" "L2_rho" "L2_rhou" "L2_rhoE" "L1_rho" "L1_rhou" "L1_rhoE")" << std::endl;
-		err = RunSingleExperiment(argc, argv, Nx, MaxTime, RecType);
+		err = RunSingleExperiment(argc, argv, Nx, MaxTime, RecType, rSolver);
 
-		// write result in file
-		std::string fname("Test-ContactDiscontinuity.dat");
-		std::ofstream ofs(fname, std::ios_base::app);
-		ofs << Nx << ' ';
-		ofs << err[0] << ' ';
-		ofs << err[1] << ' ';
-		ofs << err[4] << ' ';
-		ofs << err[TestsUtility::nVar] << ' ';
-		ofs << err[TestsUtility::nVar + 1] << ' ';
-		ofs << err[TestsUtility::nVar + 4] << ' ';
-		ofs << std::endl;
-		ofs.close();
+		return;
 	};
 
 }	//end of namespace area

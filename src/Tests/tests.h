@@ -4,10 +4,13 @@
 #include <iostream>
 #include <vector>
 #include <random>
+
+
 #include "kernel/kernel.h"
 #include "Methods/ExplicitRungeKuttaFVM.h"
 #include "Tests/1DTests/testlist.h"
 #include "Tests/UncomTests/Aleshin1987Modeling.h"
+#include "RiemannSolvers/RiemannSolversList.h"
 
 #define PI 3.14159265359
 
@@ -109,6 +112,8 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 	conf.DummyLayerSize = 1;
 
 	conf.MaxTime = 0.2;
@@ -120,8 +125,9 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
-		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
 	};
 	kernel->Init(conf);
 
@@ -221,7 +227,7 @@ void RunSODTestReconstruction(int argc, char *argv[]) {
 void RunContactDisconTest1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 200;
+	conf.nX = 400;
 	conf.LX = 1.0;
 	conf.isPeriodicX = false;
 	conf.isUniformAlongX = true;
@@ -231,16 +237,18 @@ void RunContactDisconTest1D(int argc, char *argv[]) {
 
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 	conf.DummyLayerSize = 1;
-	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.CFL = 0.35;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::GodunovSolver;
 
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
 	conf.xLeftBoundary.Gamma = 1.4;
 	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
 	conf.xRightBoundary.Gamma = 1.4;
 
-	conf.MaxTime = 0.2;
+	conf.MaxTime = 0.3;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionSnapshotTime = 0.1;
 	conf.SaveSolutionSnapshotIterations = 0;
@@ -249,21 +257,44 @@ void RunContactDisconTest1D(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
-		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
 	};
 	kernel->Init(conf);
 
 	// initial conditions
 	ShockTubeParameters params;
 	params.gammaL = params.gammaR = 1.4;
-	params.roL = 2.0;
+	params.roL = 1.0;
 	params.PL = 1.0;
-	params.uL = { 0, 0, 0 };
-	params.roR = 1.0;
+	params.uL = { 1, 0, 0 };
+	params.roR = 0.125;
 	params.PR = params.PL;
 	params.uR = params.uL;
-	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.3, params);
+	// Initial Conditions
+	auto initD = [&conf, &params](Vector r) {
+		double ro, u, p;
+
+		if (r.x < 0.5 * conf.LX) {
+			ro = params.roL;
+			u = params.uL.x;
+			p = params.PL;
+		}
+		else {
+			ro = params.roR;
+			u = params.uR.x;
+			p = params.PR;
+		};
+
+		std::vector<double> res(5);
+		res[0] = ro;
+		res[1] = ro * u;
+		res[2] = 0;
+		res[3] = 0;
+		res[4] = p / (conf.Gamma - 1.0) + 0.5 * ro * u * u;
+		return res;
+	};
 	kernel->SetInitialConditions(initD);
 
 	//save solution
@@ -1049,7 +1080,6 @@ void RunRTI2D(int argc, char *argv[]) {
 	// Finalize kernel
 	kernel->Finalize();
 };
-
 
 
 #endif

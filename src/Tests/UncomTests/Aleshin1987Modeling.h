@@ -5,7 +5,7 @@
 #include <iostream>
 #include <vector>
 #include "math.h"
-#include "kernel/kernel.h";
+#include "kernel.h";
 #include "Methods/ExplicitRungeKuttaFVM.h"
 #include "Sensors/Sensors.h"
 

@@ -4,7 +4,7 @@
 #include <valarray>
 #include <vector>
 #include "utility/Vector.h"
-#include <Reconstruction/IReconstruction.h>
+#include "Reconstruction/IReconstruction.h"
 
 
 //Reconstruction by piecewise constant approximation
@@ -31,24 +31,12 @@ public:
 	};
 
 	virtual void RefreshPosition(Vector point) override {};
-
-	//copy semantics
-	//PiecewiseConstant(const PiecewiseConstant& element) : values_ (element.values_) {}; // copy constructor 	
-	//PiecewiseConstant& operator=(const PiecewiseConstant& element) { //copy assignment operator
-	//	values_ = element.values_;
-	//	return *this;
-	//};
-
-	//move semantics
-	//PiecewiseConstant& operator=(PiecewiseConstant&& element) { //move assignment operator
-	//	return *element;
-	//};
 };
+
 
 template<>
 PiecewiseConstant ComputeReconstruction<PiecewiseConstant>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
 	return std::move(PiecewiseConstant(value));
 };
-
 
 #endif

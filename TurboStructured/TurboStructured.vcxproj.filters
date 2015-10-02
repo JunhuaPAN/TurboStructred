@@ -28,9 +28,6 @@
     <Filter Include="Header Files\Tests">
       <UniqueIdentifier>{a7f52c3f-86bc-416d-92b5-a1c5bbb7f531}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\Methods\GeneralEosMethods">
-      <UniqueIdentifier>{85cc7d2e-2897-420b-96e8-ed685a0ca09d}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\EquationsOfState">
       <UniqueIdentifier>{25ec4059-96a0-497e-a0c6-d20e801d511b}</UniqueIdentifier>
     </Filter>
@@ -49,10 +46,55 @@
     <Filter Include="Header Files\Tests\1DTests">
       <UniqueIdentifier>{00bda88e-83ee-491f-93ba-9508180baafc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\ExternalLibs">
+      <UniqueIdentifier>{a539b41f-04ff-4357-b0ac-6207e39891e7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\ExternalLibs\Alglib">
+      <UniqueIdentifier>{9b50395e-48c8-4457-b1dc-4c24e382735a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\alglibinternal.cpp">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\alglibmisc.cpp">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\ap.cpp">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\dataanalysis.cpp">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\diffequations.cpp">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\fasttransforms.cpp">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\integration.cpp">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\interpolation.cpp">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\linalg.cpp">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\optimization.cpp">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\solvers.cpp">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\specialfunctions.cpp">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\statistics.cpp">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -83,9 +125,6 @@
     <ClInclude Include="..\src\Methods\ExplicitRungeKuttaFVM.h">
       <Filter>Header Files\Methods</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Methods\HybridFVM.h">
-      <Filter>Header Files\Methods</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\Methods\MethodConfiguration.h">
       <Filter>Header Files\Methods</Filter>
     </ClInclude>
@@ -101,9 +140,6 @@
     <ClInclude Include="..\src\tests\tests.h">
       <Filter>Header Files\Tests</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Methods\GeneralEosMethods\HybridGeneralEOSOnePhase.h">
-      <Filter>Header Files\Methods\GeneralEosMethods</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\EquationsOfState\generalEOS.h">
       <Filter>Header Files\EquationsOfState</Filter>
     </ClInclude>
@@ -113,20 +149,11 @@
     <ClInclude Include="..\src\EquationsOfState\EquationsOfState.h">
       <Filter>Header Files\EquationsOfState</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Methods\GeneralEosMethods\HybridBarotropicEOSOnePhase.h">
-      <Filter>Header Files\Methods\GeneralEosMethods</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\BoundaryConditions\BCGeneralBarotropic.h">
-      <Filter>Header Files\BoundaryConditions</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\EquationsOfState\VOFMixture\BarotropicTwoPhaseEOS.h">
       <Filter>Header Files\EquationsOfState\VOFMixture</Filter>
     </ClInclude>
     <ClInclude Include="..\src\EquationsOfState\BarotropicEOS.h">
       <Filter>Header Files\EquationsOfState</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\Methods\GeneralEosMethods\HybridBarotropicEOSTwoPhase.h">
-      <Filter>Header Files\Methods\GeneralEosMethods</Filter>
     </ClInclude>
     <ClInclude Include="..\src\Sensors\Sensor.h">
       <Filter>Header Files\Sensors</Filter>
@@ -184,6 +211,51 @@
     </ClInclude>
     <ClInclude Include="..\src\Tests\1DTests\TestsUtility.h">
       <Filter>Header Files\Tests\1DTests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\RiemannSolvers\GodunovSolverPerfectGasEOS.h">
+      <Filter>Header Files\RiemannSolvers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\alglibinternal.h">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\alglibmisc.h">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\ap.h">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\dataanalysis.h">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\diffequations.h">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\fasttransforms.h">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\integration.h">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\interpolation.h">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\linalg.h">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\optimization.h">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\solvers.h">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\specialfunctions.h">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\statistics.h">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\stdafx.h">
+      <Filter>Header Files\ExternalLibs\Alglib</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

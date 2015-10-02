@@ -19,11 +19,37 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\alglibinternal.cpp" />
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\alglibmisc.cpp" />
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\ap.cpp" />
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\dataanalysis.cpp" />
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\diffequations.cpp" />
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\fasttransforms.cpp" />
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\integration.cpp" />
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\interpolation.cpp" />
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\linalg.cpp" />
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\optimization.cpp" />
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\solvers.cpp" />
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\specialfunctions.cpp" />
+    <ClCompile Include="..\libs\alglib-3.8.0.cpp\cpp\src\statistics.cpp" />
     <ClCompile Include="..\src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\alglibinternal.h" />
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\alglibmisc.h" />
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\ap.h" />
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\dataanalysis.h" />
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\diffequations.h" />
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\fasttransforms.h" />
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\integration.h" />
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\interpolation.h" />
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\linalg.h" />
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\optimization.h" />
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\solvers.h" />
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\specialfunctions.h" />
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\statistics.h" />
+    <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\stdafx.h" />
     <ClInclude Include="..\src\BoundaryConditions\BCGeneral.h" />
-    <ClInclude Include="..\src\BoundaryConditions\BCGeneralBarotropic.h" />
     <ClInclude Include="..\src\BoundaryConditions\IBoundaryCondition.h" />
     <ClInclude Include="..\src\BoundaryConditions\BoundaryConditionConfiguration.h" />
     <ClInclude Include="..\src\EquationsOfState\BarotropicEOS.h" />
@@ -36,10 +62,6 @@
     <ClInclude Include="..\src\kernel\KernelConfiguration.h" />
     <ClInclude Include="..\src\kernel\ParallelManager.h" />
     <ClInclude Include="..\src\Methods\ExplicitRungeKuttaFVM.h" />
-    <ClInclude Include="..\src\Methods\GeneralEosMethods\HybridBarotropicEOSTwoPhase.h" />
-    <ClInclude Include="..\src\Methods\GeneralEosMethods\HybridBarotropicEOSOnePhase.h" />
-    <ClInclude Include="..\src\Methods\GeneralEosMethods\HybridGeneralEOSOnePhase.h" />
-    <ClInclude Include="..\src\Methods\HybridFVM.h" />
     <ClInclude Include="..\src\Methods\MethodConfiguration.h" />
     <ClInclude Include="..\src\Reconstruction\ENO3PointsStencil.h" />
     <ClInclude Include="..\src\Reconstruction\IReconstruction.h" />
@@ -47,6 +69,7 @@
     <ClInclude Include="..\src\Reconstruction\ReconstructorsList.h" />
     <ClInclude Include="..\src\Reconstruction\ENO2PointsStencil.h" />
     <ClInclude Include="..\src\Reconstruction\WENO2PointsStencil.h" />
+    <ClInclude Include="..\src\RiemannSolvers\GodunovSolverPerfectGasEOS.h" />
     <ClInclude Include="..\src\RiemannSolvers\RiemannSolversList.h" />
     <ClInclude Include="..\src\RiemannSolvers\RoeSolverPerfectGasEOS.h" />
     <ClInclude Include="..\src\RiemannSolvers\RiemannSolver.h" />
@@ -131,7 +154,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\libs\MicrosoftMPI\Inc;..\libs\eigen;..\libs\cgnslib_3.1.4\src;..\src;..\src\kernel;..\src\utility;..\src\BoundaryConditions;..\src\RiemannSolvers;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\libs\MicrosoftMPI\Inc;..\libs\eigen;..\libs\cgnslib_3.1.4\src;..\src;..\src\kernel;..\src\utility;..\src\BoundaryConditions;..\src\RiemannSolvers;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\include;..\libs\alglib-3.8.0.cpp\cpp\src</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -159,7 +182,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\libs\MicrosoftMPI\Inc;..\libs\eigen;..\libs\cgnslib_3.1.4\src;..\src;..\src\kernel;..\src\utility;..\src\BoundaryConditions;..\src\RiemannSolvers;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\libs\MicrosoftMPI\Inc;..\libs\eigen;..\libs\cgnslib_3.1.4\src;..\src;..\src\kernel;..\src\utility;..\src\BoundaryConditions;..\src\RiemannSolvers;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\include;..\libs\alglib-3.8.0.cpp\cpp\src</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
