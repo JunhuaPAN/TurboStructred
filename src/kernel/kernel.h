@@ -950,7 +950,7 @@ public:
 		//Tecplot version    
 		int rank = pManager->getRank();
 
-		//1D tecplot style
+		//	1D tecplot style
 		if(nDims == 1) {
 
 			// Open the file
@@ -975,16 +975,10 @@ public:
 
 			//Wait for previous process to finish writing
 			if (!pManager->IsFirstNode()) pManager->Wait(rank - 1);
-      
+
 			//Reopen file for writing
 			std::ofstream ofs(fname, std::ios_base::app);
 			ofs << std::scientific;
-        
-			//	std::cout << "rank = " << rank << ", iMin = " << iMin << ", iMax = " << iMax << std::endl; //MPI DebugMessage
-			//	std::cout << "rank = " << rank << " CoordinateX {" << std::endl;
-			//	int counter{ 0 };
-			//	for (auto x : CoordinateX) std::cout << "x[" << counter++ << "] = " << x << std::endl; //MPI DebugMessage        
-			//	std::cout << "}" << std::endl << std::flush;
 
 			//Solution
 			for (int i = g.iMin; i <= g.iMax; i++) {
@@ -998,8 +992,6 @@ public:
 				double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
 				double P = (gamma - 1.0) * ro * e;
 
-				//std::cout << "rank = " << rank << ", ro = " << ro << ", i = " << i << std::endl << std::flush; //MPI DebugMessage
-
 				//Write to file
 				ofs << x << " ";
 				ofs << ro << " ";
@@ -1010,15 +1002,17 @@ public:
 				ofs << e << " ";
 				ofs << std::endl;
 			};	//	end cycle
+			ofs.close();
 
-			//Signal to next process to begin writing
-			if (rank != pManager->getProcessorNumber() - 1) {
-			pManager->Signal(rank + 1);
+			// Signal to next process to begin writing
+			if (!pManager->IsLastNode()) {
+				pManager->Signal(rank + 1);
 			};
 
-		//Syncronize
-		pManager->Barrier();			
-		return;
+			//Syncronize
+			pManager->Barrier();
+
+			return;
 		};	//end if
 
 		//2D tecplot style

@@ -241,7 +241,7 @@ Grid CreateSubGrid(int iMin, int iMax, int jMin,int jMax, int kMin, int kMax, Gr
 		// no intersection case
 		res.nlocalX = 0;
 		res.iMin = g.iMin;
-		g.iMax = g.iMin - 1;
+		res.iMax = g.iMin - 1;
 	} else {
 		// default (subgrid includes full grid g )
 		res.iMin = g.iMin;
@@ -256,7 +256,7 @@ Grid CreateSubGrid(int iMin, int iMax, int jMin,int jMax, int kMin, int kMax, Gr
 		// no intersection case
 		res.nlocalY = 0;
 		res.jMin = g.jMin;
-		g.jMax = g.jMin - 1;
+		res.jMax = g.jMin - 1;
 	}
 	else {
 		// default (subgrid includes full grid g )
@@ -272,7 +272,7 @@ Grid CreateSubGrid(int iMin, int iMax, int jMin,int jMax, int kMin, int kMax, Gr
 		// no intersection case
 		res.nlocalZ = 0;
 		res.kMin = g.kMin;
-		g.kMax = g.kMin - 1;
+		res.kMax = g.kMin - 1;
 	}
 	else {
 		// default (subgrid includes full grid g )

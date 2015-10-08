@@ -67,7 +67,7 @@ namespace ToroTests
 		conf.DummyLayerSize = 1;
 		conf.methodConfiguration.CFL = 0.45;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
-		conf.methodConfiguration.Eps = 0.05;
+		conf.methodConfiguration.Eps = 0.0;
 		conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
 		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 
@@ -484,13 +484,13 @@ namespace ToroTests
 	};
 	
 	void RunExperiment(int argc, char *argv[]) {
-		int Ntest = 3;	// Toro test number
-		int Nx = 1600;
+		int Ntest = 2;	// Toro test number
+		int Nx = 400;
 
 		// Reconstruction type
-		//Reconstruction RecType{ Reconstruction::PiecewiseConstant };
+		Reconstruction RecType{ Reconstruction::PiecewiseConstant };
 		//Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
-		Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
+		//Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
 
 		// RP solver
 		RPSolver rSolver{ RPSolver::GodunovSolver };

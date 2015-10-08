@@ -420,7 +420,7 @@ namespace RarefactionTest
 	};
 
 	void RunExperiment(int argc, char *argv[]) {
-		int Nx = 6400;
+		int Nx = 400;
 
 		// Reconstruction type
 		Reconstruction RecType{ Reconstruction::PiecewiseConstant };
