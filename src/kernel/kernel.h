@@ -99,12 +99,113 @@ public:
 	};
 
 	inline std::valarray<double> ConservativeToPrimitive(double* vals) {
-		std::valarray<double> res{ vals[0], vals[1], vals[2], vals[3], vals[4] };
+		std::valarray<double> consV{ vals[0], vals[1], vals[2], vals[3], vals[4] };
+
+		double ro{ vals[0] };
+		Vector vel{ vals[1] / ro, vals[2] / ro, vals[3] / ro };
+		double E{ vals[4] / ro };
+		double K = 0.5 * vel * vel;
+		double c = sqrt(gamma * (gamma - 1) * (E - K));
+		double b1 = (gamma - 1.0) / (c * c);
+		double b2 = K * b1;
+
+		// compute left eigenvectors of Jacobian
+		std::valarray<double> L1{ b2 + vel.x / c, -(b1 * vel.x + 1.0 / c), -b1 * vel.y, -b1 * vel.z, b1 };
+		std::valarray<double> L2{ -2 * vel.y, 0.0, 2.0, 0.0, 0.0 };
+		std::valarray<double> L3{ -2 * vel.z, 0.0, 0.0, 2.0, 0.0 };
+		std::valarray<double> L4{ 2.0 * (1.0 - b2), 2.0 * b1 * vel.x, 2.0 * b1 * vel.y, 2.0 * b1 * vel.z, -2.0 * b1 };
+		std::valarray<double> L5{ b2 - vel.x / c, -(b1 * vel.x - 1.0 / c), -b1 * vel.y, -b1 * vel.z, b1 };
+
+		// compute chracteristic valiables
+		std::valarray<double> res(5);
+		res[0] = 0.5 * (L1 * consV).sum();
+		res[1] = 0.5 * (L2 * consV).sum();
+		res[2] = 0.5 * (L3 * consV).sum();
+		res[3] = 0.5 * (L4 * consV).sum();
+		res[4] = 0.5 * (L5 * consV).sum();
+		
 		return std::move(res);
 	};
 	
-	inline std::valarray<double> PrimitiveToConservative(std::valarray<double> &vals) {
-		std::valarray<double> res = vals;
+	inline std::valarray<double> PrimitiveToConservative(std::valarray<double> &vals, double* cvals) {
+		
+		// transition to characterisctic variables
+		double ro{ cvals[0] };
+		Vector vel{ cvals[1] / ro, cvals[2] / ro, cvals[3] / ro };
+		double E{ cvals[4] / ro };
+		double K = 0.5 * vel * vel;
+		double e = E - K;
+		double c = sqrt(gamma * (gamma - 1) * e);
+		double H = E + (gamma - 1) * e;
+
+		// compute rows of R matrix
+		std::valarray<double> R1{ 1.0, 0.0, 0.0, 1.0, 1.0 };
+		std::valarray<double> R2{ vel.x - c, 0.0, 0.0, vel.x, vel.x + c };
+		std::valarray<double> R3{ vel.y, 1.0, 0.0, vel.y, vel.y };
+		std::valarray<double> R4{ vel.z, 0.0, 1.0, vel.z, vel.z };
+		std::valarray<double> R5{ H - vel.x * c, vel.y, vel.z, K, H + vel.x * c };
+
+		// compute conservative variables
+		std::valarray<double> res(5);
+		res[0] = (R1 * vals).sum();
+		res[1] = (R2 * vals).sum();
+		res[2] = (R3 * vals).sum();
+		res[3] = (R4 * vals).sum();
+		res[4] = (R5 * vals).sum();
+
+		// return
+		return std::move(res);
+	};
+	inline std::valarray<double> ConservativeToPrimitiveTOREMOVE(double* vals) {
+		std::valarray<double> consV{ vals[0], vals[1], vals[2], vals[3], vals[4] };
+
+		// transition to characterisctic variables
+		double ro{ vals[0] };
+		Vector vel{ vals[1] / ro, vals[2] / ro, vals[3] / ro };
+		double E{ vals[4] / ro };
+		double K = 0.5 * vel * vel;
+		double e = E - K;
+		double c = sqrt(gamma * (gamma - 1) * e);
+		double H = E + (gamma - 1) * e;
+		double b1 = (gamma - 1.0) / (c * c);
+		double b2 = K * b1;
+
+		// compute rows of R matrix
+		std::valarray<double> R1{ 1.0, 0.0, 0.0, 1.0, 1.0 };
+		std::valarray<double> R2{ vel.x - c, 0.0, 0.0, vel.x, vel.x + c };
+		std::valarray<double> R3{ vel.y, 1.0, 0.0, vel.y, vel.y };
+		std::valarray<double> R4{ vel.z, 0.0, 1.0, vel.z, vel.z };
+		std::valarray<double> R5{ H - vel.x * c, vel.y, vel.z, K, H + vel.x * c };
+
+		// compute inverse matrix
+		std::valarray<double> L1{ b2 + vel.x / c, -(b1 * vel.x + 1.0 / c), -b1 * vel.y, -b1 * vel.z, b1 };
+		std::valarray<double> L2{ -2 * vel.y, 0.0, 2.0, 0.0, 0.0 };
+		std::valarray<double> L3{ -2 * vel.z, 0.0, 0.0, 2.0, 0.0 };
+		std::valarray<double> L4{ 2.0 * (1.0 - b2), 2.0 * b1 * vel.x, 2.0 * b1 * vel.y, 2.0 * b1 * vel.z, -2.0 * b1 };
+		std::valarray<double> L5{ b2 - vel.x / c, -(b1 * vel.x - 1.0 / c), -b1 * vel.y, -b1 * vel.z, b1 };
+
+		std::valarray<double> C1{ L1[0], L2[0], L3[0], L4[0], L5[0] };
+		std::valarray<double> C2{ L1[1], L2[1], L3[1], L4[1], L5[1] };
+		std::valarray<double> C3{ L1[2], L2[2], L3[2], L4[2], L5[2] };
+		std::valarray<double> C4{ L1[3], L2[3], L3[3], L4[3], L5[3] };
+		std::valarray<double> C5{ L1[4], L2[4], L3[4], L4[4], L5[4] };
+
+		std::valarray<double> diag(5);
+		diag[0] = 0.5 * (R1 * C1).sum();
+		diag[1] = 0.5 * (R2 * C2).sum();
+		diag[2] = 0.5 * (R3 * C3).sum();
+		diag[3] = 0.5 * (R4 * C4).sum();
+		diag[4] = 0.5 * (R5 * C5).sum();
+
+		// compute chracteristic valiables
+		std::valarray<double> res(5);
+		res[0] = 0.5 * (L1 * consV).sum();
+		res[1] = 0.5 * (L2 * consV).sum();
+		res[2] = 0.5 * (L3 * consV).sum();
+		res[3] = 0.5 * (L4 * consV).sum();
+		res[4] = 0.5 * (L5 * consV).sum();
+
+		// return
 		return std::move(res);
 	};
 

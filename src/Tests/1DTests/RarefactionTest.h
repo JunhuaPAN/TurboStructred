@@ -423,8 +423,8 @@ namespace RarefactionTest
 		int Nx = 400;
 
 		// Reconstruction type
-		Reconstruction RecType{ Reconstruction::PiecewiseConstant };
-		//Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
+		//Reconstruction RecType{ Reconstruction::PiecewiseConstant };
+		Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
 		//Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
 
 		// RP solver
