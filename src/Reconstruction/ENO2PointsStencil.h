@@ -9,60 +9,13 @@
 
 //Reconstruction by ENO interpolation procedure for 2 points stencil
 class ENO2PointsStencil : public IReconstruction {
-protected:
-	std::valarray<double> values_;
-	Vector center_;
-	std::valarray< Vector > gradients_;
-
 public:
-	//ENO second order reconstruction
-	virtual inline std::valarray<double> SampleSolution(Vector const& point) {
-		size_t&& size = gradients_.size();
-		std::valarray<double> res(size);
-
-		Vector dr = (point - center_);
-		for (auto i = 0; i < size; i++) res[i] = dr * gradients_[i];
-		return std::move(values_ + res);
-	};
 
 	//constructor
 	ENO2PointsStencil() { };
-	ENO2PointsStencil(std::valarray<double>& _values, Vector& _center, std::valarray< Vector >& _gradients) :
-		values_(_values),
-		center_(_center),
-		gradients_(_gradients) { };
+	ENO2PointsStencil(std::valarray<double>& _xR, std::valarray<double>& _xL, std::valarray<double>& _yR, std::valarray<double>& _yL, std::valarray<double>& _zR, std::valarray<double>& _zL, int _nDims, int _nValues) :
+	IReconstruction(_xR, _xL, _yR, _yL, _zR, _zL, _nDims, _nValues) {};
 
-	// Serrialization
-	static std::size_t GetBufferLenght(int nD, int nV) {
-		return nV + 3 + nV * 3;		// values.size + center.size + gradients.size
-	};
-	virtual std::valarray<double> Serialize() override {
-		std::vector<double> res;
-		for (auto& r : values_) res.push_back(r);
-		for (auto& r : static_cast<std::valarray<double>> (center_)) res.push_back(r);
-		for (auto& r : gradients_) {
-			res.push_back(r.x);
-			res.push_back(r.y);
-			res.push_back(r.z);
-		};
-		return std::valarray<double> {res.data(), res.size()};
-	};
-	virtual void Deserialize(const std::valarray<double>& _values) override {
-		values_ = {&_values[0], (size_t)nValues};
-		center_ = Vector(_values[nValues], _values[nValues + 1], _values[nValues + 2]);
-
-		gradients_.resize(nValues);
-		for (int i = 0; i < gradients_.size(); i++) {
-			gradients_[i] = Vector(_values[nValues + 3 * (i + 1)], _values[nValues + 3 * (i + 1) + 1], _values[nValues + 3 * (i + 1) + 2]);
-		};
-
-		return;
-	};
-
-	// Update center of Reconstruction if needed
-	virtual void RefreshPosition(Vector point) override {
-		center_ = point;
-	};
 };
 
 template<>
@@ -70,7 +23,7 @@ ENO2PointsStencil ComputeReconstruction<ENO2PointsStencil>(std::vector<std::vala
 	//compute Gradients
   size_t size = value.size();
 	std::valarray< Vector > gradients(size);
-	double grad_l, grad_r;		// spatial derivatives computed by two neighbour stencils
+	double grad_l, grad_r, grad;		// spatial derivatives computed by two neighbour stencils
 
 	//1D case
 	if (nDim == 1) {
@@ -103,7 +56,7 @@ ENO2PointsStencil ComputeReconstruction<ENO2PointsStencil>(std::vector<std::vala
 	};
 	
 	//ENO2PointsStencil res = ENO2PointsStencil(value, point, gradients);
-	return std::move(ENO2PointsStencil(value, point, gradients));
+	return std::move(ENO2PointsStencil());
 };
 
 

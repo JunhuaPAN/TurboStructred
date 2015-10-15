@@ -109,6 +109,7 @@ namespace AleshinExp {
 		conf.yRightBoundary.Gamma = conf.Gamma;
 
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 		conf.methodConfiguration.CFL = 0.4;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
@@ -123,8 +124,8 @@ namespace AleshinExp {
 		// init kernel
 		std::unique_ptr<Kernel> kernel;
 		if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
-			//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+			//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 		};
 		kernel->Init(conf);
 
