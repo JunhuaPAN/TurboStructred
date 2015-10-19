@@ -487,10 +487,10 @@ namespace ToroTests
 		int Ntest = 3;	// Toro test number
 		int Nx = 400;
 
-		// Reconstruction type
-		Reconstruction RecType{ Reconstruction::PiecewiseConstant };
-		//Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
-		//Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
+		//	Reconstruction type
+		//	Reconstruction RecType{ Reconstruction::PiecewiseConstant };
+		//	Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
+		Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
 
 		// RP solver
 		RPSolver rSolver{ RPSolver::RoePikeSolver };

@@ -49,19 +49,64 @@ public:
 		if (config.RiemannProblemSolver == RPSolver::RoePikeSolver) {
 			_riemannSolver = (std::unique_ptr<RiemannSolver>)std::move(new RoeSolverPerfectGasEOS(kernelConfig.Gamma, config.Eps, config.OperatingPresure));
 		};
-		if (config.RiemannProblemSolver == RPSolver::GodunovSolver)	{
+		if (config.RiemannProblemSolver == RPSolver::GodunovSolver) {
 			_riemannSolver = (std::unique_ptr<RiemannSolver>)std::move(new GodunovSolverPerfectGasEOS(kernelConfig.Gamma, config.Eps, config.OperatingPresure));
 		};
-		
+
 		//Allocate memory for values and residual
 		spectralRadius.resize(g.nCellsLocalAll);
 
 		// Resize our reconstructions array
 		reconstructions.resize(g.nlocalX + 2 * g.dummyCellLayersX);
-		for(auto& r : reconstructions) r.resize(g.nlocalY + 2 * g.dummyCellLayersY);
-		for(auto& r : reconstructions) {
+		for (auto& r : reconstructions) r.resize(g.nlocalY + 2 * g.dummyCellLayersY);
+		for (auto& r : reconstructions) {
 			for (auto& s : r) s.resize(g.nlocalZ + 2 * g.dummyCellLayersZ);
 		};
+
+		// pass N Dimensions and N values to dummy cells reconstructions
+		if(g.dummyCellLayersX > 0) {
+			int yLayer = 0;
+			int zLayer = 0;
+			if (g.dummyCellLayersY > 0) yLayer = 1;
+			if (g.dummyCellLayersZ > 0) zLayer = 1;
+			for (int j = yLayer; j <= g.jMax - g.jMin + yLayer; j++) {
+				for (int k = zLayer; k <= g.kMax - g.kMin + zLayer; k++) {
+					reconstructions[0][j][k].nValues = nVariables;
+					reconstructions[0][j][k].nDims = nDims;
+					reconstructions[g.iMax - g.iMin + 2][j][k].nValues = nVariables;
+					reconstructions[g.iMax - g.iMin + 2][j][k].nDims = nDims;
+				};
+			};
+		};
+		if(g.dummyCellLayersY > 0) {
+			int xLayer = 0;
+			int zLayer = 0;
+			if (g.dummyCellLayersX > 0) xLayer = 1;
+			if (g.dummyCellLayersZ > 0) zLayer = 1;
+			for (int i = xLayer; i <= g.iMax - g.iMin + xLayer; i++) {
+				for (int k = zLayer; k <= g.kMax - g.kMin + zLayer; k++) {
+					reconstructions[i][0][k].nValues = nVariables;
+					reconstructions[i][0][k].nDims = nDims;
+					reconstructions[i][g.jMax - g.jMin + 2][k].nValues = nVariables;
+					reconstructions[i][g.jMax - g.jMin + 2][k].nDims = nDims;
+				};
+			};
+		};
+		if(g.dummyCellLayersZ > 0) {
+			int xLayer = 0;
+			int yLayer = 0;
+			if (g.dummyCellLayersX > 0) xLayer = 1;
+			if (g.dummyCellLayersY > 0) yLayer = 1;
+			for (int i = xLayer; i <= g.iMax - g.iMin + xLayer; i++) {
+				for (int j = yLayer; j <= g.jMax - g.jMin + yLayer; j++) {
+					reconstructions[i][j][0].nValues = nVariables;
+					reconstructions[i][j][0].nDims = nDims;
+					reconstructions[i][j][g.kMax - g.kMin + 2].nValues = nVariables;
+					reconstructions[i][j][g.kMax - g.kMin + 2].nDims = nDims;
+				};
+			};
+		};
+
 
 		if (DebugOutputEnabled) {
 			std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";
@@ -1048,6 +1093,7 @@ public:
 						UR = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(CubeFaces::xL), getCellValues(i, j, k));
 					};
 
+					// TO DO DELETE
 					std::valarray<double> X = PrimitiveToConservative(ConservativeToPrimitive(getCellValues(i, j, k)), getCellValues(i, j, k));
 					double* x = getCellValues(i, j, k);
 					X -= std::valarray<double> { x[0], x[1], x[2], x[3], x[4] };

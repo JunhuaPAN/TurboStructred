@@ -13,50 +13,72 @@ public:
 
 	//constructor
 	ENO2PointsStencil() { };
-	ENO2PointsStencil(std::valarray<double>& _xR, std::valarray<double>& _xL, std::valarray<double>& _yR, std::valarray<double>& _yL, std::valarray<double>& _zR, std::valarray<double>& _zL, int _nDims, int _nValues) :
-	IReconstruction(_xR, _xL, _yR, _yL, _zR, _zL, _nDims, _nValues) {};
+	ENO2PointsStencil(CellReconstruction& _recons, int _nDims, int _nValues) :
+	IReconstruction(_recons, _nDims, _nValues) {};
 
 };
 
 template<>
 ENO2PointsStencil ComputeReconstruction<ENO2PointsStencil>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
-	//compute Gradients
-  size_t size = value.size();
+	// compute Gradients
+	size_t size = value.size();
 	std::valarray< Vector > gradients(size);
 	double grad_l, grad_r, grad;		// spatial derivatives computed by two neighbour stencils
+	CellReconstruction recons;
 
 	//1D case
-	if (nDim == 1) {
-		for (auto i = 0; i < size; i++) {
-			grad_l = (value[i] - values[0][i]) / (point.x - points[0].x);
-			grad_r = (values[1][i] - value[i]) / (points[1].x - point.x);
-			if (std::abs(grad_l) < std::abs(grad_r)) gradients[i] = Vector(grad_l, 0, 0);
-			else gradients[i] = Vector(grad_r, 0, 0);
-		};
+	recons.xR.resize(size);
+	recons.xL.resize(size);
+	double deltaL = point.x - points[0].x;
+	double deltaR = points[1].x - point.x;
+	double delta_x = deltaL * deltaR / (deltaL + deltaR);
+
+	// ENO procedure
+	for (auto i = 0; i < size; i++) {
+		grad_l = (value[i] - values[0][i]) / deltaL;
+		grad_r = (values[1][i] - value[i]) / deltaR;
+		if (std::abs(grad_l) < std::abs(grad_r)) grad = grad_l;
+		else grad = grad_r;
+		recons.xR[i] = value[i] + grad * delta_x;
+		recons.xL[i] = value[i] - grad * delta_x;
 	};
 
 	//2D case
-	if (nDim == 2) {
+	if (nDim > 1) {
+		recons.yR.resize(size);
+		recons.yL.resize(size);
+		double deltaL = point.y - points[2].y;
+		double deltaR = points[3].y - point.y;
+		double delta_y = deltaL * deltaR / (deltaL + deltaR);
+
 		for (auto i = 0; i < size; i++) {
-			grad_l = (value[i] - values[2][i]) / (point.y - points[2].y);
-			grad_r = (values[3][i] - value[i]) / (points[3].y - point.y);
-			if (std::abs(grad_l) < std::abs(grad_r)) gradients[i] = gradients[i] + Vector(0, grad_l, 0);
-			else gradients[i] = gradients[i] + Vector(0, grad_r, 0);
+			grad_l = (value[i] - values[2][i]) / deltaL;
+			grad_r = (values[3][i] - value[i]) / deltaR;
+			if (std::abs(grad_l) < std::abs(grad_r)) grad = grad_l;
+			else grad = grad_r;
+			recons.yR[i] = value[i] + grad * delta_y;
+			recons.yL[i] = value[i] - grad * delta_y;
 		};
 	};
 
 	//3D case
-	if (nDim == 3) {
+	if (nDim > 2) {
+		recons.zR.resize(size);
+		recons.zL.resize(size);
+		double deltaL = point.z - points[4].z;
+		double deltaR = points[5].z - point.z;
+		double delta_z = deltaL * deltaR / (deltaL + deltaR);
 		for (int i = 0; i < size; i++) {
-			grad_l = (value[i] - values[4][i]) / (point.z - points[4].z);
-			grad_r = (values[5][i] - value[i]) / (points[5].z - point.z);
-			if (std::abs(grad_l) < std::abs(grad_r)) gradients[i] = gradients[i] + Vector(0, 0, grad_l);
-			else gradients[i] = gradients[i] + Vector(0, 0, grad_r);
+			grad_l = (value[i] - values[4][i]) / deltaL;
+			grad_r = (values[5][i] - value[i]) / deltaR;
+			if (std::abs(grad_l) < std::abs(grad_r)) grad = grad_l;
+			else grad = grad_r;
+			recons.zR[i] = value[i] + grad * delta_z;
+			recons.zL[i] = value[i] - grad * delta_z;
 		};
 	};
 	
-	//ENO2PointsStencil res = ENO2PointsStencil(value, point, gradients);
-	return std::move(ENO2PointsStencil());
+	return std::move(ENO2PointsStencil(recons, nDim, size));
 };
 
 

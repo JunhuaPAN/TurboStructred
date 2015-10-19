@@ -734,11 +734,12 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	conf.methodConfiguration.CFL = 0.25;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::GodunovSolver;
 	conf.DummyLayerSize = 1;
 
 	conf.MaxTime = 1.0;
 	conf.MaxIteration = 10000000;
-	conf.SaveSolutionSnapshotTime = 0.05;
+	conf.SaveSolutionSnapshotTime = 0.005;
 	conf.SaveSolutionSnapshotIterations = 0;
 	conf.ResidualOutputIterations = 100;
 
@@ -761,7 +762,7 @@ void RunPoiseuille2DFVM(int argc, char *argv[]) {
 	std::normal_distribution<double> normal_dist(0.0, sdv);  // N(mean, stddeviation)
 	
 	auto initD = [ro_init, Pave, &conf, &normal_dist, &mt](Vector r) {
-		double u = 0.54 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
+		double u = 0.6 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
 		double v = 0.0;// + normal_dist(mt);
 		double w = 0.0;
 
@@ -802,12 +803,18 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	double sigma = 0.14;		// absolute value of dPdx
 	double ro_init = 1.225;		//Air
 	double Pave = 1.0e5;		//average pressure
+	
+	//Test parameters
+	ro_init = 1.0;
+	Pave = 20.0;
+	sigma = 1.0;
+	viscosity = 0.25;
 
 	KernelConfiguration conf;
 	conf.nDims = 3;
-	conf.nX = 10;
-	conf.nY = 10;
-	conf.nZ = 4;
+	conf.nX = 40;
+	conf.nY = 40;
+	conf.nZ = 10;
 	conf.LX = 0.2;
 	conf.LY = 0.1;
 	conf.LZ = 0.1;
@@ -833,17 +840,19 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.05;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::GodunovSolver;
 	conf.IsExternalForceRequared = true;
 
 	conf.MaxTime = 0.5;
 	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0.01;
-	conf.SaveSolutionSnapshotIterations = 10;
-	conf.ResidualOutputIterations = 1;
+	conf.SaveSolutionSnapshotTime = 0.001;
+	conf.SaveSolutionSnapshotIterations = 0;
+	conf.ResidualOutputIterations = 10;
 	conf.DebugOutputEnabled = false;
 
 	conf.Viscosity = viscosity;
-	conf.Sigma = Vector(-sigma, 0, 0);
+	conf.Sigma = Vector(sigma, 0, 0);
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -854,7 +863,7 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 
 	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
 	auto initD = [ro_init, Pave, &conf](Vector r) {
-		double u = -0.6*conf.Sigma.x*r.y*(conf.LY - r.y) / conf.Viscosity;
+		double u = 0.6 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
 		double roe = Pave / (conf.Gamma - 1);
 		std::vector<double> res(5);
 		res[0] = ro_init;
@@ -909,6 +918,7 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 	conf.DummyLayerSize = 1;
 
 	conf.MaxTime = 5.0;
@@ -924,8 +934,8 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 	};
 	kernel->Init(conf);
 

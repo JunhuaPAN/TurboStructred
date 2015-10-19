@@ -13,8 +13,8 @@ public:
 	
 	//constructor
 	WENO2PointsStencil() {	};
-	WENO2PointsStencil(std::valarray<double>& _xR, std::valarray<double>& _xL, std::valarray<double>& _yR, std::valarray<double>& _yL, std::valarray<double>& _zR, std::valarray<double>& _zL, int _nDims, int _nValues) :
-		IReconstruction(_xR, _xL, _yR, _yL, _zR, _zL, _nDims, _nValues) {};
+	WENO2PointsStencil(CellReconstruction& _recons, int _nDims, int _nValues) :
+		IReconstruction(_recons, _nDims, _nValues) {};
 };
 
 template<>

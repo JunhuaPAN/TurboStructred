@@ -14,6 +14,10 @@ enum class CubeFaces {
 	zL
 };
 
+struct CellReconstruction {
+	std::valarray< double > xR, xL, yR, yL, zR, zL;		// reconstruction storage
+};
+
 enum class Reconstruction {
 	PiecewiseConstant,
 	ENO2PointsStencil,
@@ -25,27 +29,27 @@ class IReconstruction {
 public:
 	int nValues;
 	int nDims;
-	std::valarray< double > xR, xL, yR, yL, zR, zL;		// reconstruction storage
+	CellReconstruction recons;
 
 	virtual inline std::valarray<double> SampleSolution(CubeFaces const& point) {
 		switch (point) {
 		case CubeFaces::xL:
-			return xL;
+			return recons.xL;
 			break;
 		case CubeFaces::xR:
-			return xR;
+			return recons.xR;
 			break;
 		case CubeFaces::yL:
-			return yL;
+			return recons.yL;
 			break;
 		case CubeFaces::yR:
-			return yR;
+			return recons.yR;
 			break;
 		case CubeFaces::zL:
-			return zL;
+			return recons.zL;
 			break;
 		case CubeFaces::zR:
-			return zR;
+			return recons.zR;
 			break;
 		};
 		std::cerr << "can't recognize reconstruction direction";
@@ -57,46 +61,41 @@ public:
 	IReconstruction() {
 		nValues = 0;
 	};
-	IReconstruction(std::valarray<double>& _xR, std::valarray<double>& _xL, std::valarray<double>& _yR, std::valarray<double>& _yL, std::valarray<double>& _zR, std::valarray<double>& _zL, int _nDims, int _nValues) :
-		xR(_xR),
-		xL(_xL),
-		yR(_yR),
-		yL(_yL),
-		zR(_zR),
-		zL(_zL),
+	IReconstruction(CellReconstruction& _recons, int _nDims, int _nValues) :
+		recons(_recons),
 		nDims(_nDims),
 		nValues(_nValues) { };
 
 	//! Return required
 	// Serrialization
 	static std::size_t GetBufferLenght(int nD, int nV) {
-		return nV * nD * 2;
+		return nV * nD * 2 + 2;
 	};
 	virtual std::valarray<double> Serialize()  {
 		std::vector<double> res(0);
-		for (auto& r : xL) res.push_back(r);
-		for (auto& r : xR) res.push_back(r);
-		for (auto& r : yL) res.push_back(r);
-		for (auto& r : yR) res.push_back(r);
-		for (auto& r : zL) res.push_back(r);
-		for (auto& r : zR) res.push_back(r);
+		for (auto& r : recons.xL) res.push_back(r);
+		for (auto& r : recons.xR) res.push_back(r);
+		for (auto& r : recons.yL) res.push_back(r);
+		for (auto& r : recons.yR) res.push_back(r);
+		for (auto& r : recons.zL) res.push_back(r);
+		for (auto& r : recons.zR) res.push_back(r);
 
 		return std::valarray<double> {res.data(), res.size()};
 	};
 	virtual void Deserialize(const std::valarray<double>& _values)  {
-		xR = { &_values[0], (size_t)nValues };
-		xL = { &_values[nValues], (size_t)nValues };
+		recons.xR = { &_values[0], (size_t)nValues };
+		recons.xL = { &_values[nValues], (size_t)nValues };
 		
 		// 2D case
 		if (nDims > 1) {
-			yR = { &_values[2 * nValues], (size_t)nValues };
-			yL = { &_values[3 * nValues], (size_t)nValues };
+			recons.yR = { &_values[2 * nValues], (size_t)nValues };
+			recons.yL = { &_values[3 * nValues], (size_t)nValues };
 		};
 
 		// 3D case
 		if (nDims > 2) {
-			zR = { &_values[2 * nValues], (size_t)nValues };
-			zL = { &_values[3 * nValues], (size_t)nValues };
+			recons.zR = { &_values[2 * nValues], (size_t)nValues };
+			recons.zL = { &_values[3 * nValues], (size_t)nValues };
 		};
 
 		return;

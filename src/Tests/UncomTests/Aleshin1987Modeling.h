@@ -88,8 +88,8 @@ namespace AleshinExp {
 	void RunSingleExperiment(int modeNumber, double TotalTime, Parameters& par, int argc, char *argv[]) {
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 500;
-		conf.nY = 300;
+		conf.nX = 400;
+		conf.nY = 200;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
@@ -124,8 +124,8 @@ namespace AleshinExp {
 		// init kernel
 		std::unique_ptr<Kernel> kernel;
 		if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-			//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+			//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 		};
 		kernel->Init(conf);
 

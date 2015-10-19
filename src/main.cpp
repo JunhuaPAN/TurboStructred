@@ -6,7 +6,7 @@
 int main(int argc, char *argv[])
 {
 	//main function
-	RarefactionTest::RunExperiment(argc, argv);
+	//RarefactionTest::RunExperiment(argc, argv);
 	//RunSODTestRoe1D(argc, argv);
 	//RunContactDisconTest1D(argc, argv);
 	//ToroTests::RunExperiment(argc, argv);
@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 	//RunSODTestRoe2D(argc, argv);
 	//RunPoiseuille2DFVM(argc, argv);
 	//RunShearFlow2D(argc, argv);
-	//RunPoiseuille3D(argc, argv);
+	RunPoiseuille3D(argc, argv);
 		
 	_getch();
 	return 0;

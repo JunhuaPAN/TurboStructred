@@ -98,7 +98,17 @@ public:
 		return &values[sBegin];
 	};
 
+	// transition beatween variables
 	inline std::valarray<double> ConservativeToPrimitive(double* vals) {
+		std::valarray<double> res{ vals[0], vals[1], vals[2], vals[3], vals[4] };
+		return std::move(res);
+	};
+
+	inline std::valarray<double> PrimitiveToConservative(std::valarray<double> &vals, double* cvals) {
+		return vals;
+	};
+
+	inline std::valarray<double> ConservativeToPrimitive1(double* vals) {
 		std::valarray<double> consV{ vals[0], vals[1], vals[2], vals[3], vals[4] };
 
 		double ro{ vals[0] };
@@ -126,8 +136,7 @@ public:
 		
 		return std::move(res);
 	};
-	
-	inline std::valarray<double> PrimitiveToConservative(std::valarray<double> &vals, double* cvals) {
+	inline std::valarray<double> PrimitiveToConservative1(std::valarray<double> &vals, double* cvals) {
 		
 		// transition to characterisctic variables
 		double ro{ cvals[0] };
