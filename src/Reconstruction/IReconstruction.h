@@ -3,6 +3,7 @@
 
 #include <valarray>
 #include "utility/Vector.h"
+#include "utility/VariablesTransition.h"
 
 // to define what face the value reconstructed at
 enum class CubeFaces {
@@ -21,7 +22,8 @@ struct CellReconstruction {
 enum class Reconstruction {
 	PiecewiseConstant,
 	ENO2PointsStencil,
-	WENO2PointsStencil
+	WENO2PointsStencil,
+	ENO2CharactVars
 };
 
 //Basic class for all reconstruction classes
@@ -100,11 +102,10 @@ public:
 
 		return;
 	};
-
 };
 
 template<typename T>
-T ComputeReconstruction(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
+T ComputeReconstruction(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim, double gamma) {
 	//static_assert(false, "We dont have required function.");
 	throw std::runtime_error("We dont have required function.");
 };

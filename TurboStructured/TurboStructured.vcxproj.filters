@@ -260,6 +260,12 @@
     <ClInclude Include="..\src\Tests\1DTests\RarefactionTest.h">
       <Filter>Header Files\Tests\1DTests</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\utility\VariablesTransition.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Reconstruction\ENO2CharactVars.h">
+      <Filter>Header Files\Reconstruction</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />

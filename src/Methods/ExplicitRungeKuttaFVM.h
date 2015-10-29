@@ -35,12 +35,12 @@ public:
 	std::vector<Vector> gradientVelocityZ;  //array for storing gradients of w
 	std::vector< std::vector< std::vector<ReconstructionType> > > reconstructions; //array for storing 
 
-	//Initizalization
+	// Initizalization
 	void Init(KernelConfiguration& kernelConfig) {
-		//Invoke base class init
+		// Invoke base class init
 		Kernel::Init(kernelConfig);
 
-		//Method specific part
+		// Method specific part
 		MethodConfiguration config = kernelConfig.methodConfiguration;
 		assert(config.RungeKuttaOrder != 0);			// Runge-Kutta order is not initialized
 		assert(config.RiemannProblemSolver != RPSolver::NoSolver);		// No solver was choosen
@@ -53,7 +53,7 @@ public:
 			_riemannSolver = (std::unique_ptr<RiemannSolver>)std::move(new GodunovSolverPerfectGasEOS(kernelConfig.Gamma, config.Eps, config.OperatingPresure));
 		};
 
-		//Allocate memory for values and residual
+		// Allocate memory for values and residual
 		spectralRadius.resize(g.nCellsLocalAll);
 
 		// Resize our reconstructions array
@@ -63,7 +63,7 @@ public:
 			for (auto& s : r) s.resize(g.nlocalZ + 2 * g.dummyCellLayersZ);
 		};
 
-		// pass N Dimensions and N values to dummy cells reconstructions
+		// Pass N Dimensions and N values to dummy cells reconstructions
 		if(g.dummyCellLayersX > 0) {
 			int yLayer = 0;
 			int zLayer = 0;
@@ -107,7 +107,7 @@ public:
 			};
 		};
 
-
+		// Output info
 		if (DebugOutputEnabled) {
 			std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";
 			std::cout.flush();
@@ -797,7 +797,7 @@ public:
 					};
 
 					//we have only one or no external layer of cells reconstructions
-					reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + zLayer] = ComputeReconstruction<ReconstructionType>(stencil_values, points, cell_values, cell_center, nDims);
+					reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + zLayer] = ComputeReconstruction<ReconstructionType>(stencil_values, points, cell_values, cell_center, nDims, gamma);
 				};
 			};
 		};

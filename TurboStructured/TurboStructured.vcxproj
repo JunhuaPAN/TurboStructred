@@ -64,6 +64,7 @@
     <ClInclude Include="..\src\Methods\ExplicitRungeKuttaFVM.h" />
     <ClInclude Include="..\src\Methods\MethodConfiguration.h" />
     <ClInclude Include="..\src\Reconstruction\ENO3PointsStencil.h" />
+    <ClInclude Include="..\src\Reconstruction\ENO2CharactVars.h" />
     <ClInclude Include="..\src\Reconstruction\IReconstruction.h" />
     <ClInclude Include="..\src\Reconstruction\PiecewiseConstant.h" />
     <ClInclude Include="..\src\Reconstruction\ReconstructorsList.h" />
@@ -88,6 +89,7 @@
     <ClInclude Include="..\src\utility\GeomFunctions.h" />
     <ClInclude Include="..\src\utility\Matrix.h" />
     <ClInclude Include="..\src\utility\Timer.h" />
+    <ClInclude Include="..\src\utility\VariablesTransition.h" />
     <ClInclude Include="..\src\utility\Vector.h" />
   </ItemGroup>
   <ItemGroup>

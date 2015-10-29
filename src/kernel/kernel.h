@@ -98,7 +98,7 @@ public:
 		return &values[sBegin];
 	};
 
-	// transition beatween variables
+	// transition beatween variables (trivial now - component-wise manner)
 	inline std::valarray<double> ConservativeToPrimitive(double* vals) {
 		std::valarray<double> res{ vals[0], vals[1], vals[2], vals[3], vals[4] };
 		return std::move(res);

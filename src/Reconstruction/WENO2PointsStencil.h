@@ -18,7 +18,7 @@ public:
 };
 
 template<>
-WENO2PointsStencil ComputeReconstruction<WENO2PointsStencil>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
+WENO2PointsStencil ComputeReconstruction<WENO2PointsStencil>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim, double gamma) {
 	//compute Gradients
 	auto size = value.size();
 	std::valarray< Vector > gradientsL(size), gradientsR(size);		//for 1D case only

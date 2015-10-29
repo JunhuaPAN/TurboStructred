@@ -19,7 +19,7 @@ public:
 };
 
 template<>
-ENO2PointsStencil ComputeReconstruction<ENO2PointsStencil>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
+ENO2PointsStencil ComputeReconstruction<ENO2PointsStencil>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim, double gamma) {
 	// compute Gradients
 	size_t size = value.size();
 	std::valarray< Vector > gradients(size);

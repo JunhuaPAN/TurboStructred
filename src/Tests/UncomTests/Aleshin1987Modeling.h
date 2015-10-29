@@ -84,7 +84,7 @@ namespace AleshinExp {
 		return;
 	};
 
-	// Run one experiment ( parameters is as input data)
+	// Run one experiment ( parameters is as input data )
 	void RunSingleExperiment(int modeNumber, double TotalTime, Parameters& par, int argc, char *argv[]) {
 		KernelConfiguration conf;
 		conf.nDims = 2;
