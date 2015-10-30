@@ -257,14 +257,20 @@
     <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\stdafx.h">
       <Filter>Header Files\ExternalLibs\Alglib</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Tests\1DTests\RarefactionTest.h">
-      <Filter>Header Files\Tests\1DTests</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\utility\VariablesTransition.h">
       <Filter>Header Files\Utility</Filter>
     </ClInclude>
     <ClInclude Include="..\src\Reconstruction\ENO2CharactVars.h">
       <Filter>Header Files\Reconstruction</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\Integration.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\1DTests\RarefactionTest1.h">
+      <Filter>Header Files\Tests\1DTests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\1DTests\RarefactionTest2.h">
+      <Filter>Header Files\Tests\1DTests</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
