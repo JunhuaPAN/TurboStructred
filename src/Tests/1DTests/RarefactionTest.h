@@ -1,5 +1,5 @@
-#ifndef TurboStructured_Tests_1DTests_RarefactionTest2
-#define TurboStructured_Tests_1DTests_RarefactionTest2
+#ifndef TurboStructured_Tests_1DTests_RarefactionTest
+#define TurboStructured_Tests_1DTests_RarefactionTest
 
 #include <iostream>
 #include <vector>
@@ -11,7 +11,7 @@
 //	In that Riemann problem we have one rarefaction wave folowing to the left	//
 //	We consider only inner part of the rarefaction for order estimation			//
 
-namespace RarefactionTest2
+namespace RarefactionTest
 {
 	// special variable for rarefaction segment length
 	double subgrid_length;
@@ -82,7 +82,7 @@ namespace RarefactionTest2
 		conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
 		conf.xRightBoundary.Gamma = 1.4;
 
-		conf.MaxTime = 0.25;
+		conf.MaxTime = 0.012;
 		conf.MaxIteration = 100000;
 		conf.SaveSolutionSnapshotTime = 0;
 		conf.SaveSolutionSnapshotIterations = 0;
@@ -95,20 +95,21 @@ namespace RarefactionTest2
 		ShockTubeParameters params;
 		params.gamma = TestsUtility::gamma1 + 1;
 		params.roL = 1.0;
-		params.roR = 0.125;
-		params.PL = 1.0;
 		params.uL = 0.0;
+		params.PL = 1000.0;
+		params.roR = 1.0;
 		params.uR = 0.0;
-		params.PR = 0.1;
-		params.x0 = 0.5;		// initial discontinuity position
+		params.PR = 0.01;
+		params.x0 = 0.6;
 		return params;
 	};
 
 	// Create a subgrid that contain cells with rarefaction fan
 	Grid GetRarefactionCells(StarVariables& starV, Grid& g, double time, double x0, double Lx) {
 		Grid res;
-		double cut_factor = 0.12;	// to cut both end of rarefaction fan
-											// define head and tail speeds
+		double cut_factor = 0.1;	// to cut both end of rarefaction fan
+
+		// define head and tail speeds
 		double velL = starV.SHL;
 		double velR = starV.STL;
 
@@ -118,8 +119,8 @@ namespace RarefactionTest2
 
 		// define indexes of ends of rarefaction cell set
 		double deltax = xr - xl;
-		xl -= cut_factor * deltax;
-		xr += cut_factor * deltax;
+		xl += cut_factor * deltax;
+		xr -= cut_factor * deltax;
 		int iMin = (int)(xl * g.nX / Lx) + g.dummyCellLayersX;
 		int iMax = (int)(xr * g.nX / Lx) + g.dummyCellLayersX;
 
@@ -137,10 +138,10 @@ namespace RarefactionTest2
 		// Write approximate solution
 		starValues.leftWave = WaveType::Rarefaction;
 		starValues.rightWave = WaveType::Shock;
-		starValues.pStar = 0.30313;
-		starValues.uStar = 0.92745;
-		starValues.roStarL = 0.42632;
-		starValues.roStarR = 0.26557;
+		starValues.pStar = 460.894;
+		starValues.uStar = 19.5975;
+		starValues.roStarL = 0.57506;
+		starValues.roStarR = 5.99924;
 
 		// compute speeds of three waves
 		double gamma = params.gamma;
@@ -165,7 +166,7 @@ namespace RarefactionTest2
 		starValues.SR = params.uR + aR * starValues.SR;
 	};
 
-	// Compute exact solution in Cell
+	// compute exact solution in Cell
 	std::vector<double> ComputeExactSolutionInCell(ShockTubeParameters& pars, double x, double t) {
 		//Compute flux (Toro p. 219) 
 		//Sample exact solution at S = x/t
@@ -290,7 +291,7 @@ namespace RarefactionTest2
 		return result;
 	};
 
-	// Compute exact solution for test N
+	// Comput exact solution for test N
 	std::valarray<double> ComputeExactSolution(ShockTubeParameters& pars, Grid& g, double t) {
 		// init result valarray
 		std::valarray<double> res(g.nlocalX * TestsUtility::nVar);
@@ -301,27 +302,16 @@ namespace RarefactionTest2
 		// Compute exact solution in every cell and write the result valarray
 		for (int i = 0; i < g.nlocalX; i++) {
 			double x = g.CoordinateX[g.iMin + i] - pars.x0;
-
-			// second order for integrall
-			double xl, xr;
-			const double d2 = 0.5773502691896257;		// Legandr delta
-			double delta = d2 * 0.5 * g.hx[g.iMin + i];
-
-			// convert primitive variables to conservative ones
-			auto convert = [](const std::vector<double>& arg) {
-				double rho = arg[0];
-				double u = arg[1];
-				double p = arg[2];
-				double e = p / (TestsUtility::gamma1 * rho);
-				return std::vector<double> { rho, rho * u, 0, 0, rho * e + 0.5 * rho * u * u };
-			};
-
-			// compute conservative variables in Legandr points
-			std::vector<double> vars1 = convert(ComputeExactSolutionInCell(pars, x - delta, t));
-			std::vector<double> vars2 = convert(ComputeExactSolutionInCell(pars, x + delta, t));
-
-			// cell averaged conservative variables ( 2nd order )
-			for (int j = 0; j < TestsUtility::nVar; j++) res[TestsUtility::nVar * i + j] = 0.5 * (1.0 * vars1[j] + 1.0 * vars2[j]);
+			std::vector<double> prim_vars = ComputeExactSolutionInCell(pars, x, t);
+			double rho = prim_vars[0];
+			double u = prim_vars[1];
+			double p = prim_vars[2];
+			double e = p / (TestsUtility::gamma1 * rho);
+			res[i * TestsUtility::nVar] = rho;
+			res[i * TestsUtility::nVar + 1] = rho*u;
+			res[i * TestsUtility::nVar + 2] = 0;
+			res[i * TestsUtility::nVar + 3] = 0;
+			res[i * TestsUtility::nVar + 4] = rho * e + 0.5 * rho * u * u;
 		};
 		return res;
 	};
@@ -354,10 +344,6 @@ namespace RarefactionTest2
 		if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
 			fname << "WENO2";
-		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2CharactVars) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2CharactVars>(&argc, &argv));
-			fname << "ENO2";
 		};
 		kernel->Init(conf);
 
@@ -424,7 +410,7 @@ namespace RarefactionTest2
 
 		// Save the errors
 		std::stringstream fname2;
-		fname2 << "Rarefaction_test2.dat";
+		fname2 << "Rarefaction_test.dat";
 		TestsUtility::WriteErrors(fname2.str(), errors, kernel->g, *(kernel->pManager));
 
 		// Finalize kernel
@@ -434,13 +420,12 @@ namespace RarefactionTest2
 	};
 
 	void RunExperiment(int argc, char *argv[]) {
-		int Nx = 800;
+		int Nx = 400;
 
 		// Reconstruction type
-		// Reconstruction RecType{ Reconstruction::PiecewiseConstant };
-		// Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
-		// Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
-		Reconstruction RecType{ Reconstruction::ENO2CharactVars };
+		//Reconstruction RecType{ Reconstruction::PiecewiseConstant };
+		//Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
+		Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
 
 		// RP solver
 		RPSolver rSolver{ RPSolver::GodunovSolver };
