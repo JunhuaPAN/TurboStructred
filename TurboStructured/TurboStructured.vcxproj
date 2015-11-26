@@ -63,7 +63,6 @@
     <ClInclude Include="..\src\kernel\ParallelManager.h" />
     <ClInclude Include="..\src\Methods\ExplicitRungeKuttaFVM.h" />
     <ClInclude Include="..\src\Methods\MethodConfiguration.h" />
-    <ClInclude Include="..\src\Reconstruction\ENO3PointsStencil.h" />
     <ClInclude Include="..\src\Reconstruction\ENO2CharactVars.h" />
     <ClInclude Include="..\src\Reconstruction\IReconstruction.h" />
     <ClInclude Include="..\src\Reconstruction\PiecewiseConstant.h" />
@@ -87,6 +86,7 @@
     <ClInclude Include="..\src\Tests\1DTests\ToroTests.h" />
     <ClInclude Include="..\src\tests\tests.h" />
     <ClInclude Include="..\src\Tests\UncomTests\Aleshin1987Modeling.h" />
+    <ClInclude Include="..\src\utility\Direction.h" />
     <ClInclude Include="..\src\utility\GeomFunctions.h" />
     <ClInclude Include="..\src\utility\Integration.h" />
     <ClInclude Include="..\src\utility\Matrix.h" />

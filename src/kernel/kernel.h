@@ -98,13 +98,14 @@ public:
 		return &values[sBegin];
 	};
 
-	// transition beatween variables (trivial now - component-wise manner)
-	inline std::valarray<double> ConservativeToPrimitive(double* vals) {
+	// transition beatween variables (trivial by default)
+	inline std::valarray<double> ForvardVariablesTransition(double* vals) {
 		std::valarray<double> res{ vals[0], vals[1], vals[2], vals[3], vals[4] };
 		return std::move(res);
 	};
 
-	inline std::valarray<double> PrimitiveToConservative(std::valarray<double> &vals, double* cvals) {
+	// inverse transition
+	inline std::valarray<double> InverseVariablesTransition(std::valarray<double> &vals) {
 		return vals;
 	};
 

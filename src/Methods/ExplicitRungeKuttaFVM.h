@@ -772,27 +772,27 @@ public:
 				for (int k = g.kMin; k <= g.kMax; k++) {
 					std::vector<std::valarray<double> > stencil_values;		// vector of stencil values
 					std::vector<Vector> points;								// vector of stencil points
-					std::valarray<double> cell_values(std::move(ConservativeToPrimitive(getCellValues(i, j, k))));	// primitive variables in our cell
+					std::valarray<double> cell_values(std::move(ForvardVariablesTransition(getCellValues(i, j, k))));	// primitive variables in our cell
 					Vector cell_center = Vector(g.CoordinateX[i], g.CoordinateY[j], g.CoordinateZ[k]);
 
 					// X direction stencil
 					for (int iStencil = -g.dummyCellLayersX; iStencil <= g.dummyCellLayersX; iStencil++) {
 						if (iStencil == 0) continue;
-						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i + iStencil, j, k))));
+						stencil_values.push_back(std::move(ForvardVariablesTransition(getCellValues(i + iStencil, j, k))));
 						points.push_back(std::move(Vector(g.CoordinateX[i + iStencil], g.CoordinateY[j], g.CoordinateZ[k])));
 					};
 
 					//Y direction stencil
 					for (int jStencil = -g.dummyCellLayersY; jStencil <= g.dummyCellLayersY; jStencil++) {
 						if (jStencil == 0) continue;
-						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i, j + jStencil, k))));
+						stencil_values.push_back(std::move(ForvardVariablesTransition(getCellValues(i, j + jStencil, k))));
 						points.push_back(std::move(Vector(g.CoordinateX[i], g.CoordinateY[j + jStencil], g.CoordinateZ[k])));
 					};
 
 					//Z direction stencil
 					for (int kStencil = -g.dummyCellLayersZ; kStencil <= g.dummyCellLayersZ; kStencil++) {
 						if (kStencil == 0) continue;
-						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i, j, k + kStencil))));
+						stencil_values.push_back(std::move(ForvardVariablesTransition(getCellValues(i, j, k + kStencil))));
 						points.push_back(std::move(Vector(g.CoordinateX[i], g.CoordinateY[j], g.CoordinateZ[k + kStencil])));
 					};
 
@@ -1080,26 +1080,17 @@ public:
 					// Apply boundary conditions
 					if ((pManager->rankCart[0] == 0) && (i == g.iMin) && (g.IsPeriodicX != true))									// Left border
 					{
-						UR = PrimitiveToConservative(reconstructions[1][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(CubeFaces::xL), getCellValues(i, j, k));
+						UR = InverseVariablesTransition(reconstructions[1][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(CubeFaces::xL));
 						UL = xLeftBC->getDummyReconstructions(&UR[0]);
 					}
 					else if ((pManager->rankCart[0] == pManager->dimsCart[0] - 1) && (i == g.iMax + 1) && (g.IsPeriodicX != true))	// Right border
 					{
-						UL = PrimitiveToConservative(reconstructions[g.iMax - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(CubeFaces::xR), getCellValues(i - 1, j, k));
+						UL = InverseVariablesTransition(reconstructions[g.iMax - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(CubeFaces::xR));
 						UR = xRightBC->getDummyReconstructions(&UL[0]);
 					} else
 					{
-						UL = PrimitiveToConservative(reconstructions[i - g.iMin][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(CubeFaces::xR), getCellValues(i - 1, j, k));
-						UR = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(CubeFaces::xL), getCellValues(i, j, k));
-					};
-
-					// TO DO DELETE
-					std::valarray<double> X = PrimitiveToConservative(ConservativeToPrimitive(getCellValues(i, j, k)), getCellValues(i, j, k));
-					double* x = getCellValues(i, j, k);
-					X -= std::valarray<double> { x[0], x[1], x[2], x[3], x[4] };
-					double sum = abs(X.sum());
-					if (sum > 2.0e-10) {
-						std::cout << "ERROR TRANSITION TO CHARACTERISTIC VARIABLES" << std::endl;
+						UL = InverseVariablesTransition(reconstructions[i - g.iMin][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(CubeFaces::xR));
+						UR = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(CubeFaces::xL));
 					};
 
 					// Compute convective flux
@@ -1163,18 +1154,18 @@ public:
 						// Apply boundary conditions
 						if ((pManager->rankCart[1] == 0) && (j == g.jMin) && (g.IsPeriodicY != true))									// Left border
 						{
-							UR = PrimitiveToConservative(reconstructions[i - g.iMin + 1][1][k - g.kMin + zLayer].SampleSolution(CubeFaces::yL), getCellValues(i, j, k));
+							UR = InverseVariablesTransition(reconstructions[i - g.iMin + 1][1][k - g.kMin + zLayer].SampleSolution(CubeFaces::yL));
 							UL = yLeftBC->getDummyReconstructions(&UR[0]);
 						}
 						else if ((pManager->rankCart[1] == pManager->dimsCart[1] - 1) && (j == g.jMax + 1) && (g.IsPeriodicY != true))	// Right border
 						{
-							UL = PrimitiveToConservative(reconstructions[i - g.iMin + 1][g.jMax - g.jMin + 1][k - g.kMin + zLayer].SampleSolution(CubeFaces::yR), getCellValues(i, j - 1, k));
+							UL = InverseVariablesTransition(reconstructions[i - g.iMin + 1][g.jMax - g.jMin + 1][k - g.kMin + zLayer].SampleSolution(CubeFaces::yR));
 							UR = yRightBC->getDummyReconstructions(&UL[0]);
 						}
 						else
 						{
-							UL = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin][k - g.kMin + zLayer].SampleSolution(CubeFaces::yR), getCellValues(i, j - 1, k));
-							UR = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + 1][k - g.kMin + zLayer].SampleSolution(CubeFaces::yL), getCellValues(i, j, k));
+							UL = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin][k - g.kMin + zLayer].SampleSolution(CubeFaces::yR));
+							UR = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + 1][k - g.kMin + zLayer].SampleSolution(CubeFaces::yL));
 						};
 
 						// Compute convective flux
@@ -1219,8 +1210,7 @@ public:
 				};
 			};
 		};
-
-		
+				
 		// K step
 		if (nDims > 2)
 		{
@@ -1239,18 +1229,18 @@ public:
 						// Apply boundary conditions
 						if ((pManager->rankCart[1] == 0) && (k == g.kMin) && (g.IsPeriodicZ != true))									// Left border
 						{
-							UR = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][1].SampleSolution(CubeFaces::zL), getCellValues(i, j, k));
+							UR = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][1].SampleSolution(CubeFaces::zL));
 							UL = zLeftBC->getDummyReconstructions(&UR[0]);
 						}
 						else if ((pManager->rankCart[1] == pManager->dimsCart[1] - 1) && (k == g.kMax + 1) && (g.IsPeriodicZ != true))	// Right border
 						{
-							UL = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][g.kMax - g.kMin + 1].SampleSolution(CubeFaces::zR), getCellValues(i, j, k - 1));
+							UL = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][g.kMax - g.kMin + 1].SampleSolution(CubeFaces::zR));
 							UR = zRightBC->getDummyReconstructions(&UL[0]);
 						}
 						else
 						{
-							UL = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin].SampleSolution(CubeFaces::zR), getCellValues(i, j, k - 1));
-							UR = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + 1].SampleSolution(CubeFaces::zL), getCellValues(i, j, k));
+							UL = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin].SampleSolution(CubeFaces::zR));
+							UR = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + 1].SampleSolution(CubeFaces::zL));
 						};
 
 						// Compute convective flux

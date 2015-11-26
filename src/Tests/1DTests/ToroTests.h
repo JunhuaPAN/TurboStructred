@@ -499,8 +499,8 @@ namespace ToroTests
 	};
 	
 	void RunExperiment(int argc, char *argv[]) {
-		int Ntest = 1;	// Toro test number
-		int Nx = 100;
+		int Ntest = 3;	// Toro test number
+		int Nx = 200;
 
 		//	Reconstruction type
 		//	Reconstruction RecType{ Reconstruction::PiecewiseConstant };

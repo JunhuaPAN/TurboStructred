@@ -4,12 +4,7 @@
 #include "mpi.h"
 #include <chrono>
 #include "grid.h"
-
-enum class Direction {
-	XDirection = 0,
-	YDirection = 1,
-	ZDirection = 2
-};
+#include "utility/Direction.h"
 
 enum class SubDirection {
 	Left = -1,

@@ -444,7 +444,7 @@ namespace RarefactionTest2
 
 		// RP solver
 		RPSolver rSolver{ RPSolver::GodunovSolver };
-		//RPSolver rSolver{};
+		// RPSolver rSolver{};
 
 		// collect all errors in file
 		std::vector<double> err;

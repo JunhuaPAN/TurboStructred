@@ -4,12 +4,13 @@
 #include <cmath>
 #include <iostream>
 #include <vector>
-
-//class RoeAverage
+#include "utility/Direction.h"
 
 // Transition to characteristic variables averaged by Roe procedure
 class RoeLineariser {
 private:
+	Direction myDir;
+
 	// variables in cell number
 	const size_t size = 5;
 
@@ -26,8 +27,53 @@ private:
 	// Right one (columns are rignt eigenvectors)
 	std::vector<std::valarray<double>> R;
 
+	// Rotate frame of reference for velocity vector
+	inline std::valarray<double> ExchangeVelocityComponents(std::valarray<double>& value) {
+		// default case (don't need to exchange anything)
+		if (myDir == Direction::XDirection) {
+			return value;
+		};
+
+		// space case
+		std::valarray<double> res = value;
+		if (myDir == Direction::YDirection) {
+			res[1] = value[2];
+			res[2] = value[3];
+			res[3] = value[1];
+		};
+		if (myDir == Direction::ZDirection) {
+			res[1] = value[3];
+			res[2] = value[1];
+			res[3] = value[2];
+		};
+		return res;
+	};
+	inline std::valarray<double> InverseExchangeVelocityComponents(std::valarray<double>& value) {
+		// default case (don't need to exchange anything)
+		if (myDir == Direction::XDirection) {
+			return value;
+		};
+
+		// space case
+		std::valarray<double> res = value;
+		if (myDir == Direction::YDirection) {
+			res[1] = value[3];
+			res[2] = value[1];
+			res[3] = value[2];
+		};
+		if (myDir == Direction::ZDirection) {
+			res[1] = value[2];
+			res[2] = value[3];
+			res[3] = value[1];
+		};
+		return res;
+	};
+
 	// compute averaged variables
-	void ComputeRoeAverageState(std::valarray<double>& UL, std::valarray<double>& UR) {
+	void ComputeRoeAverageState(std::valarray<double>& _UL, std::valarray<double>& _UR) {
+		std::valarray<double> UL = ExchangeVelocityComponents(_UL);
+		std::valarray<double> UR = ExchangeVelocityComponents(_UR);
+
 		// left and right density
 		double ro_l = UL[0];
 		double ro_r = UR[0];
@@ -40,7 +86,7 @@ private:
 		velocity_r.x = UR[1] / ro_r;
 		velocity_r.y = UR[2] / ro_r;
 		velocity_r.z = UR[3] / ro_r;
-
+		
 		// enthalpy
 		double e_l = UL[4] / ro_l;
 		double e_r = UR[4] / ro_r;
@@ -58,7 +104,7 @@ private:
 		ro = sqrt(ro_l*ro_r);								// (Roe averaged) density		
 		vel = ql*velocity_l + qr*velocity_r;				// (Roe averaged) velocity	
 		H = ql*h_l + qr*h_r;								// (Roe averaged) total enthalpy
-		c = sqrt((gamma - 1) * (H - 0.5 * (vel * vel)));	//acoustic velocity
+		c = sqrt((gamma - 1) * (H - 0.5 * (vel * vel)));	// acoustic velocity
 		assert(c>0);
 
 		return;
@@ -97,6 +143,11 @@ public:
 	//constructor
 	RoeLineariser(size_t _size, double _gamma) : size(_size), gamma(_gamma) {};
 
+	// Set the direction of transition 
+	void SetDirection(Direction dir) {
+		myDir = dir;
+	};
+
 	// Compute average values and R matrix and the inverse one
 	void PrepareTransitionMatrix(std::valarray<double>& UL, std::valarray<double>& UR) {
 		ComputeRoeAverageState(UL, UR);
@@ -108,8 +159,9 @@ public:
 	std::vector<std::valarray<double> > GroupTransition(std::vector<std::valarray<double> >& values) {
 		// characteristic variables in stencil
 		std::vector<std::valarray<double> > res;
-		for (auto r : values) {
+		for (auto _r : values) {
 			std::valarray<double> CharVal(size);
+			auto r = ExchangeVelocityComponents(_r);
 			for (int i = 0; i < size; i++) CharVal[i] = (Rinv[i] * r).sum();
 			res.push_back(CharVal);
 		};
@@ -117,9 +169,10 @@ public:
 	};
 
 	// do the same for one cell
-	std::valarray<double> SingleTransition(std::valarray<double>& value) {
+	std::valarray<double> SingleTransition(std::valarray<double>& _value) {
 		// convert values in our cell
 		std::valarray<double> CharValue(size);
+		auto value = ExchangeVelocityComponents(_value);
 		for (int i = 0; i < size; i++) CharValue[i] = (Rinv[i] * value).sum();
 		return std::move(CharValue);
 	};
@@ -129,6 +182,8 @@ public:
 		// convert values in our cell
 		std::valarray<double> CharValue(size);
 		for (int i = 0; i < size; i++) CharValue[i] = (R[i] * value).sum();
+		CharValue = InverseExchangeVelocityComponents(CharValue);
+
 		return std::move(CharValue);
 	};
 };
