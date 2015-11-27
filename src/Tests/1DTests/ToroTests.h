@@ -499,14 +499,14 @@ namespace ToroTests
 	};
 	
 	void RunExperiment(int argc, char *argv[]) {
-		int Ntest = 3;	// Toro test number
-		int Nx = 200;
+		int Ntest = 1;	// Toro test number
+		int Nx = 400;
 
 		//	Reconstruction type
 		//	Reconstruction RecType{ Reconstruction::PiecewiseConstant };
 		//	Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
-		//	Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
-			Reconstruction RecType{ Reconstruction::ENO2CharactVars };
+			Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
+		//	Reconstruction RecType{ Reconstruction::ENO2CharactVars };
 
 		// RP solver
 		RPSolver rSolver{ RPSolver::RoePikeSolver };

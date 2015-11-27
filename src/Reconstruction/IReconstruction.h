@@ -96,8 +96,8 @@ public:
 
 		// 3D case
 		if (nDims > 2) {
-			recons.zR = { &_values[2 * nValues], (size_t)nValues };
-			recons.zL = { &_values[3 * nValues], (size_t)nValues };
+			recons.zR = { &_values[4 * nValues], (size_t)nValues };
+			recons.zL = { &_values[5 * nValues], (size_t)nValues };
 		};
 
 		return;
