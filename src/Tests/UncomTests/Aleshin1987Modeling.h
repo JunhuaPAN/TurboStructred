@@ -112,6 +112,7 @@ namespace AleshinExp {
 		conf.methodConfiguration.CFL = 0.4;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
+		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 		conf.DummyLayerSize = 1;
 
 		conf.MaxTime = TotalTime;
@@ -255,6 +256,7 @@ namespace AleshinExp {
 		conf.methodConfiguration.CFL = 0.4;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
+		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 		conf.DummyLayerSize = 1;
 
 		conf.MaxTime = TotalTime;

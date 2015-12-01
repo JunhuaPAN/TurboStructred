@@ -8,10 +8,10 @@ int main(int argc, char *argv[])
 	//main function
 	//RunSODTestRoe1D(argc, argv);
 	//RunContactDisconTest1D(argc, argv);
-	ToroTests::RunExperiment(argc, argv);
+	//ToroTests::RunExperiment(argc, argv);
 	//ContactDisTest::RunExperiment(argc, argv);
 	//ShockWaveTest::RunExperiment(argc, argv);
-	//AleshinExp::Run3DExperiment(argc, argv);
+	AleshinExp::Run3DExperiment(argc, argv);
 	//AleshinExp::RunExperiment(argc, argv);
 	//RunRTI2D(argc, argv);
 	//RunTriplePointRoe2D(argc, argv);
