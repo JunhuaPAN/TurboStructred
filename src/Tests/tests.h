@@ -370,6 +370,100 @@ void RunShockWave1D(int argc, char *argv[]) {
 
 //// Multidimension cases
 
+void Run2DComparisonTest(int argc, char *argv[]) {
+	KernelConfiguration conf;
+	conf.nDims = 2;
+	conf.nX = 2;
+	conf.nY = 2;
+	conf.LX = 1.0;
+	conf.LY = 2.0;
+	conf.isPeriodicX = true;
+	conf.isPeriodicY = false;
+	conf.isUniformAlongX = true;
+	conf.isUniformAlongY = true;
+
+	conf.Gamma = 1.4;
+
+	conf.yLeftBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yRightBoundary.Gamma = 1.4;
+
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.CFL = 0.4;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.05;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+	conf.DummyLayerSize = 1;
+
+	conf.MaxTime = 0.2;
+	conf.MaxIteration = 10;
+	conf.SaveSolutionSnapshotTime = 0.1;
+	conf.SaveSolutionSnapshotIterations = 1;
+	conf.ResidualOutputIterations = 10;
+
+	//init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	kernel->Init(conf);
+
+	// initial conditions
+	auto initD = [&conf](Vector r) {
+		double ro;
+		double p;
+		double v;
+
+		// domain divided into four areas
+		if (r.x < 0.5 * conf.LX) {
+			if (r.y < 0.5 * conf.LY) {
+				ro = 1.0;
+				p = 1.0;
+				v = 0.5;
+			}
+			else {
+				ro = 2.0;
+				p = 1.0;
+				v = 1.0;
+			};
+		}
+		else if (r.y < 0.5 * conf.LY) {
+			ro = 1.0;
+			p = 2.0;
+			v = 0.5;
+		}
+		else {
+			ro = 2.0;
+			p = 2.0;
+			v = 1.0;
+		};
+
+		// compute ro_e and write conservative variables
+		double roe = p / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro;
+		res[1] = 0.0;
+		res[2] = ro * v;
+		res[3] = 0.0;
+		res[4] = roe;		//total energy equals internal one because a motion is absent
+
+		return res;
+	};
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolution("init.dat");
+
+	//run computation
+	kernel->Run();
+
+	//finalize kernel
+	kernel->Finalize();
+
+};
+
 // 2D Shock Tube test http://www.cfd-online.com/Wiki/Explosion_test_in_2-D
 void RunSODTestRoe2D(int argc, char *argv[]) {
 	KernelConfiguration conf;
