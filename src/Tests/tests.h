@@ -25,7 +25,6 @@ struct ShockTubeParameters {
 	Vector uR;
 	double gammaR;
 };
-
 std::vector<double> SODinitialDistribution(Vector r, double R0, ShockTubeParameters params) {
 	std::vector<double> U(5);	
 	double ro;
@@ -58,7 +57,6 @@ std::vector<double> SODinitialDistribution(Vector r, double R0, ShockTubeParamet
 
 	return U;
 };
-
 std::vector<double> SODinitialDistributionY(Vector r, double yI, ShockTubeParameters params) {
 	std::vector<double> U(5);	
 	double ro;
@@ -307,33 +305,40 @@ void RunContactDisconTest1D(int argc, char *argv[]) {
 	kernel->Finalize();
 };
 
-// Just one shock wave TO DO compute correct IC
-void RunShockWave1D(int argc, char *argv[]) {
-	KernelConfiguration conf;
-	conf.nDims = 1;
-	conf.nX = 100;
-	conf.LX = 1.0;
-	conf.isPeriodicX = false;
-	conf.isUniformAlongX = true;
-	conf.qx = 1.00;
 
-	conf.Gamma = 2.0;		// Specific Gamma
+
+//// Multidimension cases
+
+void Run2DComparisonTest(int argc, char *argv[]) {
+	KernelConfiguration conf;
+	conf.nDims = 2;
+	conf.nX = 2;
+	conf.nY = 2;
+	conf.LX = 1.0;
+	conf.LY = 2.0;
+	conf.isPeriodicX = true;
+	conf.isPeriodicY = false;
+	conf.isUniformAlongX = true;
+	conf.isUniformAlongY = true;
+
+	conf.Gamma = 1.4;
+
+	conf.yLeftBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yRightBoundary.Gamma = 1.4;
 
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-	conf.DummyLayerSize = 1;
-	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.CFL = 0.4;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
-
-	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
-	conf.xLeftBoundary.Gamma = 1.4;
-	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
-	conf.xRightBoundary.Gamma = 1.4;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+	conf.DummyLayerSize = 1;
 
 	conf.MaxTime = 0.2;
-	conf.MaxIteration = 1000000;
+	conf.MaxIteration = 10;
 	conf.SaveSolutionSnapshotTime = 0.1;
-	conf.SaveSolutionSnapshotIterations = 5;
+	conf.SaveSolutionSnapshotIterations = 1;
 	conf.ResidualOutputIterations = 10;
 
 	//init kernel
@@ -345,16 +350,46 @@ void RunShockWave1D(int argc, char *argv[]) {
 	kernel->Init(conf);
 
 	// initial conditions
-	double shock_vel = 0.25 * (sqrt(33.0) + 1.0);
-	ShockTubeParameters params;
-	params.gammaL = params.gammaR = 2.0;
-	params.roL = 1.0;
-	params.PL = 1.0 + shock_vel;
-	params.uL = { 0, 0, 0 };
-	params.roR = shock_vel / (1.0 + shock_vel);
-	params.PR = 1.0;
-	params.uR = { -1.0, 0, 0 };
-	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.3, params);
+	auto initD = [&conf](Vector r) {
+		double ro;
+		double p;
+		double v;
+
+		// domain divided into four areas
+		if (r.x < 0.5 * conf.LX) {
+			if (r.y < 0.5 * conf.LY) {
+				ro = 1.0;
+				p = 1.0;
+				v = 0.5;
+			}
+			else {
+				ro = 2.0;
+				p = 1.0;
+				v = 1.0;
+			};
+		}
+		else if (r.y < 0.5 * conf.LY) {
+			ro = 1.0;
+			p = 2.0;
+			v = 0.5;
+		}
+		else {
+			ro = 2.0;
+			p = 2.0;
+			v = 1.0;
+		};
+
+		// compute ro_e and write conservative variables
+		double roe = p / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro;
+		res[1] = 0.0;
+		res[2] = 0.0;
+		res[3] = 0.0;
+		res[4] = roe;		//total energy equals internal one because a motion is absent
+
+		return res;
+	};
 	kernel->SetInitialConditions(initD);
 
 	//save solution
@@ -365,10 +400,8 @@ void RunShockWave1D(int argc, char *argv[]) {
 
 	//finalize kernel
 	kernel->Finalize();
+
 };
-
-
-//// Multidimension cases
 
 // 2D Shock Tube test http://www.cfd-online.com/Wiki/Explosion_test_in_2-D
 void RunSODTestRoe2D(int argc, char *argv[]) {
