@@ -384,9 +384,9 @@ void Run2DComparisonTest(int argc, char *argv[]) {
 		std::vector<double> res(5);
 		res[0] = ro;
 		res[1] = 0.0;
-		res[2] = 0.0;
+		res[2] = ro * v;
 		res[3] = 0.0;
-		res[4] = roe;		//total energy equals internal one because a motion is absent
+		res[4] = roe + 0.5 * ro * v * v;		//total energy equals internal one because a motion is absent
 
 		return res;
 	};
