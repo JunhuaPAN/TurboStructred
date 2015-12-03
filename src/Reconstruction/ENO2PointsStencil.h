@@ -73,17 +73,15 @@ ENO2PointsStencil ComputeReconstruction<ENO2PointsStencil>(std::vector<std::vala
 	double grad_l, grad_r;		// spatial derivatives computed by two neighbour stencils
 
 	//1D case
-	if (nDim == 1) {
-		for (auto i = 0; i < size; i++) {
-			grad_l = (value[i] - values[0][i]) / (point.x - points[0].x);
-			grad_r = (values[1][i] - value[i]) / (points[1].x - point.x);
-			if (std::abs(grad_l) < std::abs(grad_r)) gradients[i] = Vector(grad_l, 0, 0);
-			else gradients[i] = Vector(grad_r, 0, 0);
-		};
+	for (auto i = 0; i < size; i++) {
+		grad_l = (value[i] - values[0][i]) / (point.x - points[0].x);
+		grad_r = (values[1][i] - value[i]) / (points[1].x - point.x);
+		if (std::abs(grad_l) < std::abs(grad_r)) gradients[i] = Vector(grad_l, 0, 0);
+		else gradients[i] = Vector(grad_r, 0, 0);
 	};
 
 	//2D case
-	if (nDim == 2) {
+	if (nDim > 1) {
 		for (auto i = 0; i < size; i++) {
 			grad_l = (value[i] - values[2][i]) / (point.y - points[2].y);
 			grad_r = (values[3][i] - value[i]) / (points[3].y - point.y);
@@ -93,7 +91,7 @@ ENO2PointsStencil ComputeReconstruction<ENO2PointsStencil>(std::vector<std::vala
 	};
 
 	//3D case
-	if (nDim == 3) {
+	if (nDim > 2) {
 		for (int i = 0; i < size; i++) {
 			grad_l = (value[i] - values[4][i]) / (point.z - points[4].z);
 			grad_r = (values[5][i] - value[i]) / (points[5].z - point.z);
