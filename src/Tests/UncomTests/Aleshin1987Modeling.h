@@ -109,7 +109,7 @@ namespace AleshinExp {
 		conf.yRightBoundary.Gamma = conf.Gamma;
 
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-		conf.methodConfiguration.RiemannProblemSolver = RPSolver::GodunovSolver;
+		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 		conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
 		conf.methodConfiguration.CFL = 0.4;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
@@ -213,7 +213,7 @@ namespace AleshinExp {
 	// Run Computation Experiment
 	void RunExperiment(int argc, char *argv[]) {
 		int modeNumber = 2;		// initial perturbation modes number
-		double TotalTime = 10.0e-5;
+		double TotalTime = 16.0e-5;
 
 		// Fill parameters structure (SI system)
 		Parameters par;
@@ -241,9 +241,9 @@ namespace AleshinExp {
 
 		KernelConfiguration conf;
 		conf.nDims = 3;
-		conf.nX = 300;
-		conf.nY = 160;
-		conf.nZ = 80;
+		conf.nX = 160;
+		conf.nY = 80;
+		conf.nZ = 40;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.LZ = conf.LY / modeNumber;
@@ -262,6 +262,7 @@ namespace AleshinExp {
 		conf.xRightBoundary.Gamma = conf.Gamma;
 
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 		conf.methodConfiguration.CFL = 0.4;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
