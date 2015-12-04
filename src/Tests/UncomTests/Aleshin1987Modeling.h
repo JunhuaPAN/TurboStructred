@@ -232,9 +232,9 @@ namespace AleshinExp {
 
 		KernelConfiguration conf;
 		conf.nDims = 3;
-		conf.nX = 300;
-		conf.nY = 160;
-		conf.nZ = 80;
+		conf.nX = 160;
+		conf.nY = 80;
+		conf.nZ = 40;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.LZ = conf.LY / modeNumber;
