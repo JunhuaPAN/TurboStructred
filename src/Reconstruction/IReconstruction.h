@@ -71,7 +71,7 @@ public:
 	//! Return required
 	// Serrialization
 	static std::size_t GetBufferLenght(int nD, int nV) {
-		return nV * nD * 2 + 2;
+		return nV * nD * 2;
 	};
 	virtual std::valarray<double> Serialize()  {
 		std::vector<double> res(0);
@@ -85,19 +85,19 @@ public:
 		return std::valarray<double> {res.data(), res.size()};
 	};
 	virtual void Deserialize(const std::valarray<double>& _values)  {
-		recons.xR = { &_values[0], (size_t)nValues };
-		recons.xL = { &_values[nValues], (size_t)nValues };
+		recons.xL = { &_values[0], (size_t)nValues };
+		recons.xR = { &_values[nValues], (size_t)nValues };
 		
 		// 2D case
 		if (nDims > 1) {
-			recons.yR = { &_values[2 * nValues], (size_t)nValues };
-			recons.yL = { &_values[3 * nValues], (size_t)nValues };
+			recons.yL = { &_values[2 * nValues], (size_t)nValues };
+			recons.yR = { &_values[3 * nValues], (size_t)nValues };
 		};
 
 		// 3D case
 		if (nDims > 2) {
-			recons.zR = { &_values[4 * nValues], (size_t)nValues };
-			recons.zL = { &_values[5 * nValues], (size_t)nValues };
+			recons.zL = { &_values[4 * nValues], (size_t)nValues };
+			recons.zR = { &_values[5 * nValues], (size_t)nValues };
 		};
 
 		return;
