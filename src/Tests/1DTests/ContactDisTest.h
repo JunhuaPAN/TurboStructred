@@ -114,7 +114,7 @@ namespace ContactDisTest
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 			fname << "PWConstant";
 		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
+		if ((conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) || (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2CharactVars)) {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 			fname << "ENO2";
 		};
@@ -122,6 +122,7 @@ namespace ContactDisTest
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
 			fname << "WENO2";
 		};
+
 		kernel->Init(conf);
 
 		// IC
@@ -201,7 +202,7 @@ namespace ContactDisTest
 		// Reconstruction type
 		//Reconstruction RecType{ Reconstruction::PiecewiseConstant };
 		//Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
-		Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
+		Reconstruction RecType{ Reconstruction::ENO2CharactVars};
 
 		// RP solver
 		RPSolver rSolver{ RPSolver::GodunovSolver };

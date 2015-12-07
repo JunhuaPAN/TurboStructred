@@ -152,7 +152,7 @@ namespace ToroTests
 		switch (N) {
 		case 1:
 			starValues.leftWave = WaveType::Rarefaction;
-			starValues.rightWave = WaveType::Rarefaction;
+			starValues.rightWave = WaveType::Shock;
 			starValues.pStar = 0.30313;
 			starValues.uStar = 0.92745;
 			starValues.roStarL = 0.42632;
@@ -369,16 +369,27 @@ namespace ToroTests
 		// Compute exact solution in every cell and write the result valarray
 		for (int i = 0; i < g.nlocalX; i++) {
 			double x = g.CoordinateX[g.iMin + i] - pars.x0;
-			std::vector<double> prim_vars = ComputeExactSolutionInCell(pars, x, t);
-			double rho = prim_vars[0];
-			double u = prim_vars[1];
-			double p = prim_vars[2];
-			double e = p / (TestsUtility::gamma1 * rho);
-			res[i * TestsUtility::nVar] = rho;
-			res[i * TestsUtility::nVar + 1] = rho*u;
-			res[i * TestsUtility::nVar + 2] = 0;
-			res[i * TestsUtility::nVar + 3] = 0;
-			res[i * TestsUtility::nVar + 4] = rho * e + 0.5 * rho * u * u;
+			
+			// second order for integrall
+			double xl, xr;
+			const double d2 = 0.5773502691896257;		// Legandr delta
+			double delta = d2 * 0.5 * g.hx[g.iMin + i];
+
+			// convert primitive variables to conservative ones
+			auto convert = [](const std::vector<double>& arg) {
+				double rho = arg[0];
+				double u = arg[1];
+				double p = arg[2];
+				double e = p / (TestsUtility::gamma1 * rho);
+				return std::vector<double> { rho, rho * u, 0, 0, rho * e + 0.5 * rho * u * u };
+			};
+
+			// compute conservative variables in Legandr points
+			std::vector<double> vars1 = convert(ComputeExactSolutionInCell(pars, x - delta, t));
+			std::vector<double> vars2 = convert(ComputeExactSolutionInCell(pars, x + delta, t));
+
+			// cell averaged conservative variables ( 2nd order )
+			for (int j = 0; j < TestsUtility::nVar; j++) res[TestsUtility::nVar * i + j] = 0.5 * (1.0 * vars1[j] + 1.0 * vars2[j]);
 		};
 		return res;
 	};
@@ -413,6 +424,10 @@ namespace ToroTests
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
 			fname << "WENO2";
 		};
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2CharactVars) {
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2CharactVars>(&argc, &argv));
+			fname << "ENO2";
+		};
 		kernel->Init(conf);
 
 		// IC
@@ -444,8 +459,8 @@ namespace ToroTests
 
 		// Compute accuracy
 		std::valarray<double> inner_values(&(kernel->values[TestsUtility::nVar * kernel->g.dummyCellLayersX]), kernel->g.nlocalX * kernel->nVariables);
-		std::vector<double> L2 = TestsUtility::ComputeL2Error(inner_values, kernel->g, *(kernel->pManager));
-		std::vector<double> L1 = TestsUtility::ComputeL1Error(inner_values, kernel->g, *(kernel->pManager));
+		std::vector<double> L2 = TestsUtility::ComputeL2Error(inner_values, kernel->g, *(kernel->pManager), conf.nX);
+		std::vector<double> L1 = TestsUtility::ComputeL1Error(inner_values, kernel->g, *(kernel->pManager), conf.nX);
 
 		// Write in errors
 		errors = L2;
@@ -484,16 +499,17 @@ namespace ToroTests
 	};
 	
 	void RunExperiment(int argc, char *argv[]) {
-		int Ntest = 2;	// Toro test number
+		int Ntest = 1;	// Toro test number
 		int Nx = 400;
 
-		// Reconstruction type
-		Reconstruction RecType{ Reconstruction::PiecewiseConstant };
-		//Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
-		//Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
+		//	Reconstruction type
+		//	Reconstruction RecType{ Reconstruction::PiecewiseConstant };
+		//	Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
+			Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
+		//	Reconstruction RecType{ Reconstruction::ENO2CharactVars };
 
 		// RP solver
-		RPSolver rSolver{ RPSolver::GodunovSolver };
+		RPSolver rSolver{ RPSolver::RoePikeSolver };
 		//RPSolver rSolver{};
 
 		// collect all errors in file

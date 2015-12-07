@@ -35,12 +35,12 @@ public:
 	std::vector<Vector> gradientVelocityZ;  //array for storing gradients of w
 	std::vector< std::vector< std::vector<ReconstructionType> > > reconstructions; //array for storing 
 
-	//Initizalization
+	// Initizalization
 	void Init(KernelConfiguration& kernelConfig) {
-		//Invoke base class init
+		// Invoke base class init
 		Kernel::Init(kernelConfig);
 
-		//Method specific part
+		// Method specific part
 		MethodConfiguration config = kernelConfig.methodConfiguration;
 		assert(config.RungeKuttaOrder != 0);			// Runge-Kutta order is not initialized
 		assert(config.RiemannProblemSolver != RPSolver::NoSolver);		// No solver was choosen
@@ -49,26 +49,65 @@ public:
 		if (config.RiemannProblemSolver == RPSolver::RoePikeSolver) {
 			_riemannSolver = (std::unique_ptr<RiemannSolver>)std::move(new RoeSolverPerfectGasEOS(kernelConfig.Gamma, config.Eps, config.OperatingPresure));
 		};
-		if (config.RiemannProblemSolver == RPSolver::GodunovSolver)	{
+		if (config.RiemannProblemSolver == RPSolver::GodunovSolver) {
 			_riemannSolver = (std::unique_ptr<RiemannSolver>)std::move(new GodunovSolverPerfectGasEOS(kernelConfig.Gamma, config.Eps, config.OperatingPresure));
 		};
-		
-		//Allocate memory for values and residual
+
+		// Allocate memory for values and residual
 		spectralRadius.resize(g.nCellsLocalAll);
 
 		// Resize our reconstructions array
 		reconstructions.resize(g.nlocalX + 2 * g.dummyCellLayersX);
-		for(auto& r : reconstructions) r.resize(g.nlocalY + 2 * g.dummyCellLayersY);
-		for(auto& r : reconstructions) {
-			for (auto& s : r) {
-				s.resize(g.nlocalZ + 2 * g.dummyCellLayersZ);
-				for (auto& m : s) {
-					m.nDimensions = nDims;
-					m.nValues = nVariables;
+		for (auto& r : reconstructions) r.resize(g.nlocalY + 2 * g.dummyCellLayersY);
+		for (auto& r : reconstructions) {
+			for (auto& s : r) s.resize(g.nlocalZ + 2 * g.dummyCellLayersZ);
+		};
+
+		// Pass N Dimensions and N values to dummy cells reconstructions
+		if(g.dummyCellLayersX > 0) {
+			int yLayer = 0;
+			int zLayer = 0;
+			if (g.dummyCellLayersY > 0) yLayer = 1;
+			if (g.dummyCellLayersZ > 0) zLayer = 1;
+			for (int j = yLayer; j <= g.jMax - g.jMin + yLayer; j++) {
+				for (int k = zLayer; k <= g.kMax - g.kMin + zLayer; k++) {
+					reconstructions[0][j][k].nValues = nVariables;
+					reconstructions[0][j][k].nDims = nDims;
+					reconstructions[g.iMax - g.iMin + 2][j][k].nValues = nVariables;
+					reconstructions[g.iMax - g.iMin + 2][j][k].nDims = nDims;
+				};
+			};
+		};
+		if(g.dummyCellLayersY > 0) {
+			int xLayer = 0;
+			int zLayer = 0;
+			if (g.dummyCellLayersX > 0) xLayer = 1;
+			if (g.dummyCellLayersZ > 0) zLayer = 1;
+			for (int i = xLayer; i <= g.iMax - g.iMin + xLayer; i++) {
+				for (int k = zLayer; k <= g.kMax - g.kMin + zLayer; k++) {
+					reconstructions[i][0][k].nValues = nVariables;
+					reconstructions[i][0][k].nDims = nDims;
+					reconstructions[i][g.jMax - g.jMin + 2][k].nValues = nVariables;
+					reconstructions[i][g.jMax - g.jMin + 2][k].nDims = nDims;
+				};
+			};
+		};
+		if(g.dummyCellLayersZ > 0) {
+			int xLayer = 0;
+			int yLayer = 0;
+			if (g.dummyCellLayersX > 0) xLayer = 1;
+			if (g.dummyCellLayersY > 0) yLayer = 1;
+			for (int i = xLayer; i <= g.iMax - g.iMin + xLayer; i++) {
+				for (int j = yLayer; j <= g.jMax - g.jMin + yLayer; j++) {
+					reconstructions[i][j][0].nValues = nVariables;
+					reconstructions[i][j][0].nDims = nDims;
+					reconstructions[i][j][g.kMax - g.kMin + 2].nValues = nVariables;
+					reconstructions[i][j][g.kMax - g.kMin + 2].nDims = nDims;
 				};
 			};
 		};
 
+		// Output info
 		if (DebugOutputEnabled) {
 			std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";
 			std::cout.flush();
@@ -733,32 +772,32 @@ public:
 				for (int k = g.kMin; k <= g.kMax; k++) {
 					std::vector<std::valarray<double> > stencil_values;		// vector of stencil values
 					std::vector<Vector> points;								// vector of stencil points
-					std::valarray<double> cell_values(std::move(ConservativeToPrimitive(getCellValues(i, j, k))));	// primitive variables in our cell
+					std::valarray<double> cell_values(std::move(ForvardVariablesTransition(getCellValues(i, j, k))));	// primitive variables in our cell
 					Vector cell_center = Vector(g.CoordinateX[i], g.CoordinateY[j], g.CoordinateZ[k]);
 
 					// X direction stencil
 					for (int iStencil = -g.dummyCellLayersX; iStencil <= g.dummyCellLayersX; iStencil++) {
 						if (iStencil == 0) continue;
-						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i + iStencil, j, k))));
+						stencil_values.push_back(std::move(ForvardVariablesTransition(getCellValues(i + iStencil, j, k))));
 						points.push_back(std::move(Vector(g.CoordinateX[i + iStencil], g.CoordinateY[j], g.CoordinateZ[k])));
 					};
 
 					//Y direction stencil
 					for (int jStencil = -g.dummyCellLayersY; jStencil <= g.dummyCellLayersY; jStencil++) {
 						if (jStencil == 0) continue;
-						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i, j + jStencil, k))));
+						stencil_values.push_back(std::move(ForvardVariablesTransition(getCellValues(i, j + jStencil, k))));
 						points.push_back(std::move(Vector(g.CoordinateX[i], g.CoordinateY[j + jStencil], g.CoordinateZ[k])));
 					};
 
 					//Z direction stencil
 					for (int kStencil = -g.dummyCellLayersZ; kStencil <= g.dummyCellLayersZ; kStencil++) {
 						if (kStencil == 0) continue;
-						stencil_values.push_back(std::move(ConservativeToPrimitive(getCellValues(i, j, k + kStencil))));
+						stencil_values.push_back(std::move(ForvardVariablesTransition(getCellValues(i, j, k + kStencil))));
 						points.push_back(std::move(Vector(g.CoordinateX[i], g.CoordinateY[j], g.CoordinateZ[k + kStencil])));
 					};
 
 					//we have only one or no external layer of cells reconstructions
-					reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + zLayer] = ComputeReconstruction<ReconstructionType>(stencil_values, points, cell_values, cell_center, nDims);
+					reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + zLayer] = ComputeReconstruction<ReconstructionType>(stencil_values, points, cell_values, cell_center, nDims, gamma);
 				};
 			};
 		};
@@ -886,7 +925,6 @@ public:
 
 						//Deserialize from string of doubles
 						reconstructions[iRec][jRec][kRec].Deserialize(msg);
-						reconstructions[iRec][jRec][kRec].RefreshPosition({ g.CoordinateX[i], g.CoordinateY[j], g.CoordinateZ[k] });
 
 						//Increase object counter
 						idxBuffer++;
@@ -1042,17 +1080,17 @@ public:
 					// Apply boundary conditions
 					if ((pManager->rankCart[0] == 0) && (i == g.iMin) && (g.IsPeriodicX != true))									// Left border
 					{
-						UR = PrimitiveToConservative(reconstructions[1][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(faceCenter));
+						UR = InverseVariablesTransition(reconstructions[1][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(CubeFaces::xL));
 						UL = xLeftBC->getDummyReconstructions(&UR[0]);
 					}
 					else if ((pManager->rankCart[0] == pManager->dimsCart[0] - 1) && (i == g.iMax + 1) && (g.IsPeriodicX != true))	// Right border
 					{
-						UL = PrimitiveToConservative(reconstructions[g.iMax - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(faceCenter));
+						UL = InverseVariablesTransition(reconstructions[g.iMax - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(CubeFaces::xR));
 						UR = xRightBC->getDummyReconstructions(&UL[0]);
 					} else
 					{
-						UL = PrimitiveToConservative(reconstructions[i - g.iMin][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(faceCenter));
-						UR = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(faceCenter));
+						UL = InverseVariablesTransition(reconstructions[i - g.iMin][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(CubeFaces::xR));
+						UR = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(CubeFaces::xL));
 					};
 
 					// Compute convective flux
@@ -1116,18 +1154,18 @@ public:
 						// Apply boundary conditions
 						if ((pManager->rankCart[1] == 0) && (j == g.jMin) && (g.IsPeriodicY != true))									// Left border
 						{
-							UR = PrimitiveToConservative(reconstructions[i - g.iMin + 1][1][k - g.kMin + zLayer].SampleSolution(faceCenter));
+							UR = InverseVariablesTransition(reconstructions[i - g.iMin + 1][1][k - g.kMin + zLayer].SampleSolution(CubeFaces::yL));
 							UL = yLeftBC->getDummyReconstructions(&UR[0]);
 						}
 						else if ((pManager->rankCart[1] == pManager->dimsCart[1] - 1) && (j == g.jMax + 1) && (g.IsPeriodicY != true))	// Right border
 						{
-							UL = PrimitiveToConservative(reconstructions[i - g.iMin + 1][g.jMax - g.jMin + 1][k - g.kMin + zLayer].SampleSolution(faceCenter));
+							UL = InverseVariablesTransition(reconstructions[i - g.iMin + 1][g.jMax - g.jMin + 1][k - g.kMin + zLayer].SampleSolution(CubeFaces::yR));
 							UR = yRightBC->getDummyReconstructions(&UL[0]);
 						}
 						else
 						{
-							UL = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin][k - g.kMin + zLayer].SampleSolution(faceCenter));
-							UR = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + 1][k - g.kMin + zLayer].SampleSolution(faceCenter));
+							UL = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin][k - g.kMin + zLayer].SampleSolution(CubeFaces::yR));
+							UR = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + 1][k - g.kMin + zLayer].SampleSolution(CubeFaces::yL));
 						};
 
 						// Compute convective flux
@@ -1172,8 +1210,7 @@ public:
 				};
 			};
 		};
-
-		
+				
 		// K step
 		if (nDims > 2)
 		{
@@ -1192,18 +1229,18 @@ public:
 						// Apply boundary conditions
 						if ((pManager->rankCart[1] == 0) && (k == g.kMin) && (g.IsPeriodicZ != true))									// Left border
 						{
-							UR = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][1].SampleSolution(faceCenter));
+							UR = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][1].SampleSolution(CubeFaces::zL));
 							UL = zLeftBC->getDummyReconstructions(&UR[0]);
 						}
 						else if ((pManager->rankCart[1] == pManager->dimsCart[1] - 1) && (k == g.kMax + 1) && (g.IsPeriodicZ != true))	// Right border
 						{
-							UL = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][g.kMax - g.kMin + 1].SampleSolution(faceCenter));
+							UL = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][g.kMax - g.kMin + 1].SampleSolution(CubeFaces::zR));
 							UR = zRightBC->getDummyReconstructions(&UL[0]);
 						}
 						else
 						{
-							UL = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin].SampleSolution(faceCenter));
-							UR = PrimitiveToConservative(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + 1].SampleSolution(faceCenter));
+							UL = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin].SampleSolution(CubeFaces::zR));
+							UR = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + 1].SampleSolution(CubeFaces::zL));
 						};
 
 						// Compute convective flux

@@ -1,5 +1,5 @@
-#ifndef TurboStructured_Tests_1DTests_RarefactionTest
-#define TurboStructured_Tests_1DTests_RarefactionTest
+#ifndef TurboStructured_Tests_1DTests_RarefactionTest1
+#define TurboStructured_Tests_1DTests_RarefactionTest1
 
 #include <iostream>
 #include <vector>
@@ -11,7 +11,7 @@
 //	In that Riemann problem we have one rarefaction wave folowing to the left	//
 //	We consider only inner part of the rarefaction for order estimation			//
 
-namespace RarefactionTest
+namespace RarefactionTest1
 {
 	// special variable for rarefaction segment length
 	double subgrid_length;
@@ -302,16 +302,27 @@ namespace RarefactionTest
 		// Compute exact solution in every cell and write the result valarray
 		for (int i = 0; i < g.nlocalX; i++) {
 			double x = g.CoordinateX[g.iMin + i] - pars.x0;
-			std::vector<double> prim_vars = ComputeExactSolutionInCell(pars, x, t);
-			double rho = prim_vars[0];
-			double u = prim_vars[1];
-			double p = prim_vars[2];
-			double e = p / (TestsUtility::gamma1 * rho);
-			res[i * TestsUtility::nVar] = rho;
-			res[i * TestsUtility::nVar + 1] = rho*u;
-			res[i * TestsUtility::nVar + 2] = 0;
-			res[i * TestsUtility::nVar + 3] = 0;
-			res[i * TestsUtility::nVar + 4] = rho * e + 0.5 * rho * u * u;
+
+			// second order for integrall
+			double xl, xr;
+			const double d2 = 0.5773502691896257;		// Legandr delta
+			double delta = d2 * 0.5 * g.hx[g.iMin + i];
+
+			// convert primitive variables to conservative ones
+			auto convert = [](const std::vector<double>& arg) {
+				double rho = arg[0];
+				double u = arg[1];
+				double p = arg[2];
+				double e = p / (TestsUtility::gamma1 * rho);
+				return std::vector<double> { rho, rho * u, 0, 0, rho * e + 0.5 * rho * u * u };
+			};
+
+			// compute conservative variables in Legandr points
+			std::vector<double> vars1 = convert(ComputeExactSolutionInCell(pars, x - delta, t));
+			std::vector<double> vars2 = convert(ComputeExactSolutionInCell(pars, x + delta, t));
+
+			// cell averaged conservative variables ( 2nd order )
+			for (int j = 0; j < TestsUtility::nVar; j++) res[TestsUtility::nVar * i + j] = 0.5 * (1.0 * vars1[j] + 1.0 * vars2[j]);
 		};
 		return res;
 	};
@@ -344,6 +355,10 @@ namespace RarefactionTest
 		if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
 			fname << "WENO2";
+		};
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2CharactVars) {
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2CharactVars>(&argc, &argv));
+			fname << "ENO2";
 		};
 		kernel->Init(conf);
 
@@ -410,7 +425,7 @@ namespace RarefactionTest
 
 		// Save the errors
 		std::stringstream fname2;
-		fname2 << "Rarefaction_test.dat";
+		fname2 << "Rarefaction_test1.dat";
 		TestsUtility::WriteErrors(fname2.str(), errors, kernel->g, *(kernel->pManager));
 
 		// Finalize kernel
@@ -420,12 +435,13 @@ namespace RarefactionTest
 	};
 
 	void RunExperiment(int argc, char *argv[]) {
-		int Nx = 400;
+		int Nx = 800;
 
 		// Reconstruction type
-		//Reconstruction RecType{ Reconstruction::PiecewiseConstant };
-		//Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
-		Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
+		// Reconstruction RecType{ Reconstruction::PiecewiseConstant };
+		// Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
+		// Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
+		Reconstruction RecType{ Reconstruction::ENO2CharactVars };
 
 		// RP solver
 		RPSolver rSolver{ RPSolver::GodunovSolver };

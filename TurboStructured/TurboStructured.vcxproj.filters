@@ -185,9 +185,6 @@
     <ClInclude Include="..\src\BoundaryConditions\IBoundaryCondition.h">
       <Filter>Header Files\BoundaryConditions</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Reconstruction\ENO3PointsStencil.h">
-      <Filter>Header Files\Reconstruction</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\Tests\UncomTests\Aleshin1987Modeling.h">
       <Filter>Header Files\Tests\UncomTests</Filter>
     </ClInclude>
@@ -257,8 +254,23 @@
     <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\stdafx.h">
       <Filter>Header Files\ExternalLibs\Alglib</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Tests\1DTests\RarefactionTest.h">
+    <ClInclude Include="..\src\utility\VariablesTransition.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Reconstruction\ENO2CharactVars.h">
+      <Filter>Header Files\Reconstruction</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\Integration.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\1DTests\RarefactionTest1.h">
       <Filter>Header Files\Tests\1DTests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\1DTests\RarefactionTest2.h">
+      <Filter>Header Files\Tests\1DTests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\Direction.h">
+      <Filter>Header Files\Utility</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

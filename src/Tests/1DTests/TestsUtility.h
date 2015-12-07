@@ -5,6 +5,7 @@
 #include <vector>
 #include "kernel\kernel.h"
 #include "Methods\ExplicitRungeKuttaFVM.h"
+#include "Utility\Integration.h"
 
 // all common functions for 1D tests
 namespace TestsUtility{
@@ -15,30 +16,49 @@ namespace TestsUtility{
 	
 	// Error norm functions
 	std::vector<double> ComputeL2Error(std::valarray<double>& comp_val, Grid& g, ParallelManager& par, double normVal = 1.0) {
-		std::vector<double> res_temp(nVar, 0);
+		// initialise collector of errors
+		std::vector< std::valarray<double> > delta_solution(nVar);
+		for (int i = 0; i < nVar; i++) delta_solution[i] = std::valarray<double>(g.nlocalX);
 		std::vector<double> res(nVar, 0);
+
+		// compute function equals delta between two functions
 		for (int i = 0; i < comp_val.size(); i++) {
 			double err = comp_val[i] - exact_solution[i];
-			res_temp[i % nVar] += (err * err) * g.hx[g.iMin + i / nVar];
+			delta_solution[i % nVar][i / nVar] = err * err;
 		};
+
+		std::valarray<double> hx = { &(g.hx[g.iMin]), (size_t)g.nlocalX };
+		for (int i = 0; i < nVar; i++) {
+			res[i] = ComputeIntegrall(delta_solution[i], hx);
+		};
+
 		par.Barrier();
-		for (int i = 0; i < nVar; i++) res[i] = par.Sum(res_temp[i]);
+		for (int i = 0; i < nVar; i++) res[i] = par.Sum(res[i]);
 		for (int i = 0; i < nVar; i++) res[i] = sqrt(res[i]);
 		for (int i = 0; i < nVar; i++) res[i] /= normVal;
 		return res;
 	};
 
 	std::vector<double> ComputeL1Error(std::valarray<double>& comp_val, Grid& g, ParallelManager& par, double normVal = 1.0) {
-		std::vector<double> res_temp(nVar, 0);
+		// initialise collector of errors
+		std::vector< std::valarray<double> > delta_solution(nVar);
+		for (int i = 0; i < nVar; i++) delta_solution[i] = std::valarray<double>(g.nlocalX);
 		std::vector<double> res(nVar, 0);
+
+		// compute function equals delta between two functions
 		for (int i = 0; i < comp_val.size(); i++) {
 			double err = comp_val[i] - exact_solution[i];
-			res_temp[i % nVar] += abs(err) * g.hx[g.iMin + i / nVar];
+			delta_solution[i % nVar][i / nVar] = abs(err);
 		};
-		par.Barrier();
-		for (int i = 0; i < nVar; i++) res[i] = par.Sum(res_temp[i]);
-		for (int i = 0; i < nVar; i++) res[i] /= normVal;
 
+		std::valarray<double> hx = { &(g.hx[g.iMin]), (size_t)g.nlocalX };
+		for (int i = 0; i < nVar; i++) {
+			res[i] = ComputeIntegrall(delta_solution[i], hx);
+		};
+
+		par.Barrier();
+		for (int i = 0; i < nVar; i++) res[i] = par.Sum(res[i]);
+		for (int i = 0; i < nVar; i++) res[i] /= normVal;
 		return res;
 	};
 
@@ -108,14 +128,14 @@ namespace TestsUtility{
 	void WriteErrors(std::string fname, std::vector<double>& err, Grid& g, ParallelManager& pManager) { 		// write result in file
 		if (pManager.IsMaster()) {
 			std::ofstream ofs(fname, std::ios_base::app);
-			ofs << g.nX << ' ';
-			ofs << log(g.hx[0]) << ' ';				// X size of first element of the grid
-			ofs << log(err[0]) << ' ';
-			ofs << log(err[1]) << ' ';
-			ofs << log(err[4]) << ' ';
-			ofs << log(err[TestsUtility::nVar]) << ' ';
-			ofs << log(err[TestsUtility::nVar + 1]) << ' ';
-			ofs << log(err[TestsUtility::nVar + 4]);
+			ofs << log(g.hx[0]) << ' ';
+			ofs << g.nX << ' ';				// X size of first element of the grid
+			ofs << (err[0]) << ' ';
+			ofs << (err[1]) << ' ';
+			ofs << (err[4]) << ' ';
+			ofs << (err[TestsUtility::nVar]) << ' ';
+			ofs << (err[TestsUtility::nVar + 1]) << ' ';
+			ofs << (err[TestsUtility::nVar + 4]);
 			ofs << std::endl;
 			ofs.close();
 		};

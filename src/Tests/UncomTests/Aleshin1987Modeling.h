@@ -36,7 +36,7 @@ namespace AleshinExp {
 		par.xInterface = 0.015;
 		par.xShock = 0.029;
 		par.uReff = -400;		// frame of refference moves in left direction
-		par.Ly = 7.2e-2;
+		par.Ly = 0.5 * 7.2e-2;
 		par.p0 = 5.0e4;			// a half of one barr
 		par.roR = 1.784;		// argon
 		par.roL = 5.894;		// xenon
@@ -84,12 +84,12 @@ namespace AleshinExp {
 		return;
 	};
 
-	// Run one experiment ( parameters is as input data)
+	// Run one experiment ( parameters is as input data )
 	void RunSingleExperiment(int modeNumber, double TotalTime, Parameters& par, int argc, char *argv[]) {
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 500;
-		conf.nY = 300;
+		conf.nX = 800;
+		conf.nY = 400;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
@@ -109,6 +109,8 @@ namespace AleshinExp {
 		conf.yRightBoundary.Gamma = conf.Gamma;
 
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+		conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
 		conf.methodConfiguration.CFL = 0.4;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
@@ -122,9 +124,17 @@ namespace AleshinExp {
 
 		// init kernel
 		std::unique_ptr<Kernel> kernel;
-		if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		};
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
-			//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		};
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) {
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
+		};
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2CharactVars) {
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2CharactVars>(&argc, &argv));
 		};
 		kernel->Init(conf);
 
@@ -202,8 +212,8 @@ namespace AleshinExp {
 
 	// Run Computation Experiment
 	void RunExperiment(int argc, char *argv[]) {
-		int modeNumber = 2;		// initial perturbation modes number
-		double TotalTime = 10.0e-5;
+		int modeNumber = 1;		// initial perturbation modes number
+		double TotalTime = 40.0e-5;
 
 		// Fill parameters structure (SI system)
 		Parameters par;
@@ -231,9 +241,9 @@ namespace AleshinExp {
 
 		KernelConfiguration conf;
 		conf.nDims = 3;
-		conf.nX = 300;
-		conf.nY = 160;
-		conf.nZ = 80;
+		conf.nX = 160;
+		conf.nY = 80;
+		conf.nZ = 40;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.LZ = conf.LY / modeNumber;
@@ -252,6 +262,7 @@ namespace AleshinExp {
 		conf.xRightBoundary.Gamma = conf.Gamma;
 
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 		conf.methodConfiguration.CFL = 0.4;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;

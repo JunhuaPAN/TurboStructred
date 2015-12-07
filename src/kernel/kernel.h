@@ -98,7 +98,8 @@ public:
 		return &values[sBegin];
 	};
 
-	inline std::valarray<double> ConservativeToPrimitive(double* vals) {
+	// Transition beatween variables (trivial by default)
+	inline std::valarray<double> ForvardVariablesTransition(double* vals) {
 		std::valarray<double> res(nVariables);
 		double rho = vals[0];
 		double u = vals[1] / rho;
@@ -119,8 +120,9 @@ public:
 
 		return std::move(res);
 	};
-	
-	inline std::valarray<double> PrimitiveToConservative(std::valarray<double> &vals) {
+
+	// Inverse transition
+	inline std::valarray<double> InverseVariablesTransition(std::valarray<double> &vals) {
 		std::valarray<double> res(nVariables);
 		double rho_e = vals[0] / (gamma - 1.0);
 		double rho = rho_e / vals[4];
