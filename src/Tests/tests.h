@@ -93,11 +93,8 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
 	conf.nX = 200;
-	//conf.nY = 10;
 	conf.LX = 1.0;
-	//conf.LY = 1.0;
 	conf.isPeriodicX = false;
-	//conf.isPeriodicY = false;
 	conf.isUniformAlongX = true;
 	conf.qx = 1.00;
 
@@ -113,13 +110,12 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
 	conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
-	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::GodunovSolver;
 	conf.DummyLayerSize = 1;
 
-	conf.MaxTime = 0.2;
+	conf.MaxTime = 0.25;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionSnapshotTime = 0.1;
-	conf.SaveSolutionSnapshotIterations = 0;
 	conf.ResidualOutputIterations = 10;
 
 	//init kernel
@@ -307,58 +303,91 @@ void RunContactDisconTest1D(int argc, char *argv[]) {
 	kernel->Finalize();
 };
 
-// Just one shock wave TO DO compute correct IC
-void RunShockWave1D(int argc, char *argv[]) {
+// Y direction test
+void RunSODYTest(int argc, char *argv[]) {
 	KernelConfiguration conf;
-	conf.nDims = 1;
-	conf.nX = 100;
+	conf.nDims = 2;
+	conf.nX = 10;
+	conf.nY = 200;
 	conf.LX = 1.0;
-	conf.isPeriodicX = false;
+	conf.LY = 1.0;
+	conf.isPeriodicX = true;
 	conf.isUniformAlongX = true;
-	conf.qx = 1.00;
+	conf.isPeriodicY = false;
+	conf.isUniformAlongY = true;
 
-	conf.Gamma = 2.0;		// Specific Gamma
+	// BC
+	conf.yLeftBoundary.BCType = BoundaryConditionType::Natural;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::Natural;
+	conf.yRightBoundary.Gamma = 1.4;
 
+	// Method parameters
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::GodunovSolver;
 	conf.DummyLayerSize = 1;
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
+	conf.Gamma = 1.4;
 
-	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
-	conf.xLeftBoundary.Gamma = 1.4;
-	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
-	conf.xRightBoundary.Gamma = 1.4;
-
-	conf.MaxTime = 0.2;
+	// Task and output settings
+	conf.MaxTime = 0.25;
 	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0.1;
-	conf.SaveSolutionSnapshotIterations = 5;
+	//conf.SaveSolutionSnapshotTime = 0.1;
+	conf.SaveSliceSnapshotTime = 0.1;
 	conf.ResidualOutputIterations = 10;
 
-	//init kernel
+	// Init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
-		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 	};
 	kernel->Init(conf);
 
 	// initial conditions
-	double shock_vel = 0.25 * (sqrt(33.0) + 1.0);
 	ShockTubeParameters params;
-	params.gammaL = params.gammaR = 2.0;
+	params.gammaL = params.gammaR = 1.4;
 	params.roL = 1.0;
-	params.PL = 1.0 + shock_vel;
+	params.PL = 1.0;
 	params.uL = { 0, 0, 0 };
-	params.roR = shock_vel / (1.0 + shock_vel);
-	params.PR = 1.0;
-	params.uR = { -1.0, 0, 0 };
-	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.3, params);
-	kernel->SetInitialConditions(initD);
+	params.roR = 0.125;
+	params.PR = 0.1;
+	params.uR = { 0, 0, 0 };
+	double y0 = 0.5;
+	auto init = [&params, &conf, y0](Vector r) {
+		std::vector<double> res(5);
+		double rho, p;
+		double gamma = params.gammaL;
+		Vector V;
+		if (r.y < y0) {
+			rho = params.roL;
+			p = params.PL;
+			V = params.uL;
+		}
+		else {
+			rho = params.roR;
+			p = params.PR;
+			V = params.uR;
+		};
 
-	//save solution
-	kernel->SaveSolution("init.dat");
+		res[0] = rho;
+		res[1] = rho * V.x;
+		res[2] = rho * V.y;
+		res[3] = rho * V.z;
+		res[4] = p / (gamma - 1) + 0.5 * rho * (V.x * V.x + V.y * V.y + V.z * V.z);
+
+		return res;
+	};
+
+	// IC
+	kernel->SetInitialConditions(init);
+
+	// Init the slice and save initial solution
+	//kernel->SaveSolution("init.dat");
+	kernel->slices.push_back(Slice(1, -1, 0));
+	kernel->SaveSliceToTecplot("init_slice.dat", kernel->slices[0]);
 
 	//run computation
 	kernel->Run();

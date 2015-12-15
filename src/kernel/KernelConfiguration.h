@@ -41,15 +41,17 @@ public:
 	int DummyLayerSize{ 1 };
 	enum class Method {
 		ExplicitRungeKuttaFVM,
-  } SolutionMethod { Method::ExplicitRungeKuttaFVM  };
+	} SolutionMethod { Method::ExplicitRungeKuttaFVM  };
 
 	MethodConfiguration methodConfiguration;
 
 	//Run parameters
 	int MaxIteration{ 1000 };
 	double MaxTime{ 1.0 };
-	double SaveSolutionSnapshotTime{ 0.1 };
+	double SaveSolutionSnapshotTime{ 0 };
+	double SaveSliceSnapshotTime{ 0 };
 	int SaveSolutionSnapshotIterations{ 0 };
+	int SaveSliceSnapshotIterations{ 0 };
 	int ResidualOutputIterations{ 0 };
 	bool DebugOutputEnabled{ false };
 	

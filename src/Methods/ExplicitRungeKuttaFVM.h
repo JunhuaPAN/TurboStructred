@@ -1309,7 +1309,7 @@ public:
 			};
 		};
 
-		if (SaveSolutionSnapshotTime != 0) dt = std::min(stepInfo.NextSnapshotTime - stepInfo.Time, dt);
+		if ( (SaveSolutionSnapshotTime != 0) || (SaveSliceSnapshotTime != 0) ) dt = std::min(stepInfo.NextSnapshotTime - stepInfo.Time, dt);
 		dt = pManager->Min(dt);
 
 		return dt;
