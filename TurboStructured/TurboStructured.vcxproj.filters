@@ -272,6 +272,9 @@
     <ClInclude Include="..\src\utility\Direction.h">
       <Filter>Header Files\Utility</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\utility\Slices.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
