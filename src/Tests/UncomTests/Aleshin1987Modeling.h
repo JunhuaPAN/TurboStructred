@@ -88,8 +88,8 @@ namespace AleshinExp {
 	void RunSingleExperiment(int modeNumber, double TotalTime, Parameters& par, int argc, char *argv[]) {
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 400;
-		conf.nY = 200;
+		conf.nX = 600;
+		conf.nY = 300;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
@@ -109,11 +109,11 @@ namespace AleshinExp {
 		conf.yRightBoundary.Gamma = conf.Gamma;
 
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+		conf.methodConfiguration.RiemannProblemSolver = RPSolver::GodunovSolver;
 		conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
 		conf.methodConfiguration.CFL = 0.4;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
-		conf.methodConfiguration.Eps = 0.05;
+		//conf.methodConfiguration.Eps = 0.05;
 		conf.DummyLayerSize = 1;
 
 		conf.MaxTime = TotalTime;

@@ -93,7 +93,7 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
 	conf.nX = 200;
-	conf.LX = 1.0;
+	conf.LX = 2.0;
 	conf.isPeriodicX = false;
 	conf.isUniformAlongX = true;
 	conf.qx = 1.00;
@@ -307,10 +307,10 @@ void RunContactDisconTest1D(int argc, char *argv[]) {
 void RunSODYTest(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 2;
-	conf.nX = 10;
-	conf.nY = 200;
+	conf.nX = 1;
+	conf.nY = 400;
 	conf.LX = 1.0;
-	conf.LY = 1.0;
+	conf.LY = 2.0;
 	conf.isPeriodicX = true;
 	conf.isUniformAlongX = true;
 	conf.isPeriodicY = false;
@@ -355,7 +355,98 @@ void RunSODYTest(int argc, char *argv[]) {
 	params.roR = 0.125;
 	params.PR = 0.1;
 	params.uR = { 0, 0, 0 };
-	double y0 = 0.5;
+	double y0 = 0.5 * conf.LY;
+	auto init = [&params, &conf, y0](Vector r) {
+		std::vector<double> res(5);
+		double rho, p;
+		double gamma = params.gammaL;
+		Vector V;
+		if (r.y < y0) {
+			rho = params.roL;
+			p = params.PL;
+			V = params.uL;
+		}
+		else {
+			rho = params.roR;
+			p = params.PR;
+			V = params.uR;
+		};
+
+		res[0] = rho;
+		res[1] = rho * V.x;
+		res[2] = rho * V.y;
+		res[3] = rho * V.z;
+		res[4] = p / (gamma - 1) + 0.5 * rho * (V.x * V.x + V.y * V.y + V.z * V.z);
+
+		return res;
+	};
+
+	// IC
+	kernel->SetInitialConditions(init);
+
+	// Init the slice and save initial solution
+	//kernel->SaveSolution("init.dat");
+	kernel->slices.push_back(Slice(1, -1, 0));
+	kernel->SaveSliceToTecplot("init_slice.dat", kernel->slices[0]);
+
+	//run computation
+	kernel->Run();
+
+	//finalize kernel
+	kernel->Finalize();
+};
+void RunSODInverseYTest(int argc, char *argv[]) {
+	KernelConfiguration conf;
+	conf.nDims = 2;
+	conf.nX = 1;
+	conf.nY = 400;
+	conf.LX = 1.0;
+	conf.LY = 2.0;
+	conf.isPeriodicX = true;
+	conf.isUniformAlongX = true;
+	conf.isPeriodicY = false;
+	conf.isUniformAlongY = true;
+
+	// BC
+	conf.yLeftBoundary.BCType = BoundaryConditionType::Natural;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::Natural;
+	conf.yRightBoundary.Gamma = 1.4;
+
+	// Method parameters
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::GodunovSolver;
+	conf.DummyLayerSize = 1;
+	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.05;
+	conf.Gamma = 1.4;
+
+	// Task and output settings
+	conf.MaxTime = 0.25;
+	conf.MaxIteration = 1000000;
+	//conf.SaveSolutionSnapshotTime = 0.1;
+	conf.SaveSliceSnapshotTime = 0.1;
+	conf.ResidualOutputIterations = 10;
+
+	// Init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	kernel->Init(conf);
+
+	// initial conditions
+	ShockTubeParameters params;
+	params.gammaL = params.gammaR = 1.4;
+	params.roR = 1.0;
+	params.PR = 1.0;
+	params.uR = { 0, 0, 0 };
+	params.roL = 0.125;
+	params.PL = 0.1;
+	params.uL = { 0, 0, 0 };
+	double y0 = 0.5 * conf.LY;
 	auto init = [&params, &conf, y0](Vector r) {
 		std::vector<double> res(5);
 		double rho, p;

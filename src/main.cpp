@@ -7,7 +7,8 @@ int main(int argc, char *argv[])
 {
 	//main function
 	//RunSODTestRoe1D(argc, argv);
-	//RunSODYTest(argc, argv);
+	//RunSODInverseYTest(argc, argv);
+	RunSODYTest(argc, argv);
 	//Run2DComparisonTest(argc, argv);
 	//RarefactionTest2::RunExperiment(argc, argv);
 	//RunContactDisconTest1D(argc, argv);
