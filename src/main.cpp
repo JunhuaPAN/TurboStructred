@@ -6,9 +6,11 @@
 int main(int argc, char *argv[])
 {
 	//main function
+	RunExactEulerTest2D(argc, argv);
+	//SmoothSolution::RunExperiment(argc, argv);
 	//RunSODTestRoe1D(argc, argv);
 	//RunSODInverseYTest(argc, argv);
-	RunSODYTest(argc, argv);
+	//RunSODYTest(argc, argv);
 	//Run2DComparisonTest(argc, argv);
 	//RarefactionTest2::RunExperiment(argc, argv);
 	//RunContactDisconTest1D(argc, argv);

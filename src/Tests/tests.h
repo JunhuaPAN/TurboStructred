@@ -9,6 +9,7 @@
 #include "kernel/kernel.h"
 #include "Methods/ExplicitRungeKuttaFVM.h"
 #include "Tests/1DTests/testlist.h"
+#include "Tests/2DTests/testlist.h"
 #include "Tests/UncomTests/Aleshin1987Modeling.h"
 #include "RiemannSolvers/RiemannSolversList.h"
 
@@ -489,7 +490,6 @@ void RunSODInverseYTest(int argc, char *argv[]) {
 
 
 //// Multidimension cases
-
 void Run2DComparisonTest(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 2;
@@ -582,6 +582,76 @@ void Run2DComparisonTest(int argc, char *argv[]) {
 	//finalize kernel
 	kernel->Finalize();
 
+};
+
+//test for comparison of fluxes in different codes
+void RunFluxesTest2D(int argc, char *argv[]) {
+	double viscosity = 2.0;
+
+	KernelConfiguration conf;
+	conf.nDims = 2;
+	conf.nX = 400;
+	conf.nY = 4;
+	conf.LX = 2.0;
+	conf.LY = 1.0;
+	conf.isPeriodicX = false;
+	conf.isPeriodicY = false;
+
+	conf.Gamma = 1.4;
+
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xLeftBoundary.Gamma = 1.4;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Wall;
+	conf.xRightBoundary.Gamma = 1.4;
+	conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::Wall;
+	conf.yRightBoundary.Gamma = 1.4;
+
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+
+	conf.MaxTime = 0.2;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 0;
+	conf.SaveSolutionSnapshotIterations = 1;
+	conf.ResidualOutputIterations = 1;
+
+	conf.Viscosity = viscosity;
+
+	//init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+	};
+	kernel->Init(conf);
+
+	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
+	auto initD = [](Vector r) {
+		double u = r.x + r.y;
+		double v = r.x - r.y;
+		double w = 0;
+		double ro = 1.5*(1.0 + r.y*0.01);
+		double roe = ro * 100;
+		std::vector<double> res(5);
+		res[0] = ro;
+		res[1] = ro*u;
+		res[2] = ro*v;
+		res[3] = ro*w;
+		res[4] = roe + 0.5*ro*(u*u + v*v);
+		return res;
+	};
+	kernel->SetInitialConditions(initD);
+
+	//save solution
+	kernel->SaveSolution("init.dat");
+
+	//run computation
+	kernel->Run();
+
+	//finalize kernel
+	kernel->Finalize();
 };
 
 // 2D Shock Tube test http://www.cfd-online.com/Wiki/Explosion_test_in_2-D
@@ -836,77 +906,83 @@ void RunTriplePointRoe2D(int argc, char *argv[]) {
 	kernel->Finalize();
 };
 
-//test for comparison of fluxes in different codes
-void RunFluxesTest2D(int argc, char *argv[]) {
-	double viscosity = 2.0;
-
+// 2D tests with smooth solution (Test 4.1 from Liska, Wendroff)
+void RunExactEulerTest2D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 2;
-	conf.nX = 400;
-	conf.nY = 4;
+	conf.nX = 100;
+	conf.nY = 200;
 	conf.LX = 2.0;
-	conf.LY = 1.0;	
-	conf.isPeriodicX = false;
-	conf.isPeriodicY = false;
+	conf.LY = 2.0;
+	conf.isPeriodicX = true;
+	conf.isPeriodicY = true;
+	conf.isUniformAlongX = true;
+	conf.isUniformAlongY = true;
 
 	conf.Gamma = 1.4;
-
-	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
-	conf.xLeftBoundary.Gamma = 1.4;
-	conf.xRightBoundary.BCType = BoundaryConditionType::Wall;
-	conf.xRightBoundary.Gamma = 1.4;
-	conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
-	conf.yLeftBoundary.Gamma = 1.4;
-	conf.yRightBoundary.BCType = BoundaryConditionType::Wall;
-	conf.yRightBoundary.Gamma = 1.4;
-
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.CFL = 0.4;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.05;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+	conf.DummyLayerSize = 1;
 
-	conf.MaxTime = 0.2;
+	conf.MaxTime = 4.0;
 	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0;
-	conf.SaveSolutionSnapshotIterations = 1;
-	conf.ResidualOutputIterations = 1;
-
-	conf.Viscosity = viscosity;
+	conf.SaveSolutionSnapshotTime = 1.0;
+	conf.SaveSolutionSnapshotIterations = 0;
+	conf.ResidualOutputIterations = 50;
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
 		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 	};
 	kernel->Init(conf);
 
-	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
-	auto initD = [](Vector r) {
-		double u = r.x + r.y;
-		double v = r.x - r.y;
-		double w = 0;
-		double ro = 1.5*(1.0 + r.y*0.01);
-		double roe = ro*100;
+	// Test parameters
+	NumericQuadrature IntVolume(5, 2);
+
+	auto initD = [&IntVolume, &conf](Vector r) {
+
+		// initialize density
+		double ro{ 1.0 };
+		ro += 0.2 * sin(PI * (r.x + r.y));
+		//if((r.x * r.x + r.y * r.y) > 1) ro += 0.2 * sin(PI * (r.x + r.y)) };
+
+		// velocity
+		double u{ 1.0 };
+		double v{ -0.5 };
+
+		// pressure
+		double p{ 1.0 };
+
+		// compute ro_e and write conservative variables
+		double roe = p / (conf.Gamma - 1);
 		std::vector<double> res(5);
 		res[0] = ro;
-		res[1] = ro*u;
-		res[2] = ro*v;
-		res[3] = ro*w;
-		res[4] = roe + 0.5*ro*(u*u + v*v);
-		return res; 
+		res[1] = ro * u;
+		res[2] = ro * v;
+		res[3] = 0.0;
+		res[4] = roe + 0.5 * ro * (u * u + v * v);
+
+		return res;
 	};
-	kernel->SetInitialConditions(initD);
+	kernel->SetInitialConditions(initD, IntVolume);
 
 	//save solution
 	kernel->SaveSolution("init.dat");
-	
+
 	//run computation
-	kernel->Run();		
+	kernel->Run();
 
 	//finalize kernel
 	kernel->Finalize();
 };
 
-void RunPoiseuille2DFVM(int argc, char *argv[]) {
+// Pouseuille's flow
+void RunPoiseuille2D(int argc, char *argv[]) {
 	double viscosity = 1.0e-2;	//Air
 	double sigma = 0.14;		// -dPdx
 	double ro_init = 1.225;		//Air
@@ -1099,6 +1175,7 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	kernel->Finalize();
 };
 
+// Shear flow
 void RunShearFlow2D(int argc, char *argv[]) {
 	//double viscosity = 1.73e-5;	//Air
 	double viscosity = 1.0e-5;	

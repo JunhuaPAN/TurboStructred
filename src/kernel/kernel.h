@@ -18,9 +18,11 @@
 #include "utility/Matrix.h"
 #include "utility/Timer.h"
 #include "utility/Slices.h"
+#include "utility/NumericQuadrature.h"
 #include "RiemannSolvers/RiemannSolversList.h"
 #include "BoundaryConditions/BCGeneral.h"
 #include "Sensors/Sensors.h"
+
 
 // #include "cgnslib.h"
 
@@ -164,7 +166,7 @@ public:
 		rank = pManager->getRank();
 	};
 
-	//Set initial conditions
+	// Set initial conditions using exact values in cell centers
 	void SetInitialConditions(std::function<std::vector<double>(const Vector& r)> initF) {
 		for (int i = g.iMin; i <= g.iMax; i++) {
 			for (int j = g.jMin; j <= g.jMax; j++) {
@@ -179,6 +181,35 @@ public:
 
         //  std::cout << "rank = " << rank << ", x = " << x << ", i = " << i << std::endl << std::flush; //MPI DebugMessage
         //  std::cout << "rank = " << rank << ", sBegin = " << sBegin << ", ro = " << values[sBegin] << ", rou = " << values[sBegin + 1] << std::endl << std::flush; //MPI DebugMessage
+				};
+			};
+		};
+
+		if (DebugOutputEnabled) {
+			std::cout << "rank = " << pManager->getRank() << ", Initial conditions written.\n";
+			std::cout.flush();
+		};
+		//Sync
+		pManager->Barrier();
+	};
+
+	// Set initial conditions using cell averaged values
+	void SetInitialConditions(std::function<std::vector<double>(const Vector& r)> initF, NumericQuadrature& Int) {
+		CellInfo cell;
+		for (int i = g.iMin; i <= g.iMax; i++) {
+			for (int j = g.jMin; j <= g.jMax; j++) {
+				for (int k = g.kMin; k <= g.kMax; k++) {
+					//Obtain cell data
+					cell.x = g.CoordinateX[i];
+					cell.y = g.CoordinateY[j];
+					cell.z = g.CoordinateZ[k];
+					cell.hx = g.hx[i];
+					cell.hy = g.hy[j];
+					cell.hz = g.hz[k];
+					double cellV = cell.hx * cell.hy * cell.hz;
+
+					int sBegin = getSerialIndexLocal(i, j, k) * nVariables;
+					values[slice(sBegin, nVariables, 1)] = Int.IntegrateGroap(cell, initF, nVariables) / cellV;
 				};
 			};
 		};
