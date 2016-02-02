@@ -88,7 +88,7 @@ namespace AleshinExp {
 	void RunSingleExperiment(int modeNumber, double TotalTime, Parameters& par, int argc, char *argv[]) {
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 800;
+		conf.nX = 400;
 		conf.nY = 400;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
@@ -109,18 +109,18 @@ namespace AleshinExp {
 		conf.yRightBoundary.Gamma = conf.Gamma;
 
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+		conf.methodConfiguration.RiemannProblemSolver = RPSolver::GodunovSolver;
 		conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
-		conf.methodConfiguration.CFL = 0.4;
+		conf.methodConfiguration.CFL = 0.9;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
 		conf.DummyLayerSize = 1;
 
 		conf.MaxTime = TotalTime;
 		conf.MaxIteration = 1000000;
-		conf.SaveSolutionSnapshotTime = 5.0e-6;
+		conf.SaveSolutionSnapshotTime = 4.0e-5;
 		conf.SaveSolutionSnapshotIterations = 0;
-		conf.ResidualOutputIterations = 10;
+		conf.ResidualOutputIterations = 20;
 
 		// init kernel
 		std::unique_ptr<Kernel> kernel;
@@ -232,7 +232,7 @@ namespace AleshinExp {
 	// Run one experiment ( parameters is as input data)
 	void Run3DExperiment(int argc, char *argv[]) {
 		// experiment parameters
-		int modeNumber = 2;			// initial perturbation modes number
+		int modeNumber = 1;			// initial perturbation modes number
 		double TotalTime = 2.0e-4;
 
 		// Fill parameters structure (SI system)
@@ -241,9 +241,9 @@ namespace AleshinExp {
 
 		KernelConfiguration conf;
 		conf.nDims = 3;
-		conf.nX = 160;
-		conf.nY = 80;
-		conf.nZ = 40;
+		conf.nX = 120;
+		conf.nY = 60;
+		conf.nZ = 60;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.LZ = conf.LY / modeNumber;
@@ -263,6 +263,7 @@ namespace AleshinExp {
 
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+		conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
 		conf.methodConfiguration.CFL = 0.4;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;

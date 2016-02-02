@@ -52,6 +52,9 @@
     <Filter Include="Header Files\ExternalLibs\Alglib">
       <UniqueIdentifier>{9b50395e-48c8-4457-b1dc-4c24e382735a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Tests\2DTests">
+      <UniqueIdentifier>{e2ed15bf-d0cb-493b-accd-a047010c3e54}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -271,6 +274,18 @@
     </ClInclude>
     <ClInclude Include="..\src\utility\Direction.h">
       <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\Slices.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\2DTests\testlist.h">
+      <Filter>Header Files\Tests\2DTests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\NumericQuadrature.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\2DTests\ExactEulerSolution.h">
+      <Filter>Header Files\Tests\2DTests</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

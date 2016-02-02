@@ -17,9 +17,12 @@
 #include "utility/Vector.h"
 #include "utility/Matrix.h"
 #include "utility/Timer.h"
+#include "utility/Slices.h"
+#include "utility/NumericQuadrature.h"
 #include "RiemannSolvers/RiemannSolversList.h"
 #include "BoundaryConditions/BCGeneral.h"
 #include "Sensors/Sensors.h"
+
 
 // #include "cgnslib.h"
 
@@ -79,6 +82,7 @@ public:
 	// Solution data
 	std::valarray<double> values;
 	std::valarray<double> residual;
+	std::vector<Slice> slices;
 
 	// Get serial index for cell
 	inline int getSerialIndexGlobal(int i, int j, int k) {
@@ -145,10 +149,13 @@ public:
 	int MaxIteration;
 	double MaxTime;
 	double SaveSolutionSnapshotTime;
+	double SaveSliceSnapshotTime;
 	int SaveSolutionSnapshotIterations;
-	int ResidualOutputIterations;
-	bool ContinueComputation;
-	bool DebugOutputEnabled;
+	int SaveSliceSnapshotIterations;
+
+	int ResidualOutputIterations{ };
+	bool ContinueComputation{ false };
+	bool DebugOutputEnabled{ false };
 
 	//Array of sensors in use
 	std::vector<std::unique_ptr<Sensor>> Sensors;
@@ -159,7 +166,7 @@ public:
 		rank = pManager->getRank();
 	};
 
-	//Set initial conditions
+	// Set initial conditions using exact values in cell centers
 	void SetInitialConditions(std::function<std::vector<double>(const Vector& r)> initF) {
 		for (int i = g.iMin; i <= g.iMax; i++) {
 			for (int j = g.jMin; j <= g.jMax; j++) {
@@ -174,6 +181,35 @@ public:
 
         //  std::cout << "rank = " << rank << ", x = " << x << ", i = " << i << std::endl << std::flush; //MPI DebugMessage
         //  std::cout << "rank = " << rank << ", sBegin = " << sBegin << ", ro = " << values[sBegin] << ", rou = " << values[sBegin + 1] << std::endl << std::flush; //MPI DebugMessage
+				};
+			};
+		};
+
+		if (DebugOutputEnabled) {
+			std::cout << "rank = " << pManager->getRank() << ", Initial conditions written.\n";
+			std::cout.flush();
+		};
+		//Sync
+		pManager->Barrier();
+	};
+
+	// Set initial conditions using cell averaged values
+	void SetInitialConditions(std::function<std::vector<double>(const Vector& r)> initF, NumericQuadrature& Int) {
+		CellInfo cell;
+		for (int i = g.iMin; i <= g.iMax; i++) {
+			for (int j = g.jMin; j <= g.jMax; j++) {
+				for (int k = g.kMin; k <= g.kMax; k++) {
+					//Obtain cell data
+					cell.x = g.CoordinateX[i];
+					cell.y = g.CoordinateY[j];
+					cell.z = g.CoordinateZ[k];
+					cell.hx = g.hx[i];
+					cell.hy = g.hy[j];
+					cell.hz = g.hz[k];
+					double cellV = cell.hx * cell.hy * cell.hz;
+
+					int sBegin = getSerialIndexLocal(i, j, k) * nVariables;
+					values[slice(sBegin, nVariables, 1)] = Int.IntegrateGroap(cell, initF, nVariables) / cellV;
 				};
 			};
 		};
@@ -251,11 +287,13 @@ public:
 		MaxTime = config.MaxTime;
 		MaxIteration = config.MaxIteration;
 		SaveSolutionSnapshotTime = config.SaveSolutionSnapshotTime;
+		SaveSliceSnapshotTime = config.SaveSliceSnapshotTime;
 		SaveSolutionSnapshotIterations = config.SaveSolutionSnapshotIterations;
+		SaveSliceSnapshotIterations = config.SaveSliceSnapshotIterations;
 		ResidualOutputIterations = config.ResidualOutputIterations;
 		stepInfo.Time = 0;
 		stepInfo.Iteration = 0;
-		stepInfo.NextSnapshotTime = stepInfo.Time + SaveSolutionSnapshotTime;
+		stepInfo.NextSnapshotTime = max(SaveSolutionSnapshotTime, SaveSliceSnapshotTime);
 
 		//Initialize boundary conditions
 		InitBoundaryConditions(config);
@@ -1263,12 +1301,213 @@ public:
 		return;
 	};
 
+	// Save 2D slice
+	void Save2DSliceToTecplot(std::string fname, int I, int J, int K) {
+
+		std::ofstream ofs;
+		ofs << std::scientific;
+		int rank = pManager->getRank();
+
+		//Open file
+		if (pManager->IsMaster()) {
+			//std::cout<<"File created"<<std::endl<<std::flush;
+			ofs.open(fname, std::ios_base::out);
+			ofs << "VARIABLES = ";
+			int dims = 0;
+			if (I == -1) {
+				ofs << "\"" << "X" << "\" ";
+				dims++;
+			};
+			if (J == -1) {
+				ofs << "\"" << "Y" << "\" ";
+				dims++;
+			};
+			if (K == -1) {
+				ofs << "\"" << "Z" << "\" ";
+				dims++;
+			};
+
+			ofs << "\"" << "ro" << "\" ";
+			ofs << "\"" << "u" << "\" ";
+			ofs << "\"" << "v" << "\" ";
+			ofs << "\"" << "w" << "\" ";
+			ofs << "\"" << "P" << "\" ";
+			ofs << "\"" << "e" << "\" ";
+			ofs << std::endl;
+
+			ofs << "ZONE T=\"1\"";	//zone name
+			ofs << std::endl;
+
+			if (I == -1) ofs << "I=" << g.nX;
+			else ofs << "I=" << 1;
+			if (J == -1) ofs << "J=" << g.nY;
+			else ofs << "J=" << 1;
+			if (K == -1) ofs << "K=" << g.nZ;
+			else ofs << "K=" << 1;
+			ofs << "F=POINT\n";
+			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
+		}
+		else {
+			//Wait for previous process to finish writing
+			pManager->Wait(rank - 1);
+
+			//Open file for modification
+			//std::cout<<"File opened"<<std::endl<<std::flush;
+			ofs.open(fname, std::ios_base::app);
+		};
+
+		//Solution output
+		for (int i = g.iMin; i <= g.iMax; i++) {
+			if ((I != -1) && (i != I)) continue;
+			for (int j = g.jMin; j <= g.jMax; j++) {
+				if ((J != -1) && (j != J)) continue;
+				for (int k = g.kMin; k <= g.kMax; k++) {
+					if ((K != -1) && (k != K)) continue;
+					//Obtain cell data
+					double x = g.CoordinateX[i];
+					double y = g.CoordinateY[j];
+					double z = g.CoordinateZ[k];
+					double* U = getCellValues(i, j, k);
+					double ro = U[0];
+					double u = U[1] / ro;
+					double v = U[2] / ro;
+					double w = U[3] / ro;
+					double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
+					double P = (gamma - 1.0) * ro * e;
+
+					//Write to file
+					if (I == -1) ofs << x << " ";
+					if (J == -1) ofs << y << " ";
+					if (K == -1) ofs << z << " ";
+					ofs << ro << " ";
+					ofs << u << " ";
+					ofs << v << " ";
+					ofs << w << " ";
+					ofs << P << " ";
+					ofs << e << " ";
+					ofs << std::endl;
+				};
+			};
+		}; // Solution output
+
+		   //Close file and signal to next process to begin writing
+		ofs.close();
+		//std::cout<<"File closed"<<std::endl<<std::flush;
+		if (rank != pManager->getProcessorNumber() - 1) {
+			pManager->Signal(rank + 1);
+		};
+
+		//Syncronize
+		pManager->Barrier();
+	};
+
+	// Save 1D Slice
+	void SaveSliceToTecplot(std::string fname, Slice &s) {
+		int I = s.i;
+		int J = s.j;
+		int K = s.k;
+
+		std::ofstream ofs;
+		ofs << std::scientific;
+		int rank = pManager->getRank();
+
+		//Open file
+		if (pManager->IsMaster()) {
+			ofs.open(fname, std::ios_base::out);
+			ofs << "VARIABLES = ";
+			int dims = 0;
+			if (I == -1) {
+				ofs << "\"" << "X" << "\" ";
+				dims++;
+			};
+			if (J == -1) {
+				ofs << "\"" << "Y" << "\" ";
+				dims++;
+			};
+			if (K == -1) {
+				ofs << "\"" << "Z" << "\" ";
+				dims++;
+			};
+
+			ofs << "\"" << "ro" << "\" ";
+			ofs << "\"" << "u" << "\" ";
+			ofs << "\"" << "v" << "\" ";
+			ofs << "\"" << "w" << "\" ";
+			ofs << "\"" << "P" << "\" ";
+			ofs << "\"" << "e" << "\" ";
+			ofs << std::endl;
+
+			ofs << "ZONE T=\"1\"";	//zone name
+			ofs << std::endl;
+
+			if (I == -1) ofs << "I=" << g.nX;
+			else ofs << "I=" << 1;
+			if (J == -1) ofs << "J=" << g.nY;
+			else ofs << "J=" << 1;
+			if (K == -1) ofs << "K=" << g.nZ;
+			else ofs << "K=" << 1;
+			ofs << "F=POINT\n";
+			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
+		}
+		else {
+			//Wait for previous process to finish writing
+			pManager->Wait(rank - 1);
+
+			ofs.open(fname, std::ios_base::app);
+		};
+
+		//Solution output
+		for (int i = g.iMin; i <= g.iMax; i++) {
+			if ((I != -1) && (i != I)) continue;
+			for (int j = g.jMin; j <= g.jMax; j++) {
+				if ((J != -1) && (j != J)) continue;
+				for (int k = g.kMin; k <= g.kMax; k++) {
+					if ((K != -1) && (k != K)) continue;
+					//Obtain cell data
+					double x = g.CoordinateX[i];
+					double y = g.CoordinateY[j];
+					double z = g.CoordinateZ[k];
+					double* U = getCellValues(i, j, k);
+					double ro = U[0];
+					double u = U[1] / ro;
+					double v = U[2] / ro;
+					double w = U[3] / ro;
+					double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
+					double P = (gamma - 1.0) * ro * e;
+
+					//Write to file
+					if (I == -1) ofs << x << " ";
+					if (J == -1) ofs << y << " ";
+					if (K == -1) ofs << z << " ";
+					ofs << ro << " ";
+					ofs << u << " ";
+					ofs << v << " ";
+					ofs << w << " ";
+					ofs << P << " ";
+					ofs << e << " ";
+					ofs << std::endl;
+				};
+			};
+		}; // Solution output
+
+		   //Close file and signal to next process to begin writing
+		ofs.close();
+		//std::cout<<"File closed"<<std::endl<<std::flush;
+		if (rank != pManager->getProcessorNumber() - 1) {
+			pManager->Signal(rank + 1);
+		};
+
+		//Syncronize
+		pManager->Barrier();
+	};
+
 	//Run calculation
 	void Run() {
 		//Calculate snapshot times order of magnitude
 		int snapshotTimePrecision = 0;
-		if (SaveSolutionSnapshotTime > 0) {
-			snapshotTimePrecision = static_cast<int>(1 - std::floor(std::log10(SaveSolutionSnapshotTime)));
+		double SaveTimeInterval = max(SaveSolutionSnapshotTime, SaveSliceSnapshotTime);
+		if (SaveTimeInterval > 0) {
+			snapshotTimePrecision = static_cast<int>(1 - std::floor(std::log10(SaveTimeInterval)));
 		};
 
 		//Open history file
@@ -1353,8 +1592,7 @@ public:
 				};
 			};
 
-			//Solution snapshots
-			//Every few iterations
+			//Solution and slice snapshots every few iterations
 			if ((SaveSolutionSnapshotIterations != 0) && (stepInfo.Iteration % SaveSolutionSnapshotIterations) == 0) {
 				//Save snapshot
 				std::stringstream snapshotFileName;
@@ -1366,7 +1604,20 @@ public:
 					std::cout << "Solution has been written to file \"" << snapshotFileName.str() << "\"" << std::endl;
 				};
 			};
+			if ((SaveSliceSnapshotIterations != 0) && (stepInfo.Iteration % SaveSliceSnapshotIterations) == 0) {
+				//Save snapshots
+				for (auto i = 0; i < slices.size(); i++) {
+					std::stringstream snapshotFileName;
+					snapshotFileName.str(std::string());
+					snapshotFileName << "slice" << i << ",I=" << stepInfo.Iteration << ".dat";
+					SaveSliceToTecplot(snapshotFileName.str(), slices[i]);
 
+					if (pManager->IsMaster()) {
+						std::cout << "Slice has been written to file \"" << snapshotFileName.str() << "\"" << std::endl;
+					};
+				};
+			};
+			
 			//Every fixed time interval
 			if ((SaveSolutionSnapshotTime > 0) && (stepInfo.NextSnapshotTime == stepInfo.Time)) {
 				//Save snapshot
@@ -1382,7 +1633,26 @@ public:
 				};
 
 				//Adjust next snapshot time
-				stepInfo.NextSnapshotTime += SaveSolutionSnapshotTime;
+				if(SaveSliceSnapshotTime == 0) stepInfo.NextSnapshotTime += SaveSolutionSnapshotTime;
+			};
+			if ((SaveSliceSnapshotTime > 0) && (stepInfo.NextSnapshotTime == stepInfo.Time)) {
+				//Save snapshots
+				for (auto i = 0; i < slices.size(); i++) {
+					std::stringstream snapshotFileName;
+					snapshotFileName.str(std::string());
+					snapshotFileName << "slice" << i;
+					snapshotFileName << std::fixed;
+					snapshotFileName.precision(snapshotTimePrecision);
+					snapshotFileName << ",T=" << stepInfo.Time << ".dat";
+					SaveSliceToTecplot(snapshotFileName.str(), slices[i]);
+
+					if (pManager->IsMaster()) {
+						std::cout << "Slice has been written to file \"" << snapshotFileName.str() << "\"" << std::endl;
+					};
+				};
+
+				//Adjust next snapshot time
+				stepInfo.NextSnapshotTime += SaveSliceSnapshotTime;
 			};
 
 			//Save convergence history		

@@ -299,12 +299,15 @@ public:
 		//Sample exact solution at S = x/t
 		double S = 0;
 		double ro;
-		double u;
+		double u, v, w;
 		double p;
 		double gamma{ _gamma };
+		Vector vel;
 
 		if (starValues.uStar >= S) {
 			//Left side of contact
+			vel = velocityL;
+
 			//Shock wave
 			if (starValues.leftWave == WaveType::Shock) {
 				if (starValues.SL >= S) {
@@ -358,6 +361,7 @@ public:
 
 		} else {
 			//Right side of contact
+			vel = velocityR;
 
 			//Shock wave
 			if (starValues.rightWave == WaveType::Shock) {
@@ -409,16 +413,18 @@ public:
 			};
 		};
 
+		// Create velocity vector face center
+		Vector Vface = vel + (u - (vel * fn)) * fn;
+
 		// Create conservative variables vector
-		Vector Vface = u * fn;
 		std::valarray<double> Uface(nVariables);
 		Uface[0] = ro;
 		Uface[1] = ro * Vface.x;
 		Uface[2] = ro * Vface.y;
 		Uface[3] = ro * Vface.z;
-		Uface[4] = ro * (p / (ro * (gamma - 1.0)) + 0.5 * u * u);
+		Uface[4] = ro * (p / (ro * (gamma - 1.0)) + 0.5 * (Vface * Vface));
 
-		// write result
+		// Write result
 		result.Fluxes = F(Uface, fn);
 		result.MaxEigenvalue = starValues.MaxSpeed;
 		result.Pressure = p;

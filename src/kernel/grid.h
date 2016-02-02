@@ -4,6 +4,13 @@
 #include "KernelConfiguration.h"
 #include <cassert>
 
+// Info about cell
+struct CellInfo {
+	int i, j, k;		// indexes of cell
+	double hx, hy, hz;	// geometric sizes
+	double x, y, z;		// center position
+};
+
 // Calculation kernel
 class Grid {
 public:
@@ -294,6 +301,20 @@ Grid CreateSubGrid(int iMin, int iMax, int jMin,int jMax, int kMin, int kMax, Gr
 	return res;
 };
 
+// Take information about the cell
+CellInfo CreateCell(int i, int j, int k, Grid& g) {
+	CellInfo res;
+	res.i = i;
+	res.j = j;
+	res.k = k;
+	res.hx = g.hx[i];
+	res.hy = g.hy[j];
+	res.hz = g.hz[k];
+	res.x = g.CoordinateX[i];
+	res.y = g.CoordinateY[j];
+	res.z = g.CoordinateZ[k];
 
+	return res;
+};
 
 #endif
