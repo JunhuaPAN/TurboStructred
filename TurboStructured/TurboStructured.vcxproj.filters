@@ -281,11 +281,11 @@
     <ClInclude Include="..\src\Tests\2DTests\testlist.h">
       <Filter>Header Files\Tests\2DTests</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Tests\2DTests\SmoothSolution.h">
-      <Filter>Header Files\Tests\2DTests</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\utility\NumericQuadrature.h">
       <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\2DTests\ExactEulerSolution.h">
+      <Filter>Header Files\Tests\2DTests</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

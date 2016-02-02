@@ -1,5 +1,5 @@
-#ifndef TurboStructured_Tests_UncomTests_AleshinExp
-#define TurboStructured_Tests_UncomTests_AleshinExp
+#ifndef TurboStructured_Tests_2DTests_ExactEulerSolution
+#define TurboStructured_Tests_2DTests_ExactEulerSolution
 
 
 #include <iostream>
@@ -10,11 +10,11 @@
 
 // Test with smooth solution of 2D Euler system of equations
 //
-// from RICHARD LISKA and BURTON WENDROFF 2002
+// from RICHARD LISKA and BURTON WENDROFF 2002 TO DO ACCOMPLISH
 //
 // http://math.unm.edu/~bbw/sisc.pdf
 
-namespace SmoothSolution {
+namespace ExactEulerSolution {
 	double PI = 3.14159265359;
 
 	// struct for main parameters of the test

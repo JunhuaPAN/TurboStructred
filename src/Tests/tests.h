@@ -910,8 +910,8 @@ void RunTriplePointRoe2D(int argc, char *argv[]) {
 void RunExactEulerTest2D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 2;
-	conf.nX = 100;
-	conf.nY = 200;
+	conf.nX = 40;
+	conf.nY = 40;
 	conf.LX = 2.0;
 	conf.LY = 2.0;
 	conf.isPeriodicX = true;
@@ -924,6 +924,7 @@ void RunExactEulerTest2D(int argc, char *argv[]) {
 	conf.methodConfiguration.CFL = 0.4;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
+	//conf.methodConfiguration.RiemannProblemSolver = RPSolver::GodunovSolver;
 	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 	conf.DummyLayerSize = 1;
 
@@ -936,8 +937,8 @@ void RunExactEulerTest2D(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
-		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 	};
 	kernel->Init(conf);
 

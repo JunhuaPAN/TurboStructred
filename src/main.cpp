@@ -6,7 +6,9 @@
 int main(int argc, char *argv[])
 {
 	//main function
-	RunExactEulerTest2D(argc, argv);
+	//AleshinExp::Run3DExperiment(argc, argv);
+	AleshinExp::RunExperiment(argc, argv);
+	//RunExactEulerTest2D(argc, argv);
 	//SmoothSolution::RunExperiment(argc, argv);
 	//RunSODTestRoe1D(argc, argv);
 	//RunSODInverseYTest(argc, argv);
@@ -17,8 +19,8 @@ int main(int argc, char *argv[])
 	//ToroTests::RunExperiment(argc, argv);
 	//ContactDisTest::RunExperiment(argc, argv);
 	//ShockWaveTest::RunExperiment(argc, argv);
-	//AleshinExp::Run3DExperiment(argc, argv);
-	//AleshinExp::RunExperiment(argc, argv);
+
+
 	//RunRTI2D(argc, argv);
 	//RunTriplePointRoe2D(argc, argv);
 	//RunSODTestRoe2D(argc, argv);
