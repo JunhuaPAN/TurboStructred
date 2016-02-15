@@ -997,8 +997,8 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 
 	KernelConfiguration conf;
 	conf.nDims = 2;
-	conf.nX = 20;
-	conf.nY = 160;
+	conf.nX = 40;
+	conf.nY = 80;
 	conf.LX = 0.6;
 	conf.LY = 0.1;
 	conf.isPeriodicX = true;
@@ -1028,8 +1028,9 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 
 	conf.MaxTime = 1.0;
 	conf.MaxIteration = 10000000;
-	conf.SaveSolutionSnapshotTime = 0.1;
+	conf.SaveSolutionSnapshotTime = 0;
 	conf.SaveSolutionSnapshotIterations = 0;
+	conf.SaveSliceSnapshotTime = 0.1;
 	conf.ResidualOutputIterations = 1000;
 
 	conf.Viscosity = viscosity;
@@ -1055,7 +1056,7 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	// init distributions
 	NumericQuadrature Integ(8, 2);
 	auto ExactSol = [ro_init, Pave, &conf](Vector r) {
-		double u = 0.6 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
+		double u = 0.5 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
 		double v = 0.0;
 		double w = 0.0;
 
@@ -1069,6 +1070,12 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 		return res; 
 	};
 	kernel->SetInitialConditions(ExactSol, Integ);
+
+	// Create slices
+	//kernel->slices.push_back(Slice( (int) (0.5 * conf.nX), -1, 0));
+	kernel->slices.push_back(Slice(-1, (int) (0.5 * conf.nY), 0));
+	//kernel->SaveSliceToTecplot("ySlice_init.dat", kernel->slices[0]);
+	//kernel->SaveSliceToTecplot("xSlice_init.dat", kernel->slices[1]);
 
 	//save solution
 	kernel->SaveSolution("init.dat");
@@ -1103,79 +1110,84 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	sigma = 1.0;
 	viscosity = 0.25;
 
+	// Fill configuration structure
 	KernelConfiguration conf;
 	conf.nDims = 3;
-	conf.nX = 40;
-	conf.nY = 40;
-	conf.nZ = 10;
-	conf.LX = 0.2;
+	conf.nX = 60;
+	conf.nY = 60;
+	conf.nZ = 30;
+	conf.LX = 0.6;
 	conf.LY = 0.1;
-	conf.LZ = 0.1;
+	conf.LZ = 0.3;
 	conf.isPeriodicX = true;
 	conf.isPeriodicY = false;
 	conf.isPeriodicZ = true;
-
 	conf.Gamma = 1.4;
 
-	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
-	conf.xLeftBoundary.Gamma = 1.4;
-	conf.xRightBoundary.BCType = BoundaryConditionType::Wall;
-	conf.xRightBoundary.Gamma = 1.4;
+	// Boundary conditions
 	conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
 	conf.yLeftBoundary.Gamma = 1.4;
 	conf.yRightBoundary.BCType = BoundaryConditionType::Wall;
 	conf.yRightBoundary.Gamma = 1.4;
-	conf.zLeftBoundary.BCType = BoundaryConditionType::Wall;
-	conf.zLeftBoundary.Gamma = 1.4;
-	conf.zRightBoundary.BCType = BoundaryConditionType::Wall;
-	conf.zRightBoundary.Gamma = 1.4;
-
+	
+	// Method settings
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.CFL = 0.4;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
 	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 	conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
 	conf.IsExternalForceRequared = true;
 
-	conf.MaxTime = 0.5;
+	conf.MaxTime = 1.0;
 	conf.MaxIteration = 10000000;
-	conf.SaveSolutionSnapshotTime = 0.001;
-	conf.SaveSolutionSnapshotIterations = 0;
+	conf.SaveSolutionSnapshotTime = 0;
+	conf.SaveSliceSnapshotTime = 0.1;
 	conf.ResidualOutputIterations = 100;
 	conf.DebugOutputEnabled = false;
 
 	conf.Viscosity = viscosity;
 	conf.Sigma = Vector(sigma, 0, 0);
 
-	//init kernel
+	// Init kernel
 	std::unique_ptr<Kernel> kernel;
-	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
 		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 	};
 	kernel->Init(conf);
 
-	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
-	auto initD = [ro_init, Pave, &conf](Vector r) {
-		double u = 0.6 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
+	// Init Conditions
+	NumericQuadrature Integ(8, 3);
+	auto ExactSol = [ro_init, Pave, &conf](Vector r) {
+		double u = 0.55 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
+		double v = 0.0;
+		double w = 0.0;
+
 		double roe = Pave / (conf.Gamma - 1);
 		std::vector<double> res(5);
 		res[0] = ro_init;
-		res[1] = res[0] * u;
-		res[2] = 0.0;
-		res[3] = 0.0;
-		res[4] = roe + 0.5*res[0] * u*u;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
 		return res;
 	};
-	kernel->SetInitialConditions(initD);
-
-	//save solution
+	kernel->SetInitialConditions(ExactSol, Integ);
 	kernel->SaveSolution("init.dat");
 
-	//run computation
+	// Create slices
+	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1 , (int)(0.25 * conf.nZ)));
+	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.5 * conf.nZ)));
+	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.75 * conf.nZ)));
+	kernel->SaveSliceToTecplot("test_slice.dat", kernel->slices[0]);
+
+	// Run computation
 	kernel->Run();
 
-	//finalize kernel
+	// Finalize kernel
 	kernel->Finalize();
 };
 

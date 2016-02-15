@@ -6,8 +6,9 @@
 int main(int argc, char *argv[])
 {
 	//main function
+	RunPoiseuille3D(argc, argv);
 	//RunShearFlow2D(argc, argv);
-	RunPoiseuille2D(argc, argv);
+	//RunPoiseuille2D(argc, argv);
 	
 
 	//AleshinExp::Run3DExperiment(argc, argv);

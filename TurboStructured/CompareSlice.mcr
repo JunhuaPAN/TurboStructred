@@ -10,7 +10,7 @@ $!READDATASET  '"D:\Dropbox\!Sega\GitHub\TurboStructred\TurboStructured\dataT1.0
   VARLOADMODE = BYNAME
   ASSIGNSTRANDIDS = YES
   VARNAMELIST = '"X" "Y" "Rho" "u" "v" "w" "P" "e"'
-$!READDATASET  '"D:\Dropbox\!Sega\GitHub\TurboStructred\TurboStructured\ENO2\dataT1.000.dat" '
+$!READDATASET  '"D:\Dropbox\!Sega\GitHub\TurboStructred\TurboStructured\ENO2 20x40\dataT1.000.dat" '
   READDATAOPTION = APPEND
   RESETSTYLE = NO
   VARLOADMODE = BYNAME
