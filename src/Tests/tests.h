@@ -1072,14 +1072,12 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	kernel->SetInitialConditions(ExactSol, Integ);
 
 	// Create slices
-	//kernel->slices.push_back(Slice( (int) (0.5 * conf.nX), -1, 0));
 	kernel->slices.push_back(Slice(-1, (int) (0.5 * conf.nY), 0));
 	//kernel->SaveSliceToTecplot("ySlice_init.dat", kernel->slices[0]);
-	//kernel->SaveSliceToTecplot("xSlice_init.dat", kernel->slices[1]);
 
 	//save solution
 	kernel->SaveSolution("init.dat");
-
+	
 	//Set sensor at center
 	//auto GetXVel = [](std::valarray<double> vals) {
 	//	return vals[1] / vals[0];
@@ -1113,16 +1111,20 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	// Fill configuration structure
 	KernelConfiguration conf;
 	conf.nDims = 3;
-	conf.nX = 60;
-	conf.nY = 60;
-	conf.nZ = 30;
+	conf.nX = 40;
+	conf.nY = 40;
+	conf.nZ = 4;
 	conf.LX = 0.6;
 	conf.LY = 0.1;
-	conf.LZ = 0.3;
+	//conf.LZ = 0.3;
+	conf.LZ = 1.0;
 	conf.isPeriodicX = true;
 	conf.isPeriodicY = false;
 	conf.isPeriodicZ = true;
+
+	// Gas model
 	conf.Gamma = 1.4;
+	conf.IsViscousFlow = true;
 
 	// Boundary conditions
 	conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
@@ -1142,7 +1144,7 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	conf.MaxTime = 1.0;
 	conf.MaxIteration = 10000000;
 	conf.SaveSolutionSnapshotTime = 0;
-	conf.SaveSliceSnapshotTime = 0.1;
+	conf.SaveSliceSnapshotTime = 0.001;
 	conf.ResidualOutputIterations = 100;
 	conf.DebugOutputEnabled = false;
 
@@ -1179,9 +1181,10 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	kernel->SaveSolution("init.dat");
 
 	// Create slices
-	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1 , (int)(0.25 * conf.nZ)));
+	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1 , (int)(0.25 * conf.nZ)));
 	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.5 * conf.nZ)));
-	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.75 * conf.nZ)));
+	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.75 * conf.nZ)));
+	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, 1));
 	kernel->SaveSliceToTecplot("test_slice.dat", kernel->slices[0]);
 
 	// Run computation
@@ -1194,7 +1197,6 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 // Shear flow
 void RunShearFlow2D(int argc, char *argv[]) {
 	double viscosity = 1.73e-5;	//Air
-	//double viscosity = 1.0e-5;	
 	double ro_init = 1.225;		// normal density
 	double p_init = 1.0e5;		// normal pressure
 	double u_top = 5.0;			// top plane velocity
@@ -1256,6 +1258,7 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	auto ExactSol = [ro_init, p_init, u_top, &conf](Vector r) {		
 		// exact solution
 		double v = 0;
+		double w = 0;
 		double u = r.y * u_top / conf.LY;
 
 		double roe = p_init / (conf.Gamma - 1);
@@ -1263,8 +1266,8 @@ void RunShearFlow2D(int argc, char *argv[]) {
 		res[0] = ro_init;
 		res[1] = ro_init * u;
 		res[2] = ro_init * v;
-		res[3] = 0.0;
-		res[4] =  roe + 0.5 * ro_init * (u * u + v * v);
+		res[3] = ro_init * w;
+		res[4] =  roe + 0.5 * ro_init * (u * u + v * v + w * w);
 		return res;
 	};
 	auto PeakWiseVelocity = [ro_init, p_init, u_top, &conf](Vector r) {
@@ -1328,6 +1331,265 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	kernel->Run();		
 
 	//finalize kernel
+	kernel->Finalize();
+};
+
+// Shear flow
+void RunShearFlow3D(int argc, char *argv[]) {
+	double viscosity = 1.73e-5;	//Air
+	double ro_init = 1.225;		// normal density
+	double p_init = 1.0e5;		// normal pressure
+	double u_top = 5.0;			// top plane velocity
+
+	KernelConfiguration conf;
+	conf.nDims = 3;
+	conf.nX = 10;
+	conf.nY = 20;
+	conf.nZ = 10;
+	conf.LX = 1.0;
+	conf.LY = 0.1;
+	conf.LZ = 0.2;
+	conf.isPeriodicX = true;
+	conf.isPeriodicY = false;
+	conf.isPeriodicZ = true;
+	conf.Gamma = 1.4;
+	conf.IsViscousFlow = true;
+
+	conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::MovingWall;
+	conf.yRightBoundary.Gamma = 1.4;
+	conf.yRightBoundary.Velocity = Vector(u_top, 0, 0);
+
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.05;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
+	conf.DummyLayerSize = 1;
+
+	conf.MaxTime = 20.0;
+	conf.MaxIteration = 10000000;
+	//conf.SaveSolutionSnapshotTime = 0.05;
+	//conf.SaveSolutionSnapshotIterations = 0;
+	conf.SaveSliceSnapshotTime = 0.05;
+	conf.ResidualOutputIterations = 100;
+	conf.DebugOutputEnabled = false;
+
+	conf.Viscosity = viscosity;
+
+	// Init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+	};
+	kernel->Init(conf);
+
+	// Initial conditions
+	NumericQuadrature Integ(8, 3);
+	auto ExactSol = [ro_init, p_init, u_top, &conf](Vector r) {
+		// exact solution
+		double v = 0;
+		double w = 0;
+		double u = r.y * u_top / conf.LY;
+
+		double roe = p_init / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	auto PeakWiseVelocity = [ro_init, p_init, u_top, &conf](Vector r) {
+
+		double v = 0;
+		double w = 0;
+		double u = r.y * u_top / conf.LY;
+		if (r.y > 0.5 * conf.LY) {
+			u = u_top - u;
+		};
+
+		double roe = p_init / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	auto ContinInitVelocity = [ro_init, p_init, u_top, &conf](Vector r) {
+
+		double v = 0;
+		double w = 0;
+		double u = 0;
+		if (r.y > 0.5 * conf.LY) {
+			u = (r.y / conf.LY - 0.5) * 2 * u_top;
+		};
+
+		double roe = p_init / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	kernel->SetInitialConditions(ExactSol, Integ);
+
+	// Save solution
+	kernel->SaveSolution("init.dat");
+
+	// Crete slices
+	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.5 * conf.nZ)));
+	kernel->SaveSliceToTecplot("test_slice.dat", kernel->slices[0]);
+
+	// Run computation
+	kernel->Run();
+
+	// Finalize kernel
+	kernel->Finalize();
+};
+
+// Shear flow (Z bounded)
+void RunShearFlow3DZ(int argc, char *argv[]) {
+	double viscosity = 1.73e-5;	//Air
+	double ro_init = 1.225;		// normal density
+	double p_init = 1.0e5;		// normal pressure
+	double u_top = 5.0;			// top plane velocity
+
+	KernelConfiguration conf;
+	conf.nDims = 3;
+	conf.nX = 2;
+	conf.nY = 2;
+	conf.nZ = 2;
+	conf.LX = 1.0;
+	conf.LY = 0.2;
+	conf.LZ = 0.1;
+	conf.isPeriodicX = false;
+	conf.isPeriodicY = false;
+	conf.isPeriodicZ = false;
+	conf.Gamma = 1.4;
+	conf.IsViscousFlow = true;
+	conf.Viscosity = viscosity;
+
+	conf.zLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.zLeftBoundary.Gamma = 1.4;
+	conf.zRightBoundary.BCType = BoundaryConditionType::MovingWall;
+	conf.zRightBoundary.Gamma = 1.4;
+	conf.zRightBoundary.Velocity = Vector(u_top, 0, 0);
+
+	// TO DO DELETE
+	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xLeftBoundary.Gamma = 1.4;
+	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
+	conf.xRightBoundary.Gamma = 1.4;
+	conf.yLeftBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yRightBoundary.Gamma = 1.4;
+
+	// Method configuration
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.05;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
+	conf.DummyLayerSize = 1;
+
+	// Output info
+	conf.MaxTime = 2.0;
+	conf.MaxIteration = 2;
+	conf.SaveSolutionSnapshotTime = 0.1;
+	conf.SaveSolutionSnapshotIterations = 2;
+	//conf.SaveSliceSnapshotTime = 0.01;
+	conf.ResidualOutputIterations = 100;
+	conf.DebugOutputEnabled = false;
+
+	// Init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+	};
+	kernel->Init(conf);
+
+	// Initial conditions
+	NumericQuadrature Integ(8, 3);
+	auto ExactSol = [ro_init, p_init, u_top, &conf](Vector r) {
+		// exact solution
+		double v = 0;
+		double w = 0;
+		double u = r.z * u_top / conf.LZ;
+
+		double roe = p_init / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	auto PeakWiseVelocity = [ro_init, p_init, u_top, &conf](Vector r) {
+
+		double v = 0;
+		double w = 0;
+		double u = r.z * 2 * u_top / conf.LZ;
+		if (r.z > 0.5 * conf.LZ) {
+			u = u_top;
+		};
+
+		double roe = p_init / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	auto ContinInitVelocity = [ro_init, p_init, u_top, &conf](Vector r) {
+
+		double v = 0;
+		double u = 0;
+		double w = 0;
+		if (r.y > 0.5 * conf.LY) {
+			u = (r.y / conf.LY - 0.5) * 2 * u_top;
+		};
+
+		double roe = p_init / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v);
+		return res;
+	};
+	kernel->SetInitialConditions(ExactSol, Integ);
+
+	// Save solution
+	kernel->SaveSolution("init.dat");
+
+	// Create slices
+	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), (int)(0.5 * conf.nY), -1));
+	//kernel->SaveSliceToTecplot("test_slice.dat", kernel->slices[0]);
+
+	// Run computation
+	kernel->Run();
+
+	// Finalize kernel
 	kernel->Finalize();
 };
 

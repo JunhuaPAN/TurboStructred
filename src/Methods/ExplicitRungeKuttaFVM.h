@@ -107,11 +107,6 @@ public:
 			};
 		};
 
-		// Output info
-		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";
-			std::cout.flush();
-		};
 		//Sync
 		pManager->Barrier();
 	};
@@ -148,6 +143,7 @@ public:
 		return grad;
 	};
 
+	// TO DO only first order now
 	Vector ComputeGradientUniformStructured(int i, int j, int k, std::function<double(double*)> func) {\
 		Vector grad(0,0,0);
 		double dux = func(getCellValues(i+1, j, k)) - func(getCellValues(i-1, j, k));
@@ -166,17 +162,20 @@ public:
 		};
 		return grad;
 	};
-	Vector ComputeGradientNonUniformStructured(int i, int j, int k, std::function<double(double*)> func) {\
+	Vector ComputeGradientNonUniformStructured(int i, int j, int k, std::function<double(double*)> func) {
 		Vector grad(0,0,0);
 		double dux = func(getCellValues(i + 1, j, k)) - func(getCellValues(i - 1, j, k));
 		double dudx = dux / (g.CoordinateX[i + 1] - g.CoordinateX[i - 1]);
 		grad.x = dudx;
 
+		// 2D case
 		if (nDims > 1) {
 			double duy = func(getCellValues(i, j + 1, k)) - func(getCellValues(i, j - 1, k));
 			double dudy = duy / (g.CoordinateY[j + 1] - g.CoordinateY[j - 1]);
 			grad.y = dudy;
 		};
+
+		// 3D case
 		if (nDims > 2) {
 			double duz = func(getCellValues(i, j, k + 1)) - func(getCellValues(i, j, k - 1));
 			double dudz = duz / (g.CoordinateZ[k + 1] - g.CoordinateZ[k - 1]);
@@ -213,7 +212,7 @@ public:
 		};
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Gradients calculated inside domain\n";
+			std::cout << "rank = " << pManager->getRank() << ", Velocity gradients have'n calculated inside the domain\n";
 			std::cout.flush();
 		};
 		//Sync
@@ -259,12 +258,12 @@ public:
 		//Allocate buffers
 		int layerSizeX = g.nlocalYAll * g.nlocalZAll;
 		int layerSizeY = g.nlocalXAll * g.nlocalZAll;
-		int bufferSize = std::max(layerSizeX, layerSizeY) * nDims;// * nVariables;
+		int layerSizeZ = g.nlocalXAll * g.nlocalYAll;
+		int bufferSize = std::max(std::max(layerSizeX, layerSizeY), layerSizeZ) * nDims;// * nVariables;
 		bufferToSend.resize(bufferSize);
 		bufferToRecv.resize(bufferSize);
 
-		SubDirection subDirection = SubDirection::Left;
-
+		// TO DO lift from lyabmda to member function
 		auto exchangeLayers = [&](Direction direction, int iSend, int rankDest, int iRecv, int rankSource) {
 			int nRecv = 0;
 			int nSend = 0;
@@ -345,16 +344,19 @@ public:
 		};
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Exchange values X-direction executed\n";
+			std::cout<<"rank = "<<pManager->getRank()<<", Exchange gradients in X-direction was executed\n";
 		};
 		//Sync
 		pManager->Barrier();
 
 		if (nDims < 2) return;
-		//Y direction exchange		
+		//Y direction exchange
+
 		//Determine neighbours' ranks
 		rankL = pManager->GetRankByCartesianIndexShift(0, -1, 0);
 		rankR = pManager->GetRankByCartesianIndexShift(0, +1, 0);
+
+		//Debug info
 		if (DebugOutputEnabled) {
 			std::cout<<"rank = "<<rank<<
 				"; rankL = "<<rankL<<
@@ -362,7 +364,7 @@ public:
 				std::endl<<std::flush;
 		};
 
-		
+		//Y direction exchange
 		for (int layer = 1; layer <= g.dummyCellLayersY; layer++) {
 			// Minus direction exchange
 			int iSend = g.jMin + layer - 1; // layer index to send
@@ -375,18 +377,44 @@ public:
 			exchangeLayers(Direction::YDirection, iSend, rankR, iRecv, rankL);
 		};
 
+		//Debug info
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Exchange values Y-direction executed\n";
+			std::cout<<"rank = "<<pManager->getRank()<<", Exchange gradients in Y-direction was executed\n";
 			std::cout.flush();
 		};
 		//Sync
 		pManager->Barrier();
 
 		if (nDims < 3) return;
-		//Z direction exchange		
+		//Z direction exchange
+
+		//Determine neighbours' ranks
+		rankL = pManager->GetRankByCartesianIndexShift(0, 0, -1);
+		rankR = pManager->GetRankByCartesianIndexShift(0, 0, +1);
+
+		//Debug info
+		if (DebugOutputEnabled) {
+			std::cout << "rank = " << rank <<
+				"; rankL = " << rankL <<
+				"; rankR = " << rankR <<
+				std::endl << std::flush;
+		};
+
+		//Z direction exchange 
+		for (int layer = 1; layer <= g.dummyCellLayersZ; layer++) {
+			// Minus direction exchange
+			int iSend = g.kMin + layer - 1; // layer index to send
+			int iRecv = g.kMax + layer; // layer index to recv
+			exchangeLayers(Direction::ZDirection, iSend, rankL, iRecv, rankR);
+
+			// Plus direction exchange
+			iSend = g.kMax - layer + 1; // layer index to send
+			iRecv = g.kMin - layer; // layer index to recv
+			exchangeLayers(Direction::ZDirection, iSend, rankR, iRecv, rankL);
+		};
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Exchange values Z-direction executed\n";
+			std::cout << "rank = " << pManager->getRank() << ", Exchange gradients in Z-direction was executed\n";
 			std::cout.flush();
 		};
 		//Sync
@@ -432,7 +460,7 @@ public:
 							i = g.iMin - layer; // layer index
 							int iIn = g.iMin + layer - 1; // opposite index
 							cellCenter.x = g.CoordinateX[iIn];
-							faceCenter.x = (g.CoordinateX[iIn] + g.CoordinateX[i]) / 2.0;
+							faceCenter.x = (g.CoordinateX[iIn] + g.CoordinateX[i]) / 2.0;		// TO DO WRONG for nonuniform grid
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(iIn, j, k);
 					
@@ -551,13 +579,15 @@ public:
 		//resize storage for appropriate case
 		if(nDims == 1) vfluxesX.resize(g.nlocalX + 1 );
 		if(nDims == 2) {
-			vfluxesX.resize( (g.nlocalX + 1) * g.nlocalY + (g.nlocalY + 1) * g.nlocalX );
-			vfluxesY.resize( (g.nlocalX + 1) * g.nlocalY + (g.nlocalY + 1) * g.nlocalX );
+			size_t size = (g.nlocalX + 1) * g.nlocalY + (g.nlocalY + 1) * g.nlocalX;
+			vfluxesX.resize(size);
+			vfluxesY.resize(size);
 		};
 		if(nDims == 3) {
-			vfluxesX.resize( (g.nlocalX + 1) * g.nlocalY * g.nlocalZ + (g.nlocalY + 1) * g.nlocalX * g.nlocalZ + (g.nlocalZ + 1) * g.nlocalY * g.nlocalX );
-			vfluxesY.resize( (g.nlocalX + 1) * g.nlocalY * g.nlocalZ + (g.nlocalY + 1) * g.nlocalX * g.nlocalZ + (g.nlocalZ + 1) * g.nlocalY * g.nlocalX );
-			vfluxesZ.resize( (g.nlocalX + 1) * g.nlocalY * g.nlocalZ + (g.nlocalY + 1) * g.nlocalX * g.nlocalZ + (g.nlocalZ + 1) * g.nlocalY * g.nlocalX );
+			size_t size = (g.nlocalX + 1) * g.nlocalY * g.nlocalZ + (g.nlocalY + 1) * g.nlocalX * g.nlocalZ + (g.nlocalZ + 1) * g.nlocalY * g.nlocalX;
+			vfluxesX.resize(size);
+			vfluxesY.resize(size);
+			vfluxesZ.resize(size);
 		};
 
 		//second viscosity
@@ -842,8 +872,6 @@ public:
 		else bufferSize = std::max(std::max(layerSizeX, layerSizeY), layerSizeZ) * msgLen;
 		bufferToSend.resize(bufferSize);
 		bufferToRecv.resize(bufferSize);
-
-		//SubDirection subDirection = SubDirection::Left;
 
 		//! Main layer exchanging procedure //TO DO lift from lambda to member
 		auto exchangeLayers = [&](Direction direction, int iSend, int rankDest, int iRecv, int rankSource) {

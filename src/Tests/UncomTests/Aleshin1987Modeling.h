@@ -242,8 +242,8 @@ namespace AleshinExp {
 		KernelConfiguration conf;
 		conf.nDims = 3;
 		conf.nX = 120;
-		conf.nY = 60;
-		conf.nZ = 60;
+		conf.nY = 80;
+		conf.nZ = 80;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.LZ = conf.LY / modeNumber;
