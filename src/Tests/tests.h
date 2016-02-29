@@ -1460,7 +1460,7 @@ void RunShearFlow3D(int argc, char *argv[]) {
 
 // Shear flow (Z bounded)
 void RunShearFlow3DZ(int argc, char *argv[]) {
-	double viscosity = 1.73e-5;	//Air
+	double viscosity = 0;	//Air
 	double ro_init = 1.225;		// normal density
 	double p_init = 1.0e5;		// normal pressure
 	double u_top = 5.0;			// top plane velocity
@@ -1477,14 +1477,17 @@ void RunShearFlow3DZ(int argc, char *argv[]) {
 	conf.isPeriodicY = false;
 	conf.isPeriodicZ = false;
 	conf.Gamma = 1.4;
-	conf.IsViscousFlow = true;
-	conf.Viscosity = viscosity;
+	//conf.IsViscousFlow = true;
+	//conf.Viscosity = viscosity;
 
-	conf.zLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.zLeftBoundary.BCType = BoundaryConditionType::SymmetryZ;
 	conf.zLeftBoundary.Gamma = 1.4;
-	conf.zRightBoundary.BCType = BoundaryConditionType::MovingWall;
+	conf.zRightBoundary.BCType = BoundaryConditionType::SymmetryZ;
 	conf.zRightBoundary.Gamma = 1.4;
-	conf.zRightBoundary.Velocity = Vector(u_top, 0, 0);
+	//conf.zRightBoundary.BCType = BoundaryConditionType::MovingWall;
+	//conf.zRightBoundary.Gamma = 1.4;
+	//conf.zRightBoundary.Velocity = Vector(u_top, 0, 0);
+
 
 	// TO DO DELETE
 	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
@@ -1507,11 +1510,11 @@ void RunShearFlow3DZ(int argc, char *argv[]) {
 
 	// Output info
 	conf.MaxTime = 2.0;
-	conf.MaxIteration = 2;
-	conf.SaveSolutionSnapshotTime = 0.1;
-	conf.SaveSolutionSnapshotIterations = 2;
+	conf.MaxIteration = 1;
+	//conf.SaveSolutionSnapshotTime = 0.1;
+	conf.SaveSolutionSnapshotIterations = 1;
 	//conf.SaveSliceSnapshotTime = 0.01;
-	conf.ResidualOutputIterations = 100;
+	conf.ResidualOutputIterations = 1;
 	conf.DebugOutputEnabled = false;
 
 	// Init kernel

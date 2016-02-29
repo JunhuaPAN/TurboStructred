@@ -1138,6 +1138,13 @@ public:
 						int idx = getSerialIndexLocal(i - 1, j, k);
 						for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += - (fr[nv] - fl[nv]) * fS;
 
+						// TO DO DELETE
+						if ((i == 2) && (j == 1) && (k == 2) && (rank == 0)) {
+							double delta_fl = fr[1] - fl[1];
+							std::cout << "---rank " << rank << ": delta flux_X[1] = " << delta_fl <<
+							std::endl;
+						};
+
 						// Compute volume of cell
 						double volume = fS * g.hx[i - 1];
 
@@ -1213,6 +1220,13 @@ public:
 							int idx = getSerialIndexLocal(i, j - 1, k);
 							for (int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += -(fr[nv] - fl[nv]) * fS;
 
+							// TO DO DELETE
+							if ((i == 1) && (j == 2) && (k == 2) && (rank == 0)) {
+								double delta_fl = fr[1] - fl[1];
+								std::cout << "---rank " << rank << ": delta flux_Y[1] = " << delta_fl <<
+									std::endl;
+							};
+
 							// Compute volume of cell
 							double volume = fS * g.hy[j - 1];
 
@@ -1255,20 +1269,32 @@ public:
 						Vector faceCenter = Vector(g.CoordinateX[i], g.CoordinateY[j], g.CoordinateZ[k] - 0.5 * g.hz[k]);
 
 						// Apply boundary conditions
-						if ((pManager->rankCart[1] == 0) && (k == g.kMin) && (g.IsPeriodicZ != true))									// Left border
+						if ((pManager->rankCart[2] == 0) && (k == g.kMin) && (g.IsPeriodicZ != true))									// Left border
 						{
 							UR = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][1].SampleSolution(CubeFaces::zL));
 							UL = zLeftBC->getDummyReconstructions(&UR[0]);
+							// TO DO DELETE
+							if ((i == 1) && (j == 1) && (k == 3) && (rank == 0)) {
+								std::cout << "case 1" << std::endl;
+							};
 						}
-						else if ((pManager->rankCart[1] == pManager->dimsCart[1] - 1) && (k == g.kMax + 1) && (g.IsPeriodicZ != true))	// Right border
+						else if ((pManager->rankCart[2] == pManager->dimsCart[2] - 1) && (k == g.kMax + 1) && (g.IsPeriodicZ != true))	// Right border
 						{
 							UL = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][g.kMax - g.kMin + 1].SampleSolution(CubeFaces::zR));
 							UR = zRightBC->getDummyReconstructions(&UL[0]);
+							// TO DO DELETE
+							if ((i == 1) && (j == 1) && (k == 3) && (rank == 0)) {
+								std::cout << "case 2" << std::endl;
+							};
 						}
 						else
 						{
 							UL = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin].SampleSolution(CubeFaces::zR));
 							UR = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + 1].SampleSolution(CubeFaces::zL));
+							// TO DO DELETE
+							if ((i == 1) && (j == 1) && (k == 3) && (rank == 0)) {
+								std::cout << "case 3" << std::endl;
+							};
 						};
 
 						// Compute convective flux
@@ -1281,6 +1307,12 @@ public:
 						if (isViscousFlow == true) fvisc = vfluxesZ[faceInd];
 						for (int nv = 0; nv < nVariables; nv++) fr[nv] -= fvisc[nv];
 
+						// TO DO DELETE
+						if ((i == 1) && (j == 1) && (k == 3) && (rank == 0)) {
+							std::cout << "---rank " << rank << ": flux_Z_Top[1] = " << fr[1] <<
+								", rho_u_L = " << UL[1] << ", rho_u_R = " << UR[1] << std::endl;
+						};
+
 						// Update residuals
 						if (k > g.kMin)
 						{
@@ -1290,6 +1322,13 @@ public:
 
 							// Compute volume of cell
 							double volume = fS * g.hz[k - 1];
+
+							// TO DO DELETE
+							if ((i == 1) && (j == 1) && (k == 3) && (rank == 0)) {
+								double delta_fl = fr[1] - fl[1];
+								std::cout << "---rank " << rank << ": delta flux_Z[1] = " << delta_fl <<
+									std::endl;
+							};
 
 							// Add up spectral radius estimate
 							spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
