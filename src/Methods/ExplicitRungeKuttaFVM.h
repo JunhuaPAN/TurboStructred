@@ -35,7 +35,7 @@ public:
 	std::vector<Vector> gradientVelocityZ;  //array for storing gradients of w
 	std::vector< std::vector< std::vector<ReconstructionType> > > reconstructions; //array for storing 
 
-	// Initizalization
+																				   // Initizalization
 	void Init(KernelConfiguration& kernelConfig) {
 		// Invoke base class init
 		Kernel::Init(kernelConfig);
@@ -64,7 +64,7 @@ public:
 		};
 
 		// Pass N Dimensions and N values to dummy cells reconstructions
-		if(g.dummyCellLayersX > 0) {
+		if (g.dummyCellLayersX > 0) {
 			int yLayer = 0;
 			int zLayer = 0;
 			if (g.dummyCellLayersY > 0) yLayer = 1;
@@ -78,7 +78,7 @@ public:
 				};
 			};
 		};
-		if(g.dummyCellLayersY > 0) {
+		if (g.dummyCellLayersY > 0) {
 			int xLayer = 0;
 			int zLayer = 0;
 			if (g.dummyCellLayersX > 0) xLayer = 1;
@@ -92,7 +92,7 @@ public:
 				};
 			};
 		};
-		if(g.dummyCellLayersZ > 0) {
+		if (g.dummyCellLayersZ > 0) {
 			int xLayer = 0;
 			int yLayer = 0;
 			if (g.dummyCellLayersX > 0) xLayer = 1;
@@ -107,11 +107,6 @@ public:
 			};
 		};
 
-		// Output info
-		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Kernel initialized\n";
-			std::cout.flush();
-		};
 		//Sync
 		pManager->Barrier();
 	};
@@ -128,55 +123,60 @@ public:
 		//Add neighbours
 		points.clear();
 		pointValues.clear();
-		points.push_back( Vector(CoordinateX[i-1], CoordinateY[j], CoordinateZ[k]) );
-		pointValues.push_back( func(getCellValues(i-1, j, k)) );
-		points.push_back( Vector(CoordinateX[i+1], CoordinateY[j], CoordinateZ[k]) );
-		pointValues.push_back( func(getCellValues(i+1, j, k)) );
+		points.push_back(Vector(CoordinateX[i - 1], CoordinateY[j], CoordinateZ[k]));
+		pointValues.push_back(func(getCellValues(i - 1, j, k)));
+		points.push_back(Vector(CoordinateX[i + 1], CoordinateY[j], CoordinateZ[k]));
+		pointValues.push_back(func(getCellValues(i + 1, j, k)));
 		if (nDims > 1) {
-			points.push_back( Vector(CoordinateX[i], CoordinateY[j-1], CoordinateZ[k]) );
-			pointValues.push_back( func(getCellValues(i, j-1, k)) );
-			points.push_back( Vector(CoordinateX[i], CoordinateY[j+1], CoordinateZ[k]) );
-			pointValues.push_back( func(getCellValues(i, j+1, k)) );
+			points.push_back(Vector(CoordinateX[i], CoordinateY[j - 1], CoordinateZ[k]));
+			pointValues.push_back(func(getCellValues(i, j - 1, k)));
+			points.push_back(Vector(CoordinateX[i], CoordinateY[j + 1], CoordinateZ[k]));
+			pointValues.push_back(func(getCellValues(i, j + 1, k)));
 		};
 		if (nDims > 2) {
-			points.push_back( Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k-1]) );
-			pointValues.push_back( func(getCellValues(i, j, k-1)) );
-			points.push_back( Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k+1]) );
-			pointValues.push_back( func(getCellValues(i, j, k+1)) );
+			points.push_back(Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k - 1]));
+			pointValues.push_back(func(getCellValues(i, j, k - 1)));
+			points.push_back(Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k + 1]));
+			pointValues.push_back(func(getCellValues(i, j, k + 1)));
 		};
 		Vector grad = ComputeGradientByPoints(nDims, center, value, points, pointValues);
 		return grad;
 	};
 
-	Vector ComputeGradientUniformStructured(int i, int j, int k, std::function<double(double*)> func) {\
-		Vector grad(0,0,0);
-		double dux = func(getCellValues(i+1, j, k)) - func(getCellValues(i-1, j, k));
-		double dudx = dux / (2.0 * hx[0]);					
+	// TO DO only first order now
+	Vector ComputeGradientUniformStructured(int i, int j, int k, std::function<double(double*)> func) {
+		\
+			Vector grad(0, 0, 0);
+		double dux = func(getCellValues(i + 1, j, k)) - func(getCellValues(i - 1, j, k));
+		double dudx = dux / (2.0 * hx[0]);
 		grad.x = dudx;
 
 		if (nDims > 1) {
-			double duy = func(getCellValues(i, j+1, k)) - func(getCellValues(i, j-1, k));
+			double duy = func(getCellValues(i, j + 1, k)) - func(getCellValues(i, j - 1, k));
 			double dudy = duy / (2.0 * hy[0]);
 			grad.y = dudy;
 		};
 		if (nDims > 2) {
-			double duz = func(getCellValues(i, j, k+1)) - func(getCellValues(i, j, k-1));
+			double duz = func(getCellValues(i, j, k + 1)) - func(getCellValues(i, j, k - 1));
 			double dudz = duz / (2.0 * hz[0]);
 			grad.z = dudz;
 		};
 		return grad;
 	};
-	Vector ComputeGradientNonUniformStructured(int i, int j, int k, std::function<double(double*)> func) {\
-		Vector grad(0,0,0);
+	Vector ComputeGradientNonUniformStructured(int i, int j, int k, std::function<double(double*)> func) {
+		Vector grad(0, 0, 0);
 		double dux = func(getCellValues(i + 1, j, k)) - func(getCellValues(i - 1, j, k));
 		double dudx = dux / (g.CoordinateX[i + 1] - g.CoordinateX[i - 1]);
 		grad.x = dudx;
 
+		// 2D case
 		if (nDims > 1) {
 			double duy = func(getCellValues(i, j + 1, k)) - func(getCellValues(i, j - 1, k));
 			double dudy = duy / (g.CoordinateY[j + 1] - g.CoordinateY[j - 1]);
 			grad.y = dudy;
 		};
+
+		// 3D case
 		if (nDims > 2) {
 			double duz = func(getCellValues(i, j, k + 1)) - func(getCellValues(i, j, k - 1));
 			double dudz = duz / (g.CoordinateZ[k + 1] - g.CoordinateZ[k - 1]);
@@ -188,9 +188,9 @@ public:
 	//Compute all required gradient in each inner cell
 	void ComputeVelocityGradients() {
 		//Gradients required
-		auto getu = [](double *U) { return U[1]/U[0]; };
-		auto getv = [](double *U) { return U[2]/U[0]; };
-		auto getw = [](double *U) { return U[3]/U[0]; };
+		auto getu = [](double *U) { return U[1] / U[0]; };
+		auto getv = [](double *U) { return U[2] / U[0]; };
+		auto getw = [](double *U) { return U[3] / U[0]; };
 		if (gradientVelocityX.size() != g.nCellsLocalAll) gradientVelocityX.resize(g.nCellsLocalAll);
 		if (gradientVelocityY.size() != g.nCellsLocalAll) gradientVelocityY.resize(g.nCellsLocalAll);
 		if (gradientVelocityZ.size() != g.nCellsLocalAll) gradientVelocityZ.resize(g.nCellsLocalAll);
@@ -213,19 +213,19 @@ public:
 		};
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Gradients calculated inside domain\n";
+			std::cout << "rank = " << pManager->getRank() << ", Velocity gradients have'n calculated inside the domain\n";
 			std::cout.flush();
 		};
 		//Sync
 		pManager->Barrier();
-		
+
 		//Interprocessor exchange
 		ExchangeGradients(gradientVelocityX);
 		if (nDims > 1) ExchangeGradients(gradientVelocityY);
 		if (nDims > 2) ExchangeGradients(gradientVelocityZ);
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Gradients exchange executed\n";
+			std::cout << "rank = " << pManager->getRank() << ", Gradients exchange executed\n";
 			std::cout.flush();
 		};
 		//Sync
@@ -235,7 +235,7 @@ public:
 		ComputeDummyCellGradients();
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Gradients calculated in dummy cells\n";
+			std::cout << "rank = " << pManager->getRank() << ", Gradients calculated in dummy cells\n";
 			std::cout.flush();
 		};
 		//Sync
@@ -250,21 +250,21 @@ public:
 		int k = 0;
 
 		//Get parallel run info
-		MPI_Comm comm = pManager->getComm();		
+		MPI_Comm comm = pManager->getComm();
 
 		//Buffers
 		std::vector<double> bufferToRecv;
-		std::vector<double> bufferToSend;								
+		std::vector<double> bufferToSend;
 
 		//Allocate buffers
 		int layerSizeX = g.nlocalYAll * g.nlocalZAll;
 		int layerSizeY = g.nlocalXAll * g.nlocalZAll;
-		int bufferSize = std::max(layerSizeX, layerSizeY) * nDims;// * nVariables;
+		int layerSizeZ = g.nlocalXAll * g.nlocalYAll;
+		int bufferSize = std::max(std::max(layerSizeX, layerSizeY), layerSizeZ) * nDims;// * nVariables;
 		bufferToSend.resize(bufferSize);
 		bufferToRecv.resize(bufferSize);
 
-		SubDirection subDirection = SubDirection::Left;
-
+		// TO DO lift from lyabmda to member function
 		auto exchangeLayers = [&](Direction direction, int iSend, int rankDest, int iRecv, int rankSource) {
 			int nRecv = 0;
 			int nSend = 0;
@@ -277,13 +277,13 @@ public:
 					if ((direction == Direction::YDirection) && (j != iSend)) continue; //skip
 					for (k = g.kMin - g.dummyCellLayersZ; k <= g.kMax + g.dummyCellLayersZ; k++) {
 						if ((direction == Direction::ZDirection) && (k != iSend)) continue; //skip
-						nRecv+=nDims;
+						nRecv += nDims;
 						if (rankDest == -1) continue;
 
 						int idxCell = getSerialIndexLocal(i, j, k);
 						bufferToSend[idxBuffer * nDims] = cellGradients[idxCell].x;
-						if (nDims > 1) bufferToSend[idxBuffer * nDims + 1] =  cellGradients[idxCell].y;
-						if (nDims > 2) bufferToSend[idxBuffer * nDims + 2] =  cellGradients[idxCell].z;
+						if (nDims > 1) bufferToSend[idxBuffer * nDims + 1] = cellGradients[idxCell].y;
+						if (nDims > 2) bufferToSend[idxBuffer * nDims + 2] = cellGradients[idxCell].z;
 						idxBuffer++;
 					};
 				};
@@ -291,11 +291,11 @@ public:
 
 			if (rankDest != -1) nSend = idxBuffer * nDims; //Determine number of doubles to send
 
-			//Determine recive number
+														   //Determine recive number
 			if (rankSource == -1) {
-				nRecv = 0;				
+				nRecv = 0;
 			};
-			
+
 			//Make exchange
 			pManager->SendRecvDouble(comm, rankDest, rankSource, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
 
@@ -326,10 +326,10 @@ public:
 		int rankL = pManager->GetRankByCartesianIndexShift(-1, 0, 0);
 		int rankR = pManager->GetRankByCartesianIndexShift(+1, 0, 0);
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<rank<<
-				"; rankL = "<<rankL<<
-				"; rankR = "<<rankR<<
-				std::endl<<std::flush;
+			std::cout << "rank = " << rank <<
+				"; rankL = " << rankL <<
+				"; rankR = " << rankR <<
+				std::endl << std::flush;
 		};
 
 		for (int layer = 1; layer <= g.dummyCellLayersX; layer++) {
@@ -345,24 +345,27 @@ public:
 		};
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Exchange values X-direction executed\n";
+			std::cout << "rank = " << pManager->getRank() << ", Exchange gradients in X-direction was executed\n";
 		};
 		//Sync
 		pManager->Barrier();
 
 		if (nDims < 2) return;
-		//Y direction exchange		
+		//Y direction exchange
+
 		//Determine neighbours' ranks
 		rankL = pManager->GetRankByCartesianIndexShift(0, -1, 0);
 		rankR = pManager->GetRankByCartesianIndexShift(0, +1, 0);
+
+		//Debug info
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<rank<<
-				"; rankL = "<<rankL<<
-				"; rankR = "<<rankR<<
-				std::endl<<std::flush;
+			std::cout << "rank = " << rank <<
+				"; rankL = " << rankL <<
+				"; rankR = " << rankR <<
+				std::endl << std::flush;
 		};
 
-		
+		//Y direction exchange
 		for (int layer = 1; layer <= g.dummyCellLayersY; layer++) {
 			// Minus direction exchange
 			int iSend = g.jMin + layer - 1; // layer index to send
@@ -375,18 +378,44 @@ public:
 			exchangeLayers(Direction::YDirection, iSend, rankR, iRecv, rankL);
 		};
 
+		//Debug info
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Exchange values Y-direction executed\n";
+			std::cout << "rank = " << pManager->getRank() << ", Exchange gradients in Y-direction was executed\n";
 			std::cout.flush();
 		};
 		//Sync
 		pManager->Barrier();
 
 		if (nDims < 3) return;
-		//Z direction exchange		
+		//Z direction exchange
+
+		//Determine neighbours' ranks
+		rankL = pManager->GetRankByCartesianIndexShift(0, 0, -1);
+		rankR = pManager->GetRankByCartesianIndexShift(0, 0, +1);
+
+		//Debug info
+		if (DebugOutputEnabled) {
+			std::cout << "rank = " << rank <<
+				"; rankL = " << rankL <<
+				"; rankR = " << rankR <<
+				std::endl << std::flush;
+		};
+
+		//Z direction exchange 
+		for (int layer = 1; layer <= g.dummyCellLayersZ; layer++) {
+			// Minus direction exchange
+			int iSend = g.kMin + layer - 1; // layer index to send
+			int iRecv = g.kMax + layer; // layer index to recv
+			exchangeLayers(Direction::ZDirection, iSend, rankL, iRecv, rankR);
+
+			// Plus direction exchange
+			iSend = g.kMax - layer + 1; // layer index to send
+			iRecv = g.kMin - layer; // layer index to recv
+			exchangeLayers(Direction::ZDirection, iSend, rankR, iRecv, rankL);
+		};
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Exchange values Z-direction executed\n";
+			std::cout << "rank = " << pManager->getRank() << ", Exchange gradients in Z-direction was executed\n";
 			std::cout.flush();
 		};
 		//Sync
@@ -394,12 +423,12 @@ public:
 
 	}; // function
 
-	//Compute gradients inside dummy cells
+	   //Compute gradients inside dummy cells
 	void ComputeDummyCellGradients() {
 		//Index variables
 		int i = 0;
 		int j = 0;
-		int k = 0;		
+		int k = 0;
 
 		//Current face and cell information
 		Vector faceNormalL;
@@ -408,10 +437,10 @@ public:
 		Vector cellCenter;
 
 		//Gradients required
-		auto getu = [](double *U) { return U[1]/U[0]; };
-		auto getv = [](double *U) { return U[2]/U[0]; };
-		auto getw = [](double *U) { return U[3]/U[0]; };
-		
+		auto getu = [](double *U) { return U[1] / U[0]; };
+		auto getv = [](double *U) { return U[2] / U[0]; };
+		auto getw = [](double *U) { return U[3] / U[0]; };
+
 		//X direction
 		faceNormalL = Vector(-1.0, 0.0, 0.0);
 		faceNormalR = Vector(1.0, 0.0, 0.0);
@@ -432,12 +461,12 @@ public:
 							i = g.iMin - layer; // layer index
 							int iIn = g.iMin + layer - 1; // opposite index
 							cellCenter.x = g.CoordinateX[iIn];
-							faceCenter.x = (g.CoordinateX[iIn] + g.CoordinateX[i]) / 2.0;
+							faceCenter.x = (g.CoordinateX[iIn] + g.CoordinateX[i]) / 2.0;		// TO DO WRONG for nonuniform grid
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(iIn, j, k);
-					
+
 							//Apply left boundary conditions						
-							double *V = getCellValues(iIn,j,k);
+							double *V = getCellValues(iIn, j, k);
 							Vector dGrad;
 							dGrad = xLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityX[idx] = dGrad;
@@ -447,7 +476,7 @@ public:
 							gradientVelocityZ[idx] = dGrad;
 						};
 
-						if (pManager->rankCart[0] == pManager->dimsCart[0]-1) {
+						if (pManager->rankCart[0] == pManager->dimsCart[0] - 1) {
 							//Right border
 							i = g.iMax + layer; // layer index
 							int iIn = g.iMax - layer + 1; // opposite index
@@ -455,16 +484,16 @@ public:
 							faceCenter.x = (g.CoordinateX[iIn] + g.CoordinateX[i]) / 2.0;
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(iIn, j, k);
-					
+
 							//Apply right boundary conditions						
-							double *V = getCellValues(iIn,j,k);
+							double *V = getCellValues(iIn, j, k);
 							Vector dGrad;
 							dGrad = xRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityX[idx] = dGrad;
 							dGrad = xRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityY[idx] = dGrad;
 							dGrad = xRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
-							gradientVelocityZ[idx] = dGrad;	
+							gradientVelocityZ[idx] = dGrad;
 						};
 					};
 				};
@@ -472,7 +501,7 @@ public:
 		}; //X direction
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Gradients dummy cells X-direction calculated\n";
+			std::cout << "rank = " << pManager->getRank() << ", Gradients dummy cells X-direction calculated\n";
 			std::cout.flush();
 		};
 		//Sync
@@ -502,9 +531,9 @@ public:
 							faceCenter.y = (g.CoordinateY[jIn] + g.CoordinateY[j]) / 2.0;
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(i, jIn, k);
-											
+
 							//Apply left boundary conditions						
-							double *V = getCellValues(i,jIn,k);
+							double *V = getCellValues(i, jIn, k);
 							Vector dGrad;
 							dGrad = yLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityX[idx] = dGrad;
@@ -522,9 +551,9 @@ public:
 							faceCenter.y = (g.CoordinateY[jIn] + g.CoordinateY[j]) / 2.0;
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(i, jIn, k);
-					
+
 							//Apply right boundary conditions						
-							double *V = getCellValues(i,jIn,k);
+							double *V = getCellValues(i, jIn, k);
 							Vector dGrad;
 							dGrad = yRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityX[idx] = dGrad;
@@ -539,7 +568,7 @@ public:
 		}; //Y direction
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Gradients dummy cells Y-direction calculated\n";
+			std::cout << "rank = " << pManager->getRank() << ", Gradients dummy cells Y-direction calculated\n";
 			std::cout.flush();
 		};
 		//Sync
@@ -549,33 +578,35 @@ public:
 	//Compute viscous Fluxes in all faces
 	void ComputeViscousFluxes(std::vector<std::vector<double>> &vfluxesX, std::vector<std::vector<double>> &vfluxesY, std::vector<std::vector<double>> &vfluxesZ) {
 		//resize storage for appropriate case
-		if(nDims == 1) vfluxesX.resize(g.nlocalX + 1 );
-		if(nDims == 2) {
-			vfluxesX.resize( (g.nlocalX + 1) * g.nlocalY + (g.nlocalY + 1) * g.nlocalX );
-			vfluxesY.resize( (g.nlocalX + 1) * g.nlocalY + (g.nlocalY + 1) * g.nlocalX );
+		if (nDims == 1) vfluxesX.resize(g.nlocalX + 1);
+		if (nDims == 2) {
+			size_t size = (g.nlocalX + 1) * g.nlocalY + (g.nlocalY + 1) * g.nlocalX;
+			vfluxesX.resize(size);
+			vfluxesY.resize(size);
 		};
-		if(nDims == 3) {
-			vfluxesX.resize( (g.nlocalX + 1) * g.nlocalY * g.nlocalZ + (g.nlocalY + 1) * g.nlocalX * g.nlocalZ + (g.nlocalZ + 1) * g.nlocalY * g.nlocalX );
-			vfluxesY.resize( (g.nlocalX + 1) * g.nlocalY * g.nlocalZ + (g.nlocalY + 1) * g.nlocalX * g.nlocalZ + (g.nlocalZ + 1) * g.nlocalY * g.nlocalX );
-			vfluxesZ.resize( (g.nlocalX + 1) * g.nlocalY * g.nlocalZ + (g.nlocalY + 1) * g.nlocalX * g.nlocalZ + (g.nlocalZ + 1) * g.nlocalY * g.nlocalX );
+		if (nDims == 3) {
+			size_t size = (g.nlocalX + 1) * g.nlocalY * g.nlocalZ + (g.nlocalY + 1) * g.nlocalX * g.nlocalZ + (g.nlocalZ + 1) * g.nlocalY * g.nlocalX;
+			vfluxesX.resize(size);
+			vfluxesY.resize(size);
+			vfluxesZ.resize(size);
 		};
 
 		//second viscosity
-		double s_viscosity = (-2.0/3.0) * viscosity;
-		
+		double s_viscosity = (-2.0 / 3.0) * viscosity;
+
 		//index of face
 		int faceInd = 0;
-		
+
 		//create derivative functions
-		auto getu = [](double *U) { return U[1]/U[0]; };
-		auto getv = [](double *U) { return U[2]/U[0]; };
-		auto getw = [](double *U) { return U[3]/U[0]; };
+		auto getu = [](double *U) { return U[1] / U[0]; };
+		auto getv = [](double *U) { return U[2] / U[0]; };
+		auto getw = [](double *U) { return U[3] / U[0]; };
 
 		//X direction first
 		faceInd = 0;
-		for(int k = g.kMin; k <= g.kMax; k++) {
-			for(int j = g.jMin; j <= g.jMax; j++) {
-				for(int i = g.iMin; i <= g.iMax + 1; i++) {
+		for (int k = g.kMin; k <= g.kMax; k++) {
+			for (int j = g.jMin; j <= g.jMax; j++) {
+				for (int i = g.iMin; i <= g.iMax + 1; i++) {
 
 					//Compute vertical faces fluxes (left from cell ijk)
 					//Conservative variables and serial index in left and right cell 
@@ -609,7 +640,7 @@ public:
 					double u = 0.5 * (l * getu(UR) + r * getu(UL));
 					double v = 0.5 * (l * getv(UR) + r * getv(UL));
 					double w = 0.5 * (l * getw(UR) + r * getw(UL));
-					
+
 					//compute stress tensor
 					double tau_diagonal = s_viscosity * (du.x + dv.y + dw.z);
 					double tau_xx = tau_diagonal + 2 * viscosity*du.x;
@@ -631,18 +662,18 @@ public:
 			};
 		};
 
-		if(nDims < 2) return;
+		if (nDims < 2) return;
 		//Y direction then
 		faceInd = 0;
-		for(int k = g.kMin; k <= g.kMax; k++) {
-			for(int i = g.iMin; i <= g.iMax; i++) {
-				for(int j = g.jMin; j <= g.jMax + 1; j++) {
+		for (int k = g.kMin; k <= g.kMax; k++) {
+			for (int i = g.iMin; i <= g.iMax; i++) {
+				for (int j = g.jMin; j <= g.jMax + 1; j++) {
 
 					//Compute horizontal faces fluxes (bottom from cell ijk)
 					//Conservative variables and serial index in left (bottom) and right (top) cell 
 					double* UL = getCellValues(i, j - 1, k);
 					double* UR = getCellValues(i, j, k);
-					int sL = getSerialIndexLocal(i , j - 1, k);
+					int sL = getSerialIndexLocal(i, j - 1, k);
 					int sR = getSerialIndexLocal(i, j, k);
 					double dy = g.CoordinateY[j] - g.CoordinateY[j - 1];
 
@@ -692,18 +723,18 @@ public:
 			};
 		};
 
-		if(nDims < 3) return;
+		if (nDims < 3) return;
 		//Z direction then
 		faceInd = 0;
-		for(int i = g.iMin; i <= g.iMax; i++) {
-			for(int j = g.jMin; j <= g.jMax; j++) {
-				for(int k = g.kMin; k <= g.kMax + 1; k++) {
+		for (int i = g.iMin; i <= g.iMax; i++) {
+			for (int j = g.jMin; j <= g.jMax; j++) {
+				for (int k = g.kMin; k <= g.kMax + 1; k++) {
 
 					//Compute frontal faces fluxes (back from cell ijk)
 					//Conservative variables and serial index in left (back) and right (front) cell 
-					double* UL = getCellValues(i, j , k - 1);
+					double* UL = getCellValues(i, j, k - 1);
 					double* UR = getCellValues(i, j, k);
-					int sL = getSerialIndexLocal(i , j, k - 1);
+					int sL = getSerialIndexLocal(i, j, k - 1);
 					int sR = getSerialIndexLocal(i, j, k);
 					double dz = g.CoordinateZ[k] - g.CoordinateZ[k - 1];
 
@@ -734,7 +765,7 @@ public:
 
 					//compute stress tensor
 					double tau_diagonal = s_viscosity*(du.x + dv.y + dw.z);
-					double tau_zz = tau_diagonal + 2*viscosity*dw.z;
+					double tau_zz = tau_diagonal + 2 * viscosity*dw.z;
 					double tau_xz = viscosity*(du.z + dw.x);
 					double tau_yz = viscosity*(dv.z + dw.y);
 
@@ -843,8 +874,6 @@ public:
 		bufferToSend.resize(bufferSize);
 		bufferToRecv.resize(bufferSize);
 
-		//SubDirection subDirection = SubDirection::Left;
-
 		//! Main layer exchanging procedure //TO DO lift from lambda to member
 		auto exchangeLayers = [&](Direction direction, int iSend, int rankDest, int iRecv, int rankSource) {
 			size_t nRecv{ 0 };
@@ -859,7 +888,7 @@ public:
 					for (k = g.kMin; k <= g.kMax; k++) {
 						if ((direction == Direction::ZDirection) && (k != iSend)) continue; //skip
 
-						//Increase aticipating buffer size
+																							//Increase aticipating buffer size
 						nRecv += msgLen;
 
 						//If destination not set we don't send
@@ -869,12 +898,12 @@ public:
 						int iRec = i - g.iMin + xLayer;
 						int jRec = j - g.jMin + yLayer;
 						int kRec = k - g.kMin + zLayer;
-						
+
 						//Serialize to string of doubles
 						std::valarray<double> msg = reconstructions[iRec][jRec][kRec].Serialize();
 
 						//Write message to buffer
-						for (int i = 0; i < msgLen; i++) bufferToSend[idxBuffer * msgLen + i] = msg[i];						
+						for (int i = 0; i < msgLen; i++) bufferToSend[idxBuffer * msgLen + i] = msg[i];
 
 						//Increase object counter
 						idxBuffer++;
@@ -883,7 +912,7 @@ public:
 			};
 
 			//Determine number of doubles to send
-			if (rankDest != -1) nSend = idxBuffer * msgLen;			
+			if (rankDest != -1) nSend = idxBuffer * msgLen;
 
 			//Determine recive number											  
 			if (rankSource == -1) {
@@ -913,8 +942,8 @@ public:
 					if ((direction == Direction::YDirection) && (j != iRecv)) continue; //skip
 					for (k = g.kMin - zDummyFlag; k <= g.kMax + zDummyFlag; k++) {
 						if ((direction == Direction::ZDirection) && (k != iRecv)) continue; //skip
-						
-						//Get indexes to recv reconstruction
+
+																							//Get indexes to recv reconstruction
 						int iRec = i - g.iMin + xLayer;
 						int jRec = j - g.jMin + yLayer;
 						int kRec = k - g.kMin + zLayer;
@@ -950,7 +979,7 @@ public:
 				"; rankR = " << rankR <<
 				std::endl << std::flush;
 		};
-	
+
 		// Minus direction exchange
 		int iSend = g.iMin; // layer index to send
 		int iRecv = g.iMax + 1; // layer index to recv
@@ -970,7 +999,7 @@ public:
 
 		//Skip Y direction exchange if not needed
 		if (nDims < 2) return;
-		
+
 		//Determine neighbours' ranks
 		rankL = pManager->GetRankByCartesianIndexShift(0, -1, 0);
 		rankR = pManager->GetRankByCartesianIndexShift(0, +1, 0);
@@ -980,7 +1009,7 @@ public:
 				"; rankR = " << rankR <<
 				std::endl << std::flush;
 		};
-		
+
 		// Minus direction exchange
 		iSend = g.jMin; // layer index to send
 		iRecv = g.jMax + 1; // layer index to recv
@@ -989,7 +1018,7 @@ public:
 		// Plus direction exchange
 		iSend = g.jMax; // layer index to send
 		iRecv = g.jMin - 1; // layer index to recv
-		exchangeLayers(Direction::YDirection, iSend, rankR, iRecv, rankL);		
+		exchangeLayers(Direction::YDirection, iSend, rankR, iRecv, rankL);
 
 		if (DebugOutputEnabled) {
 			std::cout << "rank = " << pManager->getRank() << ", Exchange recontructions Y-direction executed\n";
@@ -1029,18 +1058,18 @@ public:
 
 	}; // function
 
-	//Compute residual
+	   //Compute residual
 	void ComputeResidual(const std::valarray<double>& values, std::valarray<double>& residual, std::vector<double>& spectralRadius) {
 		//  init spectral radius storage for each cell
 		for (double& sr : spectralRadius) sr = 0; //Nullify
 		for (double& r : residual) r = 0; //Nullify residual
 
-		// Fluxes temporary storage
-		std::vector<double> fl(nVariables,0); //left flux -1/2
-		std::vector<double> fr(nVariables,0); //right flux +1/2
-		std::vector<double> fvisc(nVariables,0); //right flux +1/2		
+										  // Fluxes temporary storage
+		std::vector<double> fl(nVariables, 0); //left flux -1/2
+		std::vector<double> fr(nVariables, 0); //right flux +1/2
+		std::vector<double> fvisc(nVariables, 0); //right flux +1/2		
 
-		// Viscous part
+												  // Viscous part
 		int faceInd = 0;
 		if (isGradientRequired == true) ComputeVelocityGradients();
 
@@ -1087,7 +1116,8 @@ public:
 					{
 						UL = InverseVariablesTransition(reconstructions[g.iMax - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(CubeFaces::xR));
 						UR = xRightBC->getDummyReconstructions(&UL[0]);
-					} else
+					}
+					else
 					{
 						UL = InverseVariablesTransition(reconstructions[i - g.iMin][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(CubeFaces::xR));
 						UR = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][k - g.kMin + zLayer].SampleSolution(CubeFaces::xL));
@@ -1104,11 +1134,11 @@ public:
 					for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
 
 					// Update residuals
-					if(i > g.iMin)
+					if (i > g.iMin)
 					{
 						// Fluxes difference equals residual
 						int idx = getSerialIndexLocal(i - 1, j, k);
-						for(int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += - (fr[nv] - fl[nv]) * fS;
+						for (int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += -(fr[nv] - fl[nv]) * fS;
 
 						// Compute volume of cell
 						double volume = fS * g.hx[i - 1];
@@ -1117,24 +1147,24 @@ public:
 						spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
 						double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
 						double gammaFace = gamma;
-						double vsr = std::max(4.0 / (3.0 * roFace), gammaFace/roFace);
+						double vsr = std::max(4.0 / (3.0 * roFace), gammaFace / roFace);
 						double viscosityFace = viscosity;
 						double PrandtlNumberFace = 1.0;
-						vsr *= viscosityFace / PrandtlNumberFace; 
+						vsr *= viscosityFace / PrandtlNumberFace;
 						vsr *= fS*fS;
 						vsr /= volume;
 						spectralRadius[idx] += vsr;
 					};
-          
+
 					// Shift stencil
 					fl = fr;
 
 					// Increment face index
 					faceInd++;
-				 };
+				};
 			};
 		};
-		
+
 		// J step
 		if (nDims > 1)
 		{
@@ -1210,7 +1240,7 @@ public:
 				};
 			};
 		};
-				
+
 		// K step
 		if (nDims > 2)
 		{
@@ -1227,12 +1257,12 @@ public:
 						Vector faceCenter = Vector(g.CoordinateX[i], g.CoordinateY[j], g.CoordinateZ[k] - 0.5 * g.hz[k]);
 
 						// Apply boundary conditions
-						if ((pManager->rankCart[1] == 0) && (k == g.kMin) && (g.IsPeriodicZ != true))									// Left border
+						if ((pManager->rankCart[2] == 0) && (k == g.kMin) && (g.IsPeriodicZ != true))									// Left border
 						{
 							UR = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][1].SampleSolution(CubeFaces::zL));
 							UL = zLeftBC->getDummyReconstructions(&UR[0]);
 						}
-						else if ((pManager->rankCart[1] == pManager->dimsCart[1] - 1) && (k == g.kMax + 1) && (g.IsPeriodicZ != true))	// Right border
+						else if ((pManager->rankCart[2] == pManager->dimsCart[2] - 1) && (k == g.kMax + 1) && (g.IsPeriodicZ != true))	// Right border
 						{
 							UL = InverseVariablesTransition(reconstructions[i - g.iMin + 1][j - g.jMin + yLayer][g.kMax - g.kMin + 1].SampleSolution(CubeFaces::zR));
 							UR = zRightBC->getDummyReconstructions(&UL[0]);
@@ -1285,10 +1315,10 @@ public:
 				};
 			};
 		};
-		
+
 		//Source term treatment
-		if(isExternalForce == true) ProcessExternalForces();
-		if(isExternalAccelaration == true) ProcessExternalAcceleration();
+		if (isExternalForce == true) ProcessExternalForces();
+		if (isExternalAccelaration == true) ProcessExternalAcceleration();
 	};
 
 	//Compute global time step
@@ -1303,22 +1333,22 @@ public:
 					double sR = spectralRadius[idx];
 					double localdt = CFL * volume / sR; //Blazek f. 6.20
 
-					//Find minimum
+														//Find minimum
 					if (dt > localdt) dt = localdt;
 				};
 			};
 		};
 
-		if ( (SaveSolutionSnapshotTime != 0) || (SaveSliceSnapshotTime != 0) ) dt = std::min(stepInfo.NextSnapshotTime - stepInfo.Time, dt);
+		if ((SaveSolutionSnapshotTime != 0) || (SaveSliceSnapshotTime != 0)) dt = std::min(stepInfo.NextSnapshotTime - stepInfo.Time, dt);
 		dt = pManager->Min(dt);
 
 		return dt;
 	};
 
 	//Explicit time step
-	virtual void IterationStep() override {	
+	virtual void IterationStep() override {
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Iteration started\n";
+			std::cout << "rank = " << pManager->getRank() << ", Iteration started\n";
 			std::cout.flush();
 		};
 		//Sync
@@ -1342,7 +1372,7 @@ public:
 		ComputeResidual(values, residual, spectralRadius);
 
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Residual calculated\n";
+			std::cout << "rank = " << pManager->getRank() << ", Residual calculated\n";
 			std::cout.flush();
 		};
 		//Sync
@@ -1350,9 +1380,9 @@ public:
 
 		//Determine timestep
 		stepInfo.TimeStep = ComputeTimeStep(spectralRadius);
-		
+
 		if (DebugOutputEnabled) {
-			std::cout<<"rank = "<<pManager->getRank()<<", Timestep calculated\n";
+			std::cout << "rank = " << pManager->getRank() << ", Timestep calculated\n";
 			std::cout.flush();
 		};
 		//Sync
@@ -1360,14 +1390,14 @@ public:
 
 		//Compute residuals and update solution
 		UpdateSolution(stepInfo.TimeStep);
-				
+
 		// Update time
 		stepInfo.Time += stepInfo.TimeStep;
 		stepInfo.Iteration++;
 
 		//Sync
 		pManager->Barrier();
-	};	
+	};
 
 };
 

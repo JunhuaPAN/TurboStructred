@@ -523,10 +523,13 @@ public:
 		//Determine neighbours' ranks
 		rankL = pManager->GetRankByCartesianIndexShift(0, -1, 0);
 		rankR = pManager->GetRankByCartesianIndexShift(0, +1, 0);
-		/*std::cout<<"rank = "<<rank<<
-		"; rankL = "<<rankL<<
-		"; rankR = "<<rankR<<
-		std::endl<<std::flush;*/
+
+		if (DebugOutputEnabled) {
+			std::cout << "rank = " << rank <<
+				"; rankL = " << rankL <<
+				"; rankR = " << rankR <<
+				std::endl << std::flush;
+		};
 
 		for (int layer = 1; layer <= g.dummyCellLayersY; layer++) {
 			// Minus direction exchange
@@ -535,7 +538,7 @@ public:
 			int jSend = g.jMin + layer - 1; // layer index to send
 			int jRecv = g.jMax + layer; // layer index to recv
 
-									  // Prepare values to send
+			// Prepare values to send
 			if (rankL != -1) {
 				nSend = layerSize * nVariables;
 				for (i = g.iMin; i <= g.iMax; i++) {
@@ -545,6 +548,13 @@ public:
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
 					};
 				};
+			};
+
+			if (DebugOutputEnabled) {
+				std::cout << "rank = " << rank <<
+					"; jSend = " << jSend <<
+					"; jRecv = " << jRecv <<
+					std::endl << std::flush;
 			};
 
 			//Determine recive number
@@ -570,7 +580,14 @@ public:
 			jSend = g.jMax - layer + 1; // layer index to send
 			jRecv = g.jMin - layer; // layer index to recv
 
-								  // Prepare values to send
+			if (DebugOutputEnabled) {
+				std::cout << "rank = " << rank <<
+					"; jSend = " << jSend <<
+					"; jRecv = " << jRecv <<
+					std::endl << std::flush;
+			};
+
+			// Prepare values to send
 			if (rankR != -1) {
 				nSend = layerSize * nVariables;
 				for (i = g.iMin; i <= g.iMax; i++) {
@@ -618,11 +635,8 @@ public:
 		//Determine neighbours' ranks
 		rankL = pManager->GetRankByCartesianIndexShift(0, 0, -1);
 		rankR = pManager->GetRankByCartesianIndexShift(0, 0, +1);
-		//rankL = pManager->GetRankByCartesianIndex(0, 0, -1);
-		//rankR = pManager->GetRankByCartesianIndex(0, 0, 1);
 
 		if (DebugOutputEnabled) {
-			std::cout << "Exchange Z-direction started" << std::endl << std::flush;
 			std::cout << "rank = " << rank <<
 				"; rankL = " << rankL <<
 				"; rankR = " << rankR <<
@@ -726,7 +740,7 @@ public:
 		pManager->Barrier();
 
 		if (DebugOutputEnabled) {
-			std::cout << "rank = " << rank << "Exchange values finished." <<
+			std::cout << "rank = " << rank << ", Exchange values finished." <<
 				std::endl << std::flush;
 		};
 
@@ -740,7 +754,7 @@ public:
 		int k = 0;
 
 		if (DebugOutputEnabled) {
-			std::cout << "rank = " << rank << "Dummy cell processing started." <<
+			std::cout << "rank = " << rank << ", Dummy cell processing started." <<
 				std::endl << std::flush;
 		};
 
@@ -777,7 +791,7 @@ public:
 							i = g.iMin - layer; // layer index
 							int iIn = g.iMin + layer - 1; // opposite index
 							cellCenter.x = g.CoordinateX[iIn];
-							faceCenter.x = (g.CoordinateX[iIn] + g.CoordinateX[i]) / 2.0;
+							faceCenter.x = (g.CoordinateX[iIn] + g.CoordinateX[i]) / 2.0;		// TO DO WRONG for nonuniform grid
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(iIn, j, k);
 
@@ -793,7 +807,7 @@ public:
 							i = g.iMax + layer; // layer index
 							int iIn = g.iMax - layer + 1; // opposite index
 							cellCenter.x = g.CoordinateX[iIn];
-							faceCenter.x = (g.CoordinateX[iIn] + g.CoordinateX[i]) / 2.0;
+							faceCenter.x = (g.CoordinateX[iIn] + g.CoordinateX[i]) / 2.0;		// TO DO WRONG for nonuniform grid
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(iIn, j, k);
 
@@ -829,6 +843,14 @@ public:
 					//And face
 					faceCenter.x = g.CoordinateX[i];
 					faceCenter.z = g.CoordinateZ[k];
+
+					//Debug info
+					if (DebugOutputEnabled) {
+						std::cout << "rank = " << rank <<
+							"; f.x = " << faceCenter.x <<
+							"; f.z = " << faceCenter.z <<
+							std::endl << std::flush;
+					};
 
 					for (int layer = 1; layer <= g.dummyCellLayersY; layer++) {
 						if (pManager->rankCart[1] == 0) {
@@ -888,6 +910,14 @@ public:
 					//And face
 					faceCenter.x = g.CoordinateX[i];
 					faceCenter.y = g.CoordinateY[j];
+
+					//Debug info
+					if (DebugOutputEnabled) {
+						std::cout << "rank = " << rank <<
+							"; f.x = " << faceCenter.x <<
+							"; f.y = " << faceCenter.y <<
+							std::endl << std::flush;
+					};
 
 					for (int layer = 1; layer <= g.dummyCellLayersY; layer++) {
 
@@ -1564,7 +1594,7 @@ public:
 		if (!pManager->IsLastNode()) pManager->Signal(rank + 1);
 		pManager->Barrier();
 
-		for (int iteration = 0; iteration <= MaxIteration; iteration++) {
+		while (1) {
 			//Calculate one time step
 			IterationStep();
 
@@ -1583,10 +1613,10 @@ public:
 			};
 
 			//Sensors recording
-			if ((isSensorEnable == true) && (iteration % SaveSensorRecordIterations == 0))
+			if ((isSensorEnable == true) && (stepInfo.Iteration % SaveSensorRecordIterations == 0))
 			{
 				for (auto &r : Sensors) {
-					r->UpdateIteration(iteration);
+					r->UpdateIteration(stepInfo.Iteration);
 					r->UpdateTimer(stepInfo.Time);
 					r->Process(values);
 				};

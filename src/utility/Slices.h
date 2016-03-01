@@ -20,10 +20,5 @@ public:
 	};
 };
 
-class SliceInfo {
-	std::vector<Slice> slices;
-
-
-};
 
 #endif

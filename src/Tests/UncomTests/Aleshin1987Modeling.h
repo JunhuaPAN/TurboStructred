@@ -109,8 +109,8 @@ namespace AleshinExp {
 		conf.yRightBoundary.Gamma = conf.Gamma;
 
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-		conf.methodConfiguration.RiemannProblemSolver = RPSolver::GodunovSolver;
-		conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
+		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+		conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
 		conf.methodConfiguration.CFL = 0.9;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
@@ -120,7 +120,7 @@ namespace AleshinExp {
 		conf.MaxIteration = 1000000;
 		conf.SaveSolutionSnapshotTime = 4.0e-5;
 		conf.SaveSolutionSnapshotIterations = 0;
-		conf.ResidualOutputIterations = 20;
+		conf.ResidualOutputIterations = 40;
 
 		// init kernel
 		std::unique_ptr<Kernel> kernel;
@@ -213,7 +213,7 @@ namespace AleshinExp {
 	// Run Computation Experiment
 	void RunExperiment(int argc, char *argv[]) {
 		int modeNumber = 1;		// initial perturbation modes number
-		double TotalTime = 40.0e-5;
+		double TotalTime = 30.0e-5;
 
 		// Fill parameters structure (SI system)
 		Parameters par;
@@ -242,8 +242,8 @@ namespace AleshinExp {
 		KernelConfiguration conf;
 		conf.nDims = 3;
 		conf.nX = 120;
-		conf.nY = 60;
-		conf.nZ = 60;
+		conf.nY = 80;
+		conf.nZ = 80;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.LZ = conf.LY / modeNumber;

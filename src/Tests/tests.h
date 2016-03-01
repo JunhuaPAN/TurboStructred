@@ -28,7 +28,7 @@ struct ShockTubeParameters {
 };
 
 std::vector<double> SODinitialDistribution(Vector r, double R0, ShockTubeParameters params) {
-	std::vector<double> U(5);	
+	std::vector<double> U(5);
 	double ro;
 	double u, v, w;
 	double gamma;
@@ -42,7 +42,8 @@ std::vector<double> SODinitialDistribution(Vector r, double R0, ShockTubeParamet
 		w = params.uL.z;
 		P = params.PL;
 		gamma = params.gammaL;
-	} else {
+	}
+	else {
 		ro = params.roR;
 		u = params.uR.x;
 		v = params.uR.y;
@@ -61,7 +62,7 @@ std::vector<double> SODinitialDistribution(Vector r, double R0, ShockTubeParamet
 };
 
 std::vector<double> SODinitialDistributionY(Vector r, double yI, ShockTubeParameters params) {
-	std::vector<double> U(5);	
+	std::vector<double> U(5);
 	double ro;
 	double u;
 	double gamma;
@@ -73,7 +74,8 @@ std::vector<double> SODinitialDistributionY(Vector r, double yI, ShockTubeParame
 		u = params.uL.y;
 		P = params.PL;
 		gamma = params.gammaL;
-	} else {
+	}
+	else {
 		ro = params.roR;
 		u = params.uR.y;
 		P = params.PR;
@@ -142,9 +144,9 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 
 	//save solution
 	kernel->SaveSolution("init.dat");
-	
+
 	//run computation
-	kernel->Run();		
+	kernel->Run();
 
 	//finalize kernel
 	kernel->Finalize();
@@ -864,7 +866,7 @@ void RunTriplePointRoe2D(int argc, char *argv[]) {
 	double p1 = 1;
 	double p2 = 0.1;
 	double p3 = 0.1;
-	
+
 	auto initD = [ro1, ro2, ro3, p1, p2, p3, &conf](Vector r) {
 		double ro;
 		double p;
@@ -989,24 +991,21 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	double ro_init = 1.225;		//Air
 	double Pave = 1.0e5;		//average pressure
 
-	//viscosity = 2.0e-5;
-	//sigma = 0.16;
-
-	//Test parameters
-	ro_init = 1.0;
-	Pave = 20.0;
-	sigma = 1.0;
-	viscosity = 0.25;
+								//Test parameters
+								//ro_init = 1.0;
+								//Pave = 20.0;
+								//sigma = 1.0;
+								//viscosity = 0.25;
 
 	KernelConfiguration conf;
 	conf.nDims = 2;
-	conf.nX = 20;
-	conf.nY = 40;
-	conf.LX = 0.2;
+	conf.nX = 40;
+	conf.nY = 80;
+	conf.LX = 0.6;
 	conf.LY = 0.1;
 	conf.isPeriodicX = true;
 	conf.isPeriodicY = false;
-	conf.isUniformAlongY = true;
+	//conf.isUniformAlongY = false;
 	//conf.qy = 1.2;
 
 	conf.Gamma = 1.4;
@@ -1025,48 +1024,58 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	conf.methodConfiguration.CFL = 0.25;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
-	conf.methodConfiguration.RiemannProblemSolver = RPSolver::GodunovSolver;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
 	conf.DummyLayerSize = 1;
 
 	conf.MaxTime = 1.0;
 	conf.MaxIteration = 10000000;
-	conf.SaveSolutionSnapshotTime = 0.005;
+	conf.SaveSolutionSnapshotTime = 0;
 	conf.SaveSolutionSnapshotIterations = 0;
-	conf.ResidualOutputIterations = 100;
+	conf.SaveSliceSnapshotTime = 0.1;
+	conf.ResidualOutputIterations = 1000;
 
 	conf.Viscosity = viscosity;
 	conf.IsExternalForceRequared = true;
 	conf.Sigma = Vector(sigma, 0, 0);
 
-	//init kernel
+	// init kernel
 	std::unique_ptr<Kernel> kernel;
-	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
 		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
-		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2CharactVars) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2CharactVars>(&argc, &argv));
 	};
 	kernel->Init(conf);
-	
-	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
-	double sdv = 0.001;
-	std::random_device rd;
-    std::mt19937 mt(rd());
-	std::normal_distribution<double> normal_dist(0.0, sdv);  // N(mean, stddeviation)
-	
-	auto initD = [ro_init, Pave, &conf, &normal_dist, &mt](Vector r) {
-		double u = 0.6 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
-		double v = 0.0;// + normal_dist(mt);
+
+	// init distributions
+	NumericQuadrature Integ(8, 2);
+	auto ExactSol = [ro_init, Pave, &conf](Vector r) {
+		double u = 0.5 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
+		double v = 0.0;
 		double w = 0.0;
 
-		double roe = Pave/(conf.Gamma - 1);
+		double roe = Pave / (conf.Gamma - 1);
 		std::vector<double> res(5);
 		res[0] = ro_init;
-		res[1] = res[0] * u;
-		res[2] = res[0] * v;
-		res[3] = res[0] * w;
-		res[4] = roe + 0.5 * res[0] * u * u;
-		return res; 
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
 	};
-	kernel->SetInitialConditions(initD);
+	kernel->SetInitialConditions(ExactSol, Integ);
+
+	// Create slices
+	kernel->slices.push_back(Slice(-1, (int)(0.5 * conf.nY), 0));
+	//kernel->SaveSliceToTecplot("ySlice_init.dat", kernel->slices[0]);
 
 	//save solution
 	kernel->SaveSolution("init.dat");
@@ -1081,9 +1090,9 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	//sen->SetSensor((int)(conf.nX * 0.5), (int)(conf.nY * 0.5), 0);
 	//kernel->Sensors.push_back(std::move(sen));
 	//for (auto& r : kernel->Sensors) r->Process(kernel->values);		//initial recording
-	
+
 	//run computation
-	kernel->Run();		
+	kernel->Run();
 
 	//finalize kernel
 	kernel->Finalize();
@@ -1094,104 +1103,227 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	double sigma = 0.14;		// absolute value of dPdx
 	double ro_init = 1.225;		//Air
 	double Pave = 1.0e5;		//average pressure
-	
+
+	//Test parameters
+	//ro_init = 1.0;
+	//Pave = 20.0;
+	//sigma = 1.0;
+	//viscosity = 0.25;
+
+	// Fill configuration structure
+	KernelConfiguration conf;
+	conf.nDims = 3;
+	conf.nX = 40;
+	conf.nY = 80;
+	conf.nZ = 20;
+	conf.LX = 0.6;
+	conf.LY = 0.1;
+	conf.LZ = 0.3;
+	conf.isPeriodicY = false;
+
+	// Gas model
+	conf.Gamma = 1.4;
+	conf.IsViscousFlow = true;
+	conf.Viscosity = viscosity;
+	conf.Sigma = Vector(sigma, 0, 0);
+
+	// Boundary conditions
+	conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::Wall;
+	conf.yRightBoundary.Gamma = 1.4;
+
+	// Method settings
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.CFL = 0.4;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.05;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
+	conf.IsExternalForceRequared = true;
+
+	conf.MaxTime = 1.0;
+	conf.MaxIteration = 10000000;
+	//conf.SaveSolutionSnapshotTime = 0.001;
+	conf.SaveSliceSnapshotTime = 0.01;
+	conf.ResidualOutputIterations = 100;
+	conf.DebugOutputEnabled = false;
+
+	// Init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+	};
+	kernel->Init(conf);
+
+	// Init Conditions
+	NumericQuadrature Integ(8, 3);
+	auto ExactSol = [ro_init, Pave, &conf](Vector r) {
+		double u = 0.5 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
+		double v = 0.0;
+		double w = 0.0;
+
+		double roe = Pave / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	auto NotExactSol = [ro_init, Pave, &conf](Vector r) {
+		double u = 0.55 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
+		double v = 0.0;
+		double w = 0.0;
+
+		double roe = Pave / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	kernel->SetInitialConditions(NotExactSol, Integ);
+	//kernel->SaveSolution("init.dat");
+
+	// Create slices
+	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1 , (int)(0.25 * conf.nZ)));
+	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.5 * conf.nZ)));
+	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.75 * conf.nZ)));
+	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, 1));
+	kernel->SaveSliceToTecplot("test_slice.dat", kernel->slices[0]);
+
+	// Run computation
+	kernel->Run();
+
+	// Finalize kernel
+	kernel->Finalize();
+};
+
+void RunPoiseuille3DZ(int argc, char *argv[]) {
+	double viscosity = 1.73e-5;	//Air
+	double sigma = 0.14;		// absolute value of dPdx
+	double ro_init = 1.225;		//Air
+	double Pave = 1.0e5;		//average pressure
+
 	//Test parameters
 	ro_init = 1.0;
 	Pave = 20.0;
 	sigma = 1.0;
 	viscosity = 0.25;
 
+	// Fill configuration structure
 	KernelConfiguration conf;
 	conf.nDims = 3;
-	conf.nX = 40;
-	conf.nY = 40;
-	conf.nZ = 10;
-	conf.LX = 0.2;
-	conf.LY = 0.1;
+	conf.nX = 30;
+	conf.nY = 10;
+	conf.nZ = 40;
+	conf.LX = 0.6;
+	conf.LY = 0.3;
 	conf.LZ = 0.1;
-	conf.isPeriodicX = true;
-	conf.isPeriodicY = false;
-	conf.isPeriodicZ = true;
+	conf.isPeriodicZ = false;
 
+	// Gas model
 	conf.Gamma = 1.4;
+	conf.IsViscousFlow = true;
+	conf.Viscosity = viscosity;
+	conf.Sigma = Vector(sigma, 0, 0);
 
-	conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
-	conf.xLeftBoundary.Gamma = 1.4;
-	conf.xRightBoundary.BCType = BoundaryConditionType::Wall;
-	conf.xRightBoundary.Gamma = 1.4;
-	conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
-	conf.yLeftBoundary.Gamma = 1.4;
-	conf.yRightBoundary.BCType = BoundaryConditionType::Wall;
-	conf.yRightBoundary.Gamma = 1.4;
+	// Boundary conditions
 	conf.zLeftBoundary.BCType = BoundaryConditionType::Wall;
 	conf.zLeftBoundary.Gamma = 1.4;
 	conf.zRightBoundary.BCType = BoundaryConditionType::Wall;
 	conf.zRightBoundary.Gamma = 1.4;
 
+	// Method settings
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.CFL = 0.4;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
-	conf.methodConfiguration.RiemannProblemSolver = RPSolver::GodunovSolver;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
 	conf.IsExternalForceRequared = true;
 
-	conf.MaxTime = 0.5;
-	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0.001;
-	conf.SaveSolutionSnapshotIterations = 0;
-	conf.ResidualOutputIterations = 10;
+	conf.MaxTime = 1.0;
+	conf.MaxIteration = 10000000;
+	//conf.SaveSolutionSnapshotTime = 0.001;
+	conf.SaveSliceSnapshotTime = 0.001;
+	conf.ResidualOutputIterations = 100;
 	conf.DebugOutputEnabled = false;
 
-	conf.Viscosity = viscosity;
-	conf.Sigma = Vector(sigma, 0, 0);
-
-	//init kernel
+	// Init kernel
 	std::unique_ptr<Kernel> kernel;
-	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
 		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 	};
 	kernel->Init(conf);
 
-	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
-	auto initD = [ro_init, Pave, &conf](Vector r) {
-		double u = 0.6 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
+	// Init Conditions
+	NumericQuadrature Integ(8, 3);
+	auto ExactSol = [ro_init, Pave, &conf](Vector r) {
+		double u = 0.5 * conf.Sigma.x * r.z * (conf.LZ - r.z) / conf.Viscosity;
+		double v = 0.0;
+		double w = 0.0;
+
 		double roe = Pave / (conf.Gamma - 1);
 		std::vector<double> res(5);
 		res[0] = ro_init;
-		res[1] = res[0] * u;
-		res[2] = 0.0;
-		res[3] = 0.0;
-		res[4] = roe + 0.5*res[0] * u*u;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
 		return res;
 	};
-	kernel->SetInitialConditions(initD);
+	auto NotExactSol = [ro_init, Pave, &conf](Vector r) {
+		double u = 0.55 * conf.Sigma.x * r.z * (conf.LZ - r.z) / conf.Viscosity;
+		double v = 0.0;
+		double w = 0.0;
 
-	//save solution
+		double roe = Pave / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	kernel->SetInitialConditions(NotExactSol, Integ);
 	kernel->SaveSolution("init.dat");
 
-	//run computation
+	// Create slices
+	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), (int)(0.5 * conf.nY) , -1));
+	kernel->SaveSliceToTecplot("test_slice.dat", kernel->slices[0]);
+
+	// Run computation
 	kernel->Run();
 
-	//finalize kernel
+	// Finalize kernel
 	kernel->Finalize();
 };
 
 // Shear flow
 void RunShearFlow2D(int argc, char *argv[]) {
-	//double viscosity = 1.73e-5;	//Air
-	double viscosity = 1.0e-5;	
-	double sigma = 0.0;			// dPdx
-	double ro_init = 1.225;		//Air
-	double Pave = 1.0e5;		//average pressure
-	double Utop = 5.0;	
-	double dispertion = 0.01;	//standart deviation
+	double viscosity = 1.73e-5;	//Air
+	double ro_init = 1.225;		// normal density
+	double p_init = 1.0e5;		// normal pressure
+	double u_top = 5.0;			// top plane velocity
 
 	KernelConfiguration conf;
 	conf.nDims = 2;
-	conf.nX = 20;
+	conf.nX = 40;
 	conf.nY = 20;
-	conf.LX = 0.5;
-	conf.LY = 0.1;	
+	conf.LX = 1.0;
+	conf.LY = 0.1;
 	conf.isPeriodicX = true;
 	conf.isPeriodicY = false;
 	conf.isUniformAlongY = true;
@@ -1204,60 +1336,92 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	conf.yLeftBoundary.Gamma = 1.4;
 	conf.yRightBoundary.BCType = BoundaryConditionType::MovingWall;
 	conf.yRightBoundary.Gamma = 1.4;
-	conf.yRightBoundary.Velocity = Vector(Utop, 0, 0);
+	conf.yRightBoundary.Velocity = Vector(u_top, 0, 0);
 
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 	conf.methodConfiguration.CFL = 0.5;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
 	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
 	conf.DummyLayerSize = 1;
 
-	conf.MaxTime = 5.0;
+	conf.MaxTime = 20.0;
 	conf.MaxIteration = 10000000;
 	conf.SaveSolutionSnapshotTime = 0.05;
 	conf.SaveSolutionSnapshotIterations = 0;
-	conf.ResidualOutputIterations = 100;
+	conf.ResidualOutputIterations = 1000;
 	conf.DebugOutputEnabled = false;
 
 	conf.Viscosity = viscosity;
-	conf.Sigma = Vector(sigma, 0, 0);
 
-	//init kernel
+	// init kernel
 	std::unique_ptr<Kernel> kernel;
-	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
 		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
-		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2CharactVars) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2CharactVars>(&argc, &argv));
 	};
 	kernel->Init(conf);
 
-	double sdv = dispertion;
-	std::random_device rd;
-    std::mt19937 mt(rd());
-	std::normal_distribution<double> normal_dist(0.0, sdv);  // N(mean, stddeviation)
-	//auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
-	auto initD = [ro_init, Pave, Utop, &conf, &normal_dist, &mt](Vector r) {
-
-		// solution with initial distortion
-		double rnd = normal_dist(mt);
-		double u = r.y * Utop * (1.0 + rnd) / conf.LY;
-		rnd = normal_dist(mt);
-		double v = r.y * Utop * rnd / conf.LY;
-		
+	NumericQuadrature Integ(8, 2);
+	auto ExactSol = [ro_init, p_init, u_top, &conf](Vector r) {
 		// exact solution
-		v = 0;
-		u = r.y * Utop / conf.LY;
+		double v = 0;
+		double w = 0;
+		double u = r.y * u_top / conf.LY;
 
-		double roe = Pave / (conf.Gamma - 1);
+		double roe = p_init / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	auto PeakWiseVelocity = [ro_init, p_init, u_top, &conf](Vector r) {
+
+		double v = 0;
+		double u = r.y * u_top / conf.LY;
+		if (r.y > 0.5 * conf.LY) {
+			u = u_top - u;
+		};
+
+		double roe = p_init / (conf.Gamma - 1);
 		std::vector<double> res(5);
 		res[0] = ro_init;
 		res[1] = ro_init * u;
 		res[2] = ro_init * v;
 		res[3] = 0.0;
-		res[4] =  roe + 0.5 * ro_init * (u * u + v * v);
-		return res; 
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v);
+		return res;
 	};
-	kernel->SetInitialConditions(initD);
+	auto ContinInitVelocity = [ro_init, p_init, u_top, &conf](Vector r) {
+
+		double v = 0;
+		double u = 0;
+		if (r.y > 0.5 * conf.LY) {
+			u = (r.y / conf.LY - 0.5) * 2 * u_top;
+		};
+
+		double roe = p_init / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = 0.0;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v);
+		return res;
+	};
+	kernel->SetInitialConditions(ContinInitVelocity, Integ);
 
 	//save solution
 	kernel->SaveSolution("init.dat");
@@ -1281,9 +1445,254 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	//for(auto& r : kernel->Sensors) r->Process(kernel->values);		//initial recording
 
 	//run computation
-	kernel->Run();		
+	kernel->Run();
 
 	//finalize kernel
+	kernel->Finalize();
+};
+
+void RunShearFlow3D(int argc, char *argv[]) {
+	double viscosity = 1.73e-5;	//Air
+	double ro_init = 1.225;		// normal density
+	double p_init = 1.0e5;		// normal pressure
+	double u_top = 5.0;			// top plane velocity
+
+	KernelConfiguration conf;
+	conf.nDims = 3;
+	conf.nX = 40;
+	conf.nY = 40;
+	conf.nZ = 20;
+	conf.LX = 1.0;
+	conf.LY = 0.1;
+	conf.LZ = 0.2;
+	conf.isPeriodicX = true;
+	conf.isPeriodicY = false;
+	conf.isPeriodicZ = true;
+	conf.Gamma = 1.4;
+	conf.IsViscousFlow = true;
+
+	conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::MovingWall;
+	conf.yRightBoundary.Gamma = 1.4;
+	conf.yRightBoundary.Velocity = Vector(u_top, 0, 0);
+
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.05;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
+	conf.DummyLayerSize = 1;
+
+	conf.MaxTime = 20.0;
+	conf.MaxIteration = 10000000;
+	//conf.SaveSolutionSnapshotTime = 0.05;
+	//conf.SaveSolutionSnapshotIterations = 0;
+	conf.SaveSliceSnapshotTime = 0.05;
+	conf.ResidualOutputIterations = 100;
+	conf.DebugOutputEnabled = false;
+
+	conf.Viscosity = viscosity;
+
+	// Init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+	};
+	kernel->Init(conf);
+
+	// Initial conditions
+	NumericQuadrature Integ(8, 3);
+	auto ExactSol = [ro_init, p_init, u_top, &conf](Vector r) {
+		// exact solution
+		double v = 0;
+		double w = 0;
+		double u = r.y * u_top / conf.LY;
+
+		double roe = p_init / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	auto PeakWiseVelocity = [ro_init, p_init, u_top, &conf](Vector r) {
+
+		double v = 0;
+		double w = 0;
+		double u = r.y * u_top / conf.LY;
+		if (r.y > 0.5 * conf.LY) {
+			u = u_top - u;
+		};
+
+		double roe = p_init / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	auto ContinInitVelocity = [ro_init, p_init, u_top, &conf](Vector r) {
+
+		double v = 0;
+		double w = 0;
+		double u = 0;
+		if (r.y > 0.5 * conf.LY) {
+			u = (r.y / conf.LY - 0.5) * 2 * u_top;
+		};
+
+		double roe = p_init / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	kernel->SetInitialConditions(ExactSol, Integ);
+
+	// Save solution
+	kernel->SaveSolution("init.dat");
+
+	// Crete slices
+	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.5 * conf.nZ)));
+	kernel->SaveSliceToTecplot("test_slice.dat", kernel->slices[0]);
+
+	// Run computation
+	kernel->Run();
+
+	// Finalize kernel
+	kernel->Finalize();
+};
+
+// Shear flow (Z bounded for code testing)
+void RunShearFlow3DZ(int argc, char *argv[]) {
+	double viscosity = 1.73e-5;	//Air
+	double ro_init = 1.225;		// normal density
+	double p_init = 1.0e5;		// normal pressure
+	double u_top = 5.0;			// top plane velocity
+
+	KernelConfiguration conf;
+	conf.nDims = 3;
+	conf.nX = 20;
+	conf.nY = 20;
+	conf.nZ = 40;
+	conf.LX = 1.0;
+	conf.LY = 0.2;
+	conf.LZ = 0.1;
+	conf.isPeriodicZ = false;
+	conf.Gamma = 1.4;
+	conf.IsViscousFlow = true;
+	conf.Viscosity = viscosity;
+
+	conf.zLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.zLeftBoundary.Gamma = 1.4;
+	conf.zRightBoundary.BCType = BoundaryConditionType::MovingWall;
+	conf.zRightBoundary.Gamma = 1.4;
+	conf.zRightBoundary.Velocity = Vector(u_top, 0, 0);
+
+	// Method configuration
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.05;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
+	conf.DummyLayerSize = 1;
+
+	// Output info
+	conf.MaxTime = 2.0;
+	conf.MaxIteration = 10000000;
+	conf.SaveSolutionSnapshotTime = 0.0005;
+	conf.SaveSliceSnapshotTime = 0.0005;
+	conf.ResidualOutputIterations = 10;
+	conf.DebugOutputEnabled = false;
+
+	// Init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+	};
+	kernel->Init(conf);
+
+	// Initial conditions
+	NumericQuadrature Integ(8, 3);
+	auto ExactSol = [ro_init, p_init, u_top, &conf](Vector r) {
+		// exact solution
+		double v = 0;
+		double w = 0;
+		double u = r.z * u_top / conf.LZ;
+
+		double roe = p_init / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	auto PeakWiseVelocity = [ro_init, p_init, u_top, &conf](Vector r) {
+
+		double v = 0;
+		double w = 0;
+		double u = r.z * 2 * u_top / conf.LZ;
+		if (r.z > 0.5 * conf.LZ) {
+			u = u_top;
+		};
+
+		double roe = p_init / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	auto ContinInitVelocity = [ro_init, p_init, u_top, &conf](Vector r) {
+
+		double v = 0;
+		double u = 0;
+		double w = 0;
+		if (r.z > 0.5 * conf.LZ) {
+			u = (r.z / conf.LZ - 0.5) * 2 * u_top;
+		};
+
+		double roe = p_init / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	kernel->SetInitialConditions(ExactSol, Integ);
+
+	// Save solution
+	kernel->SaveSolution("init.dat");
+
+	// Create slices
+	kernel->slices.push_back(Slice((int)(0.4 * conf.nX), (int)(0.4 * conf.nY), -1));
+	kernel->SaveSliceToTecplot("test_slice.dat", kernel->slices[0]);
+
+	// Run computation
+	kernel->Run();
+
+	// Finalize kernel
 	kernel->Finalize();
 };
 
@@ -1297,7 +1706,7 @@ void RunRTI2D(int argc, char *argv[]) {
 	double dist_amp = 0.05;
 	double g = 10;				//	external uniform acceleration field
 
-	// Domain and grid parameters
+								// Domain and grid parameters
 	KernelConfiguration conf;
 	conf.nDims = 2;
 	conf.nX = 50;
@@ -1312,7 +1721,7 @@ void RunRTI2D(int argc, char *argv[]) {
 	// Model
 	conf.Gamma = 1.4;
 	conf.IsViscousFlow = false;
-	
+
 	// BC
 	conf.yLeftBoundary.BCType = BoundaryConditionType::SymmetryY;
 	conf.yLeftBoundary.Gamma = 1.4;
@@ -1346,9 +1755,9 @@ void RunRTI2D(int argc, char *argv[]) {
 	kernel->Init(conf);
 
 	// IC
-	auto initD = [&conf, ro_top , ro_bot , P_bot, dist_amp, g](Vector r) {
+	auto initD = [&conf, ro_top, ro_bot, P_bot, dist_amp, g](Vector r) {
 		double ro, p;
-		
+
 		// define top/bottom part we consider
 		double h_border = 0.5 * conf.LY;
 		h_border += dist_amp * cos(2 * PI * r.x / conf.LX);
