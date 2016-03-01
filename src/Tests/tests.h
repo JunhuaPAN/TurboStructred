@@ -1104,7 +1104,7 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	double ro_init = 1.225;		//Air
 	double Pave = 1.0e5;		//average pressure
 
-								//Test parameters
+	//Test parameters
 	ro_init = 1.0;
 	Pave = 20.0;
 	sigma = 1.0;
@@ -1115,18 +1115,17 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	conf.nDims = 3;
 	conf.nX = 40;
 	conf.nY = 40;
-	conf.nZ = 4;
+	conf.nZ = 10;
 	conf.LX = 0.6;
 	conf.LY = 0.1;
-	//conf.LZ = 0.3;
-	conf.LZ = 1.0;
-	conf.isPeriodicX = true;
+	conf.LZ = 0.3;
 	conf.isPeriodicY = false;
-	conf.isPeriodicZ = true;
 
 	// Gas model
 	conf.Gamma = 1.4;
 	conf.IsViscousFlow = true;
+	conf.Viscosity = viscosity;
+	conf.Sigma = Vector(sigma, 0, 0);
 
 	// Boundary conditions
 	conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
@@ -1140,18 +1139,15 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
 	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
-	conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
 	conf.IsExternalForceRequared = true;
 
 	conf.MaxTime = 1.0;
 	conf.MaxIteration = 10000000;
-	conf.SaveSolutionSnapshotTime = 0;
-	conf.SaveSliceSnapshotTime = 0.001;
+	conf.SaveSolutionSnapshotTime = 0.001;
+	//conf.SaveSliceSnapshotTime = 0.001;
 	conf.ResidualOutputIterations = 100;
 	conf.DebugOutputEnabled = false;
-
-	conf.Viscosity = viscosity;
-	conf.Sigma = Vector(sigma, 0, 0);
 
 	// Init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -1184,10 +1180,118 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 
 	// Create slices
 	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1 , (int)(0.25 * conf.nZ)));
-	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.5 * conf.nZ)));
+	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.5 * conf.nZ)));
 	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.75 * conf.nZ)));
 	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, 1));
-	kernel->SaveSliceToTecplot("test_slice.dat", kernel->slices[0]);
+	//kernel->SaveSliceToTecplot("test_slice.dat", kernel->slices[0]);
+
+	// Run computation
+	kernel->Run();
+
+	// Finalize kernel
+	kernel->Finalize();
+};
+
+void RunPoiseuille3DZ(int argc, char *argv[]) {
+	double viscosity = 1.73e-5;	//Air
+	double sigma = 0.14;		// absolute value of dPdx
+	double ro_init = 1.225;		//Air
+	double Pave = 1.0e5;		//average pressure
+
+	//Test parameters
+	ro_init = 1.0;
+	Pave = 20.0;
+	sigma = 1.0;
+	viscosity = 0.25;
+
+	// Fill configuration structure
+	KernelConfiguration conf;
+	conf.nDims = 3;
+	conf.nX = 30;
+	conf.nY = 10;
+	conf.nZ = 40;
+	conf.LX = 0.6;
+	conf.LY = 0.3;
+	conf.LZ = 0.1;
+	conf.isPeriodicZ = false;
+
+	// Gas model
+	conf.Gamma = 1.4;
+	conf.IsViscousFlow = true;
+	conf.Viscosity = viscosity;
+	conf.Sigma = Vector(sigma, 0, 0);
+
+	// Boundary conditions
+	conf.zLeftBoundary.BCType = BoundaryConditionType::Wall;
+	conf.zLeftBoundary.Gamma = 1.4;
+	conf.zRightBoundary.BCType = BoundaryConditionType::Wall;
+	conf.zRightBoundary.Gamma = 1.4;
+
+	// Method settings
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.CFL = 0.4;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.05;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
+	conf.IsExternalForceRequared = true;
+
+	conf.MaxTime = 1.0;
+	conf.MaxIteration = 10000000;
+	conf.SaveSolutionSnapshotTime = 0.001;
+	//conf.SaveSliceSnapshotTime = 0.001;
+	conf.ResidualOutputIterations = 100;
+	conf.DebugOutputEnabled = false;
+
+	// Init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+	};
+	kernel->Init(conf);
+
+	// Init Conditions
+	NumericQuadrature Integ(8, 3);
+	auto ExactSol = [ro_init, Pave, &conf](Vector r) {
+		double u = 0.5 * conf.Sigma.x * r.z * (conf.LZ - r.z) / conf.Viscosity;
+		double v = 0.0;
+		double w = 0.0;
+
+		double roe = Pave / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	auto NotExactSol = [ro_init, Pave, &conf](Vector r) {
+		double u = 0.55 * conf.Sigma.x * r.z * (conf.LZ - r.z) / conf.Viscosity;
+		double v = 0.0;
+		double w = 0.0;
+
+		double roe = Pave / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	kernel->SetInitialConditions(NotExactSol, Integ);
+	kernel->SaveSolution("init.dat");
+
+	// Create slices
+	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1 , (int)(0.25 * conf.nZ)));
+	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.5 * conf.nZ)));
+	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.75 * conf.nZ)));
+	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, 1));
+	//kernel->SaveSliceToTecplot("test_slice.dat", kernel->slices[0]);
 
 	// Run computation
 	kernel->Run();
