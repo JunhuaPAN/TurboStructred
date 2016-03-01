@@ -6,7 +6,7 @@
 // Run the test
 int main(int argc, char *argv[])
 {
-	RunPoiseuille3DZ(argc, argv);
+	RunPoiseuille3D(argc, argv);
 	//RunPoiseuille3D(argc, argv);
 	//RunShearFlow2D(argc, argv);
 	//RunPoiseuille2D(argc, argv);

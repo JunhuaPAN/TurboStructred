@@ -1105,17 +1105,17 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	double Pave = 1.0e5;		//average pressure
 
 	//Test parameters
-	ro_init = 1.0;
-	Pave = 20.0;
-	sigma = 1.0;
-	viscosity = 0.25;
+	//ro_init = 1.0;
+	//Pave = 20.0;
+	//sigma = 1.0;
+	//viscosity = 0.25;
 
 	// Fill configuration structure
 	KernelConfiguration conf;
 	conf.nDims = 3;
 	conf.nX = 40;
-	conf.nY = 40;
-	conf.nZ = 10;
+	conf.nY = 80;
+	conf.nZ = 20;
 	conf.LX = 0.6;
 	conf.LY = 0.1;
 	conf.LZ = 0.3;
@@ -1144,8 +1144,8 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 
 	conf.MaxTime = 1.0;
 	conf.MaxIteration = 10000000;
-	conf.SaveSolutionSnapshotTime = 0.001;
-	//conf.SaveSliceSnapshotTime = 0.001;
+	//conf.SaveSolutionSnapshotTime = 0.001;
+	conf.SaveSliceSnapshotTime = 0.01;
 	conf.ResidualOutputIterations = 100;
 	conf.DebugOutputEnabled = false;
 
@@ -1162,6 +1162,20 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	// Init Conditions
 	NumericQuadrature Integ(8, 3);
 	auto ExactSol = [ro_init, Pave, &conf](Vector r) {
+		double u = 0.5 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
+		double v = 0.0;
+		double w = 0.0;
+
+		double roe = Pave / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	auto NotExactSol = [ro_init, Pave, &conf](Vector r) {
 		double u = 0.55 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
 		double v = 0.0;
 		double w = 0.0;
@@ -1175,15 +1189,15 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
 		return res;
 	};
-	kernel->SetInitialConditions(ExactSol, Integ);
-	kernel->SaveSolution("init.dat");
+	kernel->SetInitialConditions(NotExactSol, Integ);
+	//kernel->SaveSolution("init.dat");
 
 	// Create slices
 	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1 , (int)(0.25 * conf.nZ)));
-	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.5 * conf.nZ)));
+	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.5 * conf.nZ)));
 	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.75 * conf.nZ)));
 	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, 1));
-	//kernel->SaveSliceToTecplot("test_slice.dat", kernel->slices[0]);
+	kernel->SaveSliceToTecplot("test_slice.dat", kernel->slices[0]);
 
 	// Run computation
 	kernel->Run();
@@ -1238,8 +1252,8 @@ void RunPoiseuille3DZ(int argc, char *argv[]) {
 
 	conf.MaxTime = 1.0;
 	conf.MaxIteration = 10000000;
-	conf.SaveSolutionSnapshotTime = 0.001;
-	//conf.SaveSliceSnapshotTime = 0.001;
+	//conf.SaveSolutionSnapshotTime = 0.001;
+	conf.SaveSliceSnapshotTime = 0.001;
 	conf.ResidualOutputIterations = 100;
 	conf.DebugOutputEnabled = false;
 
@@ -1287,11 +1301,8 @@ void RunPoiseuille3DZ(int argc, char *argv[]) {
 	kernel->SaveSolution("init.dat");
 
 	// Create slices
-	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1 , (int)(0.25 * conf.nZ)));
-	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.5 * conf.nZ)));
-	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.75 * conf.nZ)));
-	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, 1));
-	//kernel->SaveSliceToTecplot("test_slice.dat", kernel->slices[0]);
+	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), (int)(0.5 * conf.nY) , -1));
+	kernel->SaveSliceToTecplot("test_slice.dat", kernel->slices[0]);
 
 	// Run computation
 	kernel->Run();
@@ -1448,9 +1459,9 @@ void RunShearFlow3D(int argc, char *argv[]) {
 
 	KernelConfiguration conf;
 	conf.nDims = 3;
-	conf.nX = 10;
-	conf.nY = 20;
-	conf.nZ = 10;
+	conf.nX = 40;
+	conf.nY = 40;
+	conf.nZ = 20;
 	conf.LX = 1.0;
 	conf.LY = 0.1;
 	conf.LZ = 0.2;
