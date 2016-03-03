@@ -287,6 +287,9 @@
     <ClInclude Include="..\src\Tests\2DTests\ExactEulerSolution.h">
       <Filter>Header Files\Tests\2DTests</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\Tests\2DTests\DrivenCavityTest.h">
+      <Filter>Header Files\Tests\2DTests</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
