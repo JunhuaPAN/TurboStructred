@@ -10,7 +10,7 @@
 #include "Methods/ExplicitRungeKuttaFVM.h"
 #include "Tests/1DTests/testlist.h"
 #include "Tests/2DTests/testlist.h"
-#include "Tests/UncomTests/Aleshin1987Modeling.h"
+#include "Tests/UncomTests/testlist.h"
 #include "RiemannSolvers/RiemannSolversList.h"
 
 #define PI 3.14159265359
@@ -908,6 +908,93 @@ void RunTriplePointRoe2D(int argc, char *argv[]) {
 	kernel->Finalize();
 };
 
+// 2D Kelvin-Helmholtz instability
+void RunKHI2D(int argc, char *argv[]) {
+
+	// Test parameters
+	double ro_top{ 1.0 };
+	double ro_bot{ 1.0 };
+	double Vel{ 0.5 };
+	double P{ 2.5 };
+	double A{ 0.025 };				// amplitude of initial perturbation
+	double lambda{ 1.0 / 6.0 };		// init. pert. wave length
+
+	KernelConfiguration conf;
+	conf.nDims = 2;
+	conf.nX = 160;
+	conf.nY = 160;
+	conf.LX = 1.0;
+	conf.LY = 0.5;
+	conf.isPeriodicX = true;
+	conf.isPeriodicY = false;
+	conf.Gamma = 1.4;
+	conf.MolarMass = 1.0;
+
+	// BC
+	conf.yLeftBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yRightBoundary.Gamma = 1.4;
+
+	// Method configuration
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.CFL = 0.4;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.05;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+	conf.DummyLayerSize = 1;
+
+	// Computational settings
+	conf.MaxTime = 20.0;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 0.1;
+	conf.ResidualOutputIterations = 50;
+
+	// Init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+	};
+	kernel->Init(conf);
+
+
+	NumericQuadrature Integ(8, 2);
+	auto Init = [ro_top, ro_bot, Vel, P, A, lambda, &conf](Vector r) {
+		// perturbation terms
+		double v = A * sin(2 * PI * r.x / lambda) ;
+		double w = 0;
+		double u = Vel;
+		double ro = ro_top;
+		if (r.y < 0.5 * conf.LY) {
+			u = -Vel;
+			ro = ro_bot;
+		};
+
+		double roe = P / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro;
+		res[1] = ro * u;
+		res[2] = ro * v;
+		res[3] = ro * w;
+		res[4] = roe + 0.5 * ro * (u * u + v * v + w * w);
+		return res;
+	};
+	kernel->SetInitialConditions(Init, Integ);
+
+	//save solution
+	kernel->SaveSolution("init.dat");
+
+	//run computation
+	kernel->Run();
+
+	//finalize kernel
+	kernel->Finalize();
+};
+
 // 2D tests with smooth solution (Test 4.1 from Liska, Wendroff)
 void RunExactEulerTest2D(int argc, char *argv[]) {
 	KernelConfiguration conf;
@@ -1784,6 +1871,100 @@ void RunRTI2D(int argc, char *argv[]) {
 
 	// Save initial solution
 	kernel->SaveSolution("init.dat");
+
+	// Run computation
+	kernel->Run();
+
+	// Finalize kernel
+	kernel->Finalize();
+};
+
+// for Troshkin mixing simulation
+void RunTurbulentMixing(int argc, char *argv[]) {
+	double ro_init = 1.225;				// normal density
+	double p_init = 1.0e5;				// normal pressure
+	double u_top = 5.0;					// top plane velocity
+	double shear_width_ratio = 0.2;		// the width of shear layer with respect to full height of domain
+
+	KernelConfiguration conf;
+	conf.nDims = 3;
+	conf.nX = 40;
+	conf.nY = 40;
+	conf.nZ = 40;
+	conf.LX = 1.0;
+	conf.LY = 0.2;
+	conf.LZ = 1.0;
+	conf.isPeriodicX = true;
+	conf.isPeriodicY = false;
+	conf.isPeriodicZ = true;
+	conf.Gamma = 1.4;
+	conf.MolarMass = 2.9e-2;
+	
+	// BC
+	conf.yLeftBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yRightBoundary.Gamma = 1.4;
+
+	// Method settings
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.05;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
+	conf.DummyLayerSize = 1;
+
+	conf.MaxTime = 20.0;
+	conf.MaxIteration = 10000000;
+	conf.SaveSolutionSnapshotTime = 0.001;
+	//conf.SaveSolutionSnapshotIterations = 0;
+	//conf.SaveSliceSnapshotTime = 0.05;
+	conf.ResidualOutputIterations = 10;
+	conf.DebugOutputEnabled = false;
+
+	// Init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+	};
+	kernel->Init(conf);
+
+	// Initial conditions
+	double sdv = 0.1;
+	std::random_device rd;
+	std::mt19937 mt(rd());
+	std::normal_distribution<double> normal_dist(0.0, sdv);  // N(mean, stddeviation)
+	auto Init = [ro_init, p_init, u_top, shear_width_ratio, &normal_dist, &mt, &conf](Vector r) {
+		double h = r.y / conf.LY;
+
+		// Velosities
+		double v = normal_dist(mt);
+		double w = normal_dist(mt);
+		double u = 2.0 * (h - 0.5) * u_top / shear_width_ratio;
+		if (h > 0.5 * (1.0 + shear_width_ratio)) u = u_top;
+		if (h < 0.5 * (1.0 - shear_width_ratio)) u = -u_top;
+
+		double roe = p_init / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	kernel->SetInitialConditions(Init);
+
+	// Save solution
+	kernel->SaveSolution("init.dat");
+
+	// Crete slices
+	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.5 * conf.nZ)));
+	kernel->SaveSliceToTecplot("test_slice.dat", kernel->slices[0]);
 
 	// Run computation
 	kernel->Run();

@@ -58,6 +58,8 @@ public:
 	double gamma;
 	double thermalConductivity;
 	double viscosity;
+	double molarMass;
+	double universalGasConstant;
 	bool isViscousFlow;
 	bool isGradientRequired;
 	bool isExternalAccelaration;
@@ -260,6 +262,8 @@ public:
 		gamma = config.Gamma;
 		viscosity = config.Viscosity;
 		thermalConductivity = config.ThermalConductivity;
+		molarMass = config.MolarMass;
+		universalGasConstant = config.UniversalGasConstant;
 		if (config.IsViscousFlow == true) {
 			isViscousFlow = true;
 			isGradientRequired = true;
@@ -1103,12 +1107,14 @@ public:
 				ofs << R"("w" )";
 				ofs << R"("P" )";
 				ofs << R"("e")";
+				ofs << R"("T")";
 				ofs << std::endl;
 				ofs << R"(ZONE T=")" << stepInfo.Time << R"(")";
 				ofs << std::endl;
 				ofs << "N=" << (g.nX + 1) * (g.nY + 1) << ", E=" << g.nX * g.nY << ", F=FEBLOCK, ET=QUADRILATERAL";
 				ofs << std::endl;
 				ofs << "VARLOCATION = (NODAL, NODAL";
+				ofs << ", CELLCENTERED";
 				ofs << ", CELLCENTERED";
 				ofs << ", CELLCENTERED";
 				ofs << ", CELLCENTERED";
@@ -1160,6 +1166,10 @@ public:
 			e = e - 0.5 * (u * u + v * v + w * w);
 			std::valarray<double> P = (gamma - 1.0) * (rho * e);
 
+			// Temperature
+			double cond = (gamma - 1.0) * molarMass / universalGasConstant;
+			std::valarray<double> T = cond * e;
+
 			// write all data
 			pManager->WriteData(rho, fname);
 			pManager->WriteData(u, fname);
@@ -1167,6 +1177,7 @@ public:
 			pManager->WriteData(w, fname);
 			pManager->WriteData(P, fname);
 			pManager->WriteData(e, fname);
+			pManager->WriteData(T, fname);
 
 			if (!pManager->IsFirstNode()) pManager->Wait(rank - 1);
 
@@ -1214,12 +1225,14 @@ public:
 				ofs << R"("w" )";
 				ofs << R"("P" )";
 				ofs << R"("e")";
+				ofs << R"("T")";
 				ofs << std::endl;
 				ofs << R"(ZONE T=")" << stepInfo.Time << R"(")";
 				ofs << std::endl;
 				ofs << "N=" << (g.nX + 1) * (g.nY + 1) * (g.nZ + 1) << ", E=" << g.nX * g.nY * g.nZ << ", F=FEBLOCK, ET=BRICK";
 				ofs << std::endl;
 				ofs << "VARLOCATION = (NODAL, NODAL, NODAL";
+				ofs << ", CELLCENTERED";
 				ofs << ", CELLCENTERED";
 				ofs << ", CELLCENTERED";
 				ofs << ", CELLCENTERED";
@@ -1283,13 +1296,18 @@ public:
 			e = e - 0.5 * (u * u + v * v + w * w);
 			std::valarray<double> P = (gamma - 1.0) * (rho * e);
 
-			// write all data
+			// Temperature
+			double cond = (gamma - 1.0) * molarMass / universalGasConstant;
+			std::valarray<double> T = cond * e;
+
+			// Write all data
 			pManager->WriteData(rho, fname);
 			pManager->WriteData(u, fname);
 			pManager->WriteData(v, fname);
 			pManager->WriteData(w, fname);
 			pManager->WriteData(P, fname);
 			pManager->WriteData(e, fname);
+			pManager->WriteData(T, fname);
 
 			if (!pManager->IsFirstNode()) pManager->Wait(rank - 1);
 
@@ -1465,6 +1483,7 @@ public:
 			ofs << "\"" << "w" << "\" ";
 			ofs << "\"" << "P" << "\" ";
 			ofs << "\"" << "e" << "\" ";
+			ofs << "\"" << "T" << "\" ";
 			ofs << std::endl;
 
 			ofs << "ZONE T=\"1\"";	//zone name
@@ -1477,7 +1496,7 @@ public:
 			if (K == -1) ofs << "K=" << g.nZ;
 			else ofs << "K=" << 1;
 			ofs << "F=POINT\n";
-			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
+			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
 		}
 		else {
 			//Wait for previous process to finish writing
@@ -1504,6 +1523,7 @@ public:
 					double w = U[3] / ro;
 					double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
 					double P = (gamma - 1.0) * ro * e;
+					double T = (gamma - 1.0) * molarMass * e / universalGasConstant;
 
 					//Write to file
 					if (I == -1) ofs << x << " ";
@@ -1515,6 +1535,7 @@ public:
 					ofs << w << " ";
 					ofs << P << " ";
 					ofs << e << " ";
+					ofs << T << " ";
 					ofs << std::endl;
 				};
 			};
