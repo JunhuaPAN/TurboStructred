@@ -6,7 +6,9 @@
 // Run the test
 int main(int argc, char *argv[])
 {
-	Price2008KHI::RunExperiment(argc, argv);
+	RunKHI3D(argc, argv);
+	//RunKonuhovMixing(argc, argv);
+	//Price2008KHI::RunExperiment(argc, argv);
 	//RunKHI2D(argc, argv);
 	//RunTurbulentMixing(argc, argv);
 	//DrivenCavityTest::RunExperiment(argc, argv);
