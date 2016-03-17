@@ -1279,22 +1279,26 @@ public:
 			std::valarray<double> rho = values[std::gslice(idx_first * nVariables, s, str)];
 
 			// X Velocity
-			std::valarray<double> u = values[std::gslice(idx_first * nVariables + 1, s, str)];
-			u /= rho;
+			std::valarray<double> u = values[std::gslice(idx_first * nVariables + 1, s, str)];		// ro * u
 
 			// Y Velocity
-			std::valarray<double> v = values[std::gslice(idx_first * nVariables + 2, s, str)];
-			v /= rho;
-
+			std::valarray<double> v = values[std::gslice(idx_first * nVariables + 2, s, str)];		// ro * v
+			
 			// Z Velocity
-			std::valarray<double> w = values[std::gslice(idx_first * nVariables + 3, s, str)];
-			w /= rho;
+			std::valarray<double> w = values[std::gslice(idx_first * nVariables + 3, s, str)];		// ro * w
 
+			// Mean kinetic energy
+			std::valarray<double> k = 0.5 * (u * u + v * v + w * w) / rho;
+			u /= rho;		// u
+			v /= rho;		// v
+			w /= rho;		// w
+			
 			// Internal Energy and Pressure
-			std::valarray<double> e = values[std::gslice(idx_first * nVariables + 4, s, str)];
-			e /= rho;
-			e = e - 0.5 * (u * u + v * v + w * w);
-			std::valarray<double> P = (gamma - 1.0) * (rho * e);
+			std::valarray<double> e = values[std::gslice(idx_first * nVariables + 4, s, str)];		// ro * E
+			e = e - k;		// ro * e
+			std::valarray<double> P = (gamma - 1.0) * (e);
+			e /= rho;		// e
+
 
 			// Temperature
 			double cond = (gamma - 1.0) * molarMass / universalGasConstant;

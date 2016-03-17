@@ -995,97 +995,6 @@ void RunKHI2D(int argc, char *argv[]) {
 	kernel->Finalize();
 };
 
-// 3D Kelvin-Helmholtz instability
-void RunKHI3D(int argc, char *argv[]) {
-
-	// Test parameters
-	double ro_top{ 2.0 };
-	double ro_bot{ 1.0 };
-	double Vel{ 0.4 };
-	double P{ 2.5 };
-	double A{ 0.025 };				// amplitude of initial perturbation
-	double lambda{ 1.0 / 6.0 };		// init. pert. wave length
-
-	KernelConfiguration conf;
-	conf.nDims = 3;
-	conf.nX = 120;
-	conf.nY = 120;
-	conf.nZ = 100;
-	conf.LX = 1.0;
-	conf.LY = 0.5;
-	conf.LZ = 1.0;
-	conf.isPeriodicX = true;
-	conf.isPeriodicY = false;
-	conf.isPeriodicZ = true;
-	conf.Gamma = 1.4;
-	conf.MolarMass = 1.0;
-
-	// BC
-	conf.yLeftBoundary.BCType = BoundaryConditionType::SymmetryY;
-	conf.yLeftBoundary.Gamma = 1.4;
-	conf.yRightBoundary.BCType = BoundaryConditionType::SymmetryY;
-	conf.yRightBoundary.Gamma = 1.4;
-
-	// Method configuration
-	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-	conf.methodConfiguration.CFL = 0.4;
-	conf.methodConfiguration.RungeKuttaOrder = 1;
-	conf.methodConfiguration.Eps = 0.05;
-	conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
-	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
-	conf.DummyLayerSize = 1;
-
-	// Computational settings
-	conf.MaxTime = 20.0;
-	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0.5;
-	conf.ResidualOutputIterations = 10;
-
-	// Init kernel
-	std::unique_ptr<Kernel> kernel;
-	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
-	};
-	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
-	};
-	kernel->Init(conf);
-
-
-	NumericQuadrature Integ(8, 2);
-	auto Init = [ro_top, ro_bot, Vel, P, A, lambda, &conf](Vector r) {
-		// perturbation terms
-		double v = A * sin(2 * PI * r.x / lambda);
-		v *= 2 * sin(2 * PI * r.z / lambda);
-		double w = 0;
-		double u = Vel;
-		double ro = ro_top;
-		if (r.y < 0.5 * conf.LY) {
-			u = -Vel;
-			ro = ro_bot;
-		};
-
-		double roe = P / (conf.Gamma - 1);
-		std::vector<double> res(5);
-		res[0] = ro;
-		res[1] = ro * u;
-		res[2] = ro * v;
-		res[3] = ro * w;
-		res[4] = roe + 0.5 * ro * (u * u + v * v + w * w);
-		return res;
-	};
-	kernel->SetInitialConditions(Init, Integ);
-
-	//save solution
-	kernel->SaveSolution("init.dat");
-
-	//run computation
-	kernel->Run();
-
-	//finalize kernel
-	kernel->Finalize();
-};
-
 // 2D tests with smooth solution (Test 4.1 from Liska, Wendroff)
 void RunExactEulerTest2D(int argc, char *argv[]) {
 	KernelConfiguration conf;
@@ -2064,50 +1973,49 @@ void RunTurbulentMixing(int argc, char *argv[]) {
 	kernel->Finalize();
 };
 void RunKonuhovMixing(int argc, char *argv[]) {
-	double ro1{ 2.0 };					// first gas density
-	double ro2{ 1.0 };					// second one
-	double p_init = 2.5;				// normal pressure
-	double Vshear = 0.5;				// shear velocity
-	double amp = 0.025;					// perturbation amplitude
+
+	// Test parameters
+	double ro_top{ 2.0 };
+	double ro_bot{ 1.0 };
+	double Vel{ 0.4 };
+	double P{ 2.5 };
+	double A{ 0.025 };				// amplitude of initial perturbation
 	double lambda{ 1.0 / 6.0 };		// init. pert. wave length
 
 	KernelConfiguration conf;
 	conf.nDims = 3;
-	conf.nX = 80;
-	conf.nY = 80;
-	conf.nZ = 80;
+	conf.nX = 120;
+	conf.nY = 120;
+	conf.nZ = 100;
 	conf.LX = 1.0;
-	conf.LY = 1.0;
+	conf.LY = 0.5;
 	conf.LZ = 1.0;
-	conf.isPeriodicX = false;
-	conf.isPeriodicY = true;
+	conf.isPeriodicX = true;
+	conf.isPeriodicY = false;
 	conf.isPeriodicZ = true;
 	conf.Gamma = 1.4;
-	conf.MolarMass = 2.9e-2;
+	conf.MolarMass = 1.0;
 
 	// BC
-	conf.xLeftBoundary.BCType = BoundaryConditionType::SymmetryX;
-	conf.xLeftBoundary.Gamma = 1.4;
-	conf.xRightBoundary.BCType = BoundaryConditionType::SymmetryX;
-	conf.xRightBoundary.Gamma = 1.4;
+	conf.yLeftBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yLeftBoundary.Gamma = 1.4;
+	conf.yRightBoundary.BCType = BoundaryConditionType::SymmetryY;
+	conf.yRightBoundary.Gamma = 1.4;
 
-	// Method settings
+	// Method configuration
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-	conf.methodConfiguration.CFL = 0.5;
+	conf.methodConfiguration.CFL = 0.4;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
-	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 	conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 	conf.DummyLayerSize = 1;
 
-	// Output parameters
-	conf.MaxTime = 1.0;
-	conf.MaxIteration = 10000000;
-	conf.SaveSolutionSnapshotTime = 0.01;
-	//conf.SaveSolutionSnapshotIterations = 0;
-	//conf.SaveSliceSnapshotTime = 0.05;
-	conf.ResidualOutputIterations = 100;
-	conf.DebugOutputEnabled = false;
+	// Computational settings
+	conf.MaxTime = 10.0;
+	conf.MaxIteration = 1000000;
+	conf.SaveSolutionSnapshotTime = 0.2;
+	conf.ResidualOutputIterations = 20;
 
 	// Init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -2119,48 +2027,38 @@ void RunKonuhovMixing(int argc, char *argv[]) {
 	};
 	kernel->Init(conf);
 
-	// Initial conditions
-	NumericQuadrature Integ(3, 8);
-	auto Init = [ro1, ro2, p_init, Vshear, amp, &conf](Vector r) {
-		double h = r.x / conf.LX;
-		double ro_init{ ro1 };
 
-		// Velosities
-		double u{ 0 };
-		double w{ 0 };
-		double v{ -Vshear };
-		if (h > 0.5) {
-			v = Vshear;
-			ro_init = ro2;
+	NumericQuadrature Integ(2, 3);
+	auto Init = [ro_top, ro_bot, Vel, P, A, lambda, &conf](Vector r) {
+		// perturbation terms
+		double v = A * sin(2 * PI * r.x / lambda);
+		v *= 1.0 + 0.2 * sin(2 * PI * r.z / (3 * lambda));
+		double w = 0;
+		double u = Vel;
+		double ro = ro_top;
+		if (r.y < 0.5 * conf.LY) {
+			u = -Vel;
+			ro = ro_bot;
 		};
 
-		// Perturbations part
-		u -= amp * sin(4.0 * PI * r.z / conf.LZ);	// in Z direction
-		w -= amp * cos(4.0 * PI * r.y / conf.LY);
-		
-		double roe = p_init / (conf.Gamma - 1);
+		double roe = P / (conf.Gamma - 1);
 		std::vector<double> res(5);
-		res[0] = ro_init;
-		res[1] = ro_init * u;
-		res[2] = ro_init * v;
-		res[3] = ro_init * w;
-		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		res[0] = ro;
+		res[1] = ro * u;
+		res[2] = ro * v;
+		res[3] = ro * w;
+		res[4] = roe + 0.5 * ro * (u * u + v * v + w * w);
 		return res;
 	};
-
 	kernel->SetInitialConditions(Init, Integ);
 
-	// Save solution
+	//save solution
 	kernel->SaveSolution("init.dat");
 
-	// Crete slices
-	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.5 * conf.nZ)));
-	//kernel->SaveSliceToTecplot("test_slice.dat", kernel->slices[0]);
-
-	// Run computation
+	//run computation
 	kernel->Run();
 
-	// Finalize kernel
+	//finalize kernel
 	kernel->Finalize();
 };
 
