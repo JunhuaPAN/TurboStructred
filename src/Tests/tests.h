@@ -1984,9 +1984,9 @@ void RunKonuhovMixing(int argc, char *argv[]) {
 
 	KernelConfiguration conf;
 	conf.nDims = 3;
-	conf.nX = 120;
-	conf.nY = 120;
-	conf.nZ = 100;
+	conf.nX = 120;		//120
+	conf.nY = 120;		//120
+	conf.nZ = 100;		//100
 	conf.LX = 1.0;
 	conf.LY = 0.5;
 	conf.LZ = 1.0;
@@ -2014,7 +2014,7 @@ void RunKonuhovMixing(int argc, char *argv[]) {
 	// Computational settings
 	conf.MaxTime = 10.0;
 	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0.2;
+	conf.SaveSolutionSnapshotTime = 0;
 	conf.ResidualOutputIterations = 20;
 
 	// Init kernel
@@ -2026,8 +2026,7 @@ void RunKonuhovMixing(int argc, char *argv[]) {
 		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 	};
 	kernel->Init(conf);
-
-
+	
 	NumericQuadrature Integ(2, 3);
 	auto Init = [ro_top, ro_bot, Vel, P, A, lambda, &conf](Vector r) {
 		// perturbation terms
@@ -2054,6 +2053,19 @@ void RunKonuhovMixing(int argc, char *argv[]) {
 
 	//save solution
 	kernel->SaveSolution("init.dat");
+
+	//Set sensor at center
+	auto GetTemp = [&conf](std::valarray<double> vals) {
+		auto e = vals[4] - 0.5 * (vals[1] * vals[1] + vals[2] * vals[2] + vals[3] * vals[3]) / vals[0];
+		e /= vals[0];
+		return conf.MolarMass * (conf.Gamma - 1) * e / (conf.UniversalGasConstant);
+	};
+	kernel->isSensorEnable = true;
+	kernel->SaveSensorRecordIterations = 10;
+	std::unique_ptr<CellSensor> sen = std::make_unique<CellSensor>("temp_centr.dat", *kernel->pManager, kernel->g, GetTemp);
+	sen->SetSensor((int)(conf.nX * 0.5), (int)(conf.nY * 0.5), (int)(conf.nZ * 0.5), 5);
+	kernel->Sensors.push_back(std::move(sen));
+	for (auto& r : kernel->Sensors) r->Process(kernel->values);		//initial recording
 
 	//run computation
 	kernel->Run();

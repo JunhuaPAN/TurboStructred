@@ -1089,7 +1089,7 @@ public:
 			return;
 		};	//end if
 
-		//2D tecplot style
+		//	2D tecplot style
 		if (nDims == 2) {
 			// Open the file
 			if (pManager->IsMaster()) {
@@ -1206,7 +1206,7 @@ public:
 			pManager->Barrier();
 		};	//end 2D
 
-		//3D tecplot style
+		//	3D tecplot style
 		if (nDims == 3) {
 			// Open the file
 			if (pManager->IsMaster()) {
