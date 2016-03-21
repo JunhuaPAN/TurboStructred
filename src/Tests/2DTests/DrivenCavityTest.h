@@ -15,6 +15,7 @@
 //
 // http://www.cfd-online.com/Wiki/Lid-driven_cavity_problem
 
+// TO DO FIX -- tecplot save solution function wasn't works on 6 or 8 comput. nodes
 namespace DrivenCavityTest {
 	
 	// struct for main parameters of the test
