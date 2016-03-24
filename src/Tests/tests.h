@@ -2096,9 +2096,9 @@ void RunPoiseuille3DX(int argc, char *argv[]) {
 	// Fill configuration structure
 	KernelConfiguration conf;
 	conf.nDims = 3;
-	conf.nX = 40;
+	conf.nX = 2;
 	conf.nY = 2;
-	conf.nZ = 30;
+	conf.nZ = 2;
 	conf.LX = 0.1;
 	conf.LY = 0.3;
 	conf.LZ = 0.6;
@@ -2106,7 +2106,7 @@ void RunPoiseuille3DX(int argc, char *argv[]) {
 
 	// Gas model
 	conf.Gamma = 1.4;
-	conf.IsViscousFlow = false;		// to do change
+	conf.IsViscousFlow = true;
 	conf.Viscosity = viscosity;
 	conf.Sigma = Vector(0, 0, sigma);
 
@@ -2129,7 +2129,7 @@ void RunPoiseuille3DX(int argc, char *argv[]) {
 	conf.MaxIteration = 10000000;
 	//conf.SaveSolutionSnapshotIterations = 1;
 	//conf.SaveSolutionSnapshotTime = 0.005;
-	conf.SaveSliceSnapshotTime = 0.001;
+	//conf.SaveSliceSnapshotTime = 0.001;
 	conf.ResidualOutputIterations = 10;
 	conf.DebugOutputEnabled = false;
 
