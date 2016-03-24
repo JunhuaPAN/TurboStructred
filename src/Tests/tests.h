@@ -1073,60 +1073,51 @@ void RunExactEulerTest2D(int argc, char *argv[]) {
 
 // Pouseuille's flow
 void RunPoiseuille2D(int argc, char *argv[]) {
-	double viscosity = 1.0e-2;	//Air
-	double sigma = 0.14;		// -dPdx
+	double viscosity = 1.73e-5;	//Air
+	double molarmass = 2.9e-2;
+	double sigma = 0.14;		// absolute value of dPdx
 	double ro_init = 1.225;		//Air
 	double Pave = 1.0e5;		//average pressure
 
-								//Test parameters
-								//ro_init = 1.0;
-								//Pave = 20.0;
-								//sigma = 1.0;
-								//viscosity = 0.25;
-
+	// Fill configuration structure
 	KernelConfiguration conf;
 	conf.nDims = 2;
-	conf.nX = 40;
-	conf.nY = 80;
+	conf.nX = 140;
+	conf.nY = 120;
 	conf.LX = 0.6;
 	conf.LY = 0.1;
-	conf.isPeriodicX = true;
 	conf.isPeriodicY = false;
-	//conf.isUniformAlongY = false;
-	//conf.qy = 1.2;
 
+	// Gas model
 	conf.Gamma = 1.4;
 	conf.IsViscousFlow = true;
+	conf.Viscosity = viscosity;
+	conf.Sigma = Vector(sigma, 0, 0);
+	conf.MolarMass = molarmass;
 
+	// Boundary conditions
 	conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
 	conf.yLeftBoundary.Gamma = 1.4;
 	conf.yRightBoundary.BCType = BoundaryConditionType::Wall;
 	conf.yRightBoundary.Gamma = 1.4;
 
-	double uShear = std::sqrt(sigma * conf.LY);
-	double Re = uShear * conf.LY * ro_init / viscosity;
-	std::cout << "Reynolds Number = " << Re << std::endl;
-
+	// Method settings
 	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-	conf.methodConfiguration.CFL = 0.25;
+	conf.methodConfiguration.CFL = 0.4;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
 	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 	conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
-	conf.DummyLayerSize = 1;
-
-	conf.MaxTime = 1.0;
-	conf.MaxIteration = 10000000;
-	conf.SaveSolutionSnapshotTime = 0;
-	conf.SaveSolutionSnapshotIterations = 0;
-	conf.SaveSliceSnapshotTime = 0.1;
-	conf.ResidualOutputIterations = 1000;
-
-	conf.Viscosity = viscosity;
 	conf.IsExternalForceRequared = true;
-	conf.Sigma = Vector(sigma, 0, 0);
 
-	// init kernel
+	conf.MaxTime = 10.0;
+	conf.MaxIteration = 10000000;
+	conf.SaveSolutionSnapshotTime = 0.1;
+	conf.SaveSliceSnapshotTime = 0.1;
+	conf.ResidualOutputIterations = 50;
+	conf.DebugOutputEnabled = false;
+
+	// Init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
 		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
@@ -1134,16 +1125,10 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
 		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 	};
-	if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
-	};
-	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2CharactVars) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2CharactVars>(&argc, &argv));
-	};
 	kernel->Init(conf);
 
-	// init distributions
-	NumericQuadrature Integ(8, 2);
+	// Init Conditions
+	NumericQuadrature Integ(4, 2);
 	auto ExactSol = [ro_init, Pave, &conf](Vector r) {
 		double u = 0.5 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
 		double v = 0.0;
@@ -1158,35 +1143,40 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
 		return res;
 	};
-	kernel->SetInitialConditions(ExactSol, Integ);
+	auto NotExactSol = [ro_init, Pave, &conf](Vector r) {
+		double u = 0.55 * conf.Sigma.x * r.y * (conf.LY - r.y) / conf.Viscosity;
+		double v = 0.0;
+		double w = 0.0;
 
-	// Create slices
-	kernel->slices.push_back(Slice(-1, (int)(0.5 * conf.nY), 0));
-	//kernel->SaveSliceToTecplot("ySlice_init.dat", kernel->slices[0]);
-
-	//save solution
+		double roe = Pave / (conf.Gamma - 1);
+		std::vector<double> res(5);
+		res[0] = ro_init;
+		res[1] = ro_init * u;
+		res[2] = ro_init * v;
+		res[3] = ro_init * w;
+		res[4] = roe + 0.5 * ro_init * (u * u + v * v + w * w);
+		return res;
+	};
+	kernel->SetInitialConditions(NotExactSol, Integ);
 	kernel->SaveSolution("init.dat");
 
-	//Set sensor at center
-	//auto GetXVel = [](std::valarray<double> vals) {
-	//	return vals[1] / vals[0];
-	//};
-	//kernel->isSensorEnable = true;
-	//kernel->SaveSensorRecordIterations = 100;
-	//std::unique_ptr<CellSensor> sen = std::make_unique<CellSensor>("Ysensor(0.5, 0.5).dat", GetXVel, kernel->nVariables);
-	//sen->SetSensor((int)(conf.nX * 0.5), (int)(conf.nY * 0.5), 0);
-	//kernel->Sensors.push_back(std::move(sen));
-	//for (auto& r : kernel->Sensors) r->Process(kernel->values);		//initial recording
+	// Velocity at center of the channel
+	if (kernel->pManager->IsMaster()) std::cout << "U_max in laminar flow: " << 0.125 * conf.Sigma.x * conf.LY * conf.LY / conf.Viscosity << std::endl;
 
-	//run computation
+	// Create slices
+	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, 0));
+	kernel->SaveSliceToTecplot("slice_init.dat", kernel->slices[0]);
+
+	// Run computation
 	kernel->Run();
 
-	//finalize kernel
+	// Finalize kernel
 	kernel->Finalize();
 };
 
 void RunPoiseuille3D(int argc, char *argv[]) {
 	double viscosity = 1.73e-5;	//Air
+	double molarmass = 2.9e-2;
 	double sigma = 0.14;		// absolute value of dPdx
 	double ro_init = 1.225;		//Air
 	double Pave = 1.0e5;		//average pressure
@@ -1213,6 +1203,7 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	conf.IsViscousFlow = true;
 	conf.Viscosity = viscosity;
 	conf.Sigma = Vector(sigma, 0, 0);
+	conf.MolarMass = molarmass;
 
 	// Boundary conditions
 	conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
@@ -1232,8 +1223,8 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	conf.MaxTime = 1.0;
 	conf.MaxIteration = 10000000;
 	//conf.SaveSolutionSnapshotTime = 0.001;
-	conf.SaveSliceSnapshotTime = 0.01;
-	conf.ResidualOutputIterations = 100;
+	conf.SaveSliceSnapshotTime = 0.001;
+	conf.ResidualOutputIterations = 50;
 	conf.DebugOutputEnabled = false;
 
 	// Init kernel
@@ -1279,12 +1270,15 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	kernel->SetInitialConditions(NotExactSol, Integ);
 	//kernel->SaveSolution("init.dat");
 
+	// Velocity at center of the channel
+	if (kernel->pManager->IsMaster()) std::cout << "U_max in laminar flow: " << 0.125 * conf.Sigma.x * conf.LY * conf.LY / conf.Viscosity << std::endl;
+
 	// Create slices
 	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1 , (int)(0.25 * conf.nZ)));
 	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.5 * conf.nZ)));
 	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.75 * conf.nZ)));
 	//kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, 1));
-	kernel->SaveSliceToTecplot("test_slice.dat", kernel->slices[0]);
+	kernel->SaveSliceToTecplot("slice_init.dat", kernel->slices[0]);
 
 	// Run computation
 	kernel->Run();
@@ -1973,14 +1967,16 @@ void RunKonuhovMixing(int argc, char *argv[]) {
 	kernel->Finalize();
 };
 
-// Viscous part tests
+//// Viscous part tests	////
+
+// Z bounded channel
 void RunPoiseuille3DZ(int argc, char *argv[]) {
 	double viscosity = 1.73e-5;	//Air
 	double sigma = 0.14;		// absolute value of dPdx
 	double ro_init = 1.225;		//Air
 	double Pave = 1.0e5;		//average pressure
 
-								//Test parameters
+	//Test parameters
 	ro_init = 1.0;
 	Pave = 20.0;
 	sigma = 1.0;
@@ -1989,11 +1985,11 @@ void RunPoiseuille3DZ(int argc, char *argv[]) {
 	// Fill configuration structure
 	KernelConfiguration conf;
 	conf.nDims = 3;
-	conf.nX = 30;
-	conf.nY = 10;
+	conf.nX = 2;
+	conf.nY = 30;
 	conf.nZ = 40;
-	conf.LX = 0.6;
-	conf.LY = 0.3;
+	conf.LX = 0.3;
+	conf.LY = 0.6;
 	conf.LZ = 0.1;
 	conf.isPeriodicZ = false;
 
@@ -2001,7 +1997,7 @@ void RunPoiseuille3DZ(int argc, char *argv[]) {
 	conf.Gamma = 1.4;
 	conf.IsViscousFlow = true;
 	conf.Viscosity = viscosity;
-	conf.Sigma = Vector(sigma, 0, 0);
+	conf.Sigma = Vector(0, sigma, 0);		// Flow in Y direction
 
 	// Boundary conditions
 	conf.zLeftBoundary.BCType = BoundaryConditionType::Wall;
@@ -2020,9 +2016,9 @@ void RunPoiseuille3DZ(int argc, char *argv[]) {
 
 	conf.MaxTime = 1.0;
 	conf.MaxIteration = 10000000;
-	//conf.SaveSolutionSnapshotTime = 0.001;
-	conf.SaveSliceSnapshotTime = 0.001;
-	conf.ResidualOutputIterations = 100;
+	conf.SaveSolutionSnapshotTime = 0.005;
+	//conf.SaveSliceSnapshotTime = 0.005;
+	conf.ResidualOutputIterations = 50;
 	conf.DebugOutputEnabled = false;
 
 	// Init kernel
@@ -2038,8 +2034,8 @@ void RunPoiseuille3DZ(int argc, char *argv[]) {
 	// Init Conditions
 	NumericQuadrature Integ(8, 3);
 	auto ExactSol = [ro_init, Pave, &conf](Vector r) {
-		double u = 0.5 * conf.Sigma.x * r.z * (conf.LZ - r.z) / conf.Viscosity;
-		double v = 0.0;
+		double u = 0.0;
+		double v = 0.5 * conf.Sigma.y * r.z * (conf.LZ - r.z) / conf.Viscosity;
 		double w = 0.0;
 
 		double roe = Pave / (conf.Gamma - 1);
@@ -2052,8 +2048,8 @@ void RunPoiseuille3DZ(int argc, char *argv[]) {
 		return res;
 	};
 	auto NotExactSol = [ro_init, Pave, &conf](Vector r) {
-		double u = 0.55 * conf.Sigma.x * r.z * (conf.LZ - r.z) / conf.Viscosity;
-		double v = 0.0;
+		double u = 0.0;
+		double v = 0.55 * conf.Sigma.y * r.z * (conf.LZ - r.z) / conf.Viscosity;
 		double w = 0.0;
 
 		double roe = Pave / (conf.Gamma - 1);
@@ -2067,6 +2063,9 @@ void RunPoiseuille3DZ(int argc, char *argv[]) {
 	};
 	kernel->SetInitialConditions(NotExactSol, Integ);
 	kernel->SaveSolution("init.dat");
+
+	// Print velocity at center of the channel
+	if (kernel->pManager->IsMaster()) std::cout << "U_max in laminar flow: " << 0.125 * conf.Sigma.z * conf.LX * conf.LX / conf.Viscosity << std::endl;
 
 	// Create slices
 	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), (int)(0.5 * conf.nY), -1));
@@ -2096,9 +2095,9 @@ void RunPoiseuille3DX(int argc, char *argv[]) {
 	// Fill configuration structure
 	KernelConfiguration conf;
 	conf.nDims = 3;
-	conf.nX = 2;
+	conf.nX = 40;
 	conf.nY = 2;
-	conf.nZ = 2;
+	conf.nZ = 30;
 	conf.LX = 0.1;
 	conf.LY = 0.3;
 	conf.LZ = 0.6;
@@ -2129,7 +2128,7 @@ void RunPoiseuille3DX(int argc, char *argv[]) {
 	conf.MaxIteration = 10000000;
 	//conf.SaveSolutionSnapshotIterations = 1;
 	//conf.SaveSolutionSnapshotTime = 0.005;
-	//conf.SaveSliceSnapshotTime = 0.001;
+	conf.SaveSliceSnapshotTime = 0.005;
 	conf.ResidualOutputIterations = 10;
 	conf.DebugOutputEnabled = false;
 

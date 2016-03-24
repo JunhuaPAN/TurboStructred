@@ -6,7 +6,7 @@
 // Run the test
 int main(int argc, char *argv[])
 {
-	RunPoiseuille3DX(argc, argv);
+	RunPoiseuille2D(argc, argv);
 	//RunKonuhovMixing(argc, argv);
 	//Price2008KHI::RunExperiment(argc, argv);
 	//RunKHI2D(argc, argv);
