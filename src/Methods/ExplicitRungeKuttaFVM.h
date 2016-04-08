@@ -441,10 +441,10 @@ public:
 		auto getv = [](double *U) { return U[2] / U[0]; };
 		auto getw = [](double *U) { return U[3] / U[0]; };
 
-		//X direction
-		faceNormalL = Vector(-1.0, 0.0, 0.0);
-		faceNormalR = Vector(1.0, 0.0, 0.0);
+		////	X direction		/////
 		if (!g.IsPeriodicX) {
+			faceNormalL = Vector(-1.0, 0.0, 0.0);
+			faceNormalR = Vector(1.0, 0.0, 0.0);
 			for (j = g.jMin; j <= g.jMax; j++) {
 				for (k = g.kMin; k <= g.kMax; k++) {
 					//Inner cell
@@ -481,7 +481,7 @@ public:
 							i = g.iMax + layer; // layer index
 							int iIn = g.iMax - layer + 1; // opposite index
 							cellCenter.x = g.CoordinateX[iIn];
-							faceCenter.x = (g.CoordinateX[iIn] + g.CoordinateX[i]) / 2.0;
+							faceCenter.x = (g.CoordinateX[iIn] + g.CoordinateX[i]) / 2.0;	// TO DO wrong for nonuniform grid
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(iIn, j, k);
 
@@ -506,29 +506,32 @@ public:
 		};
 		//Sync
 		pManager->Barrier();
-
 		if (nDims < 2) return;
-		//Y direction		
-		faceNormalL = Vector(0.0, -1.0, 0.0);
-		faceNormalR = Vector(0.0, 1.0, 0.0);
-		for (i = g.iMin; i <= g.iMax; i++) {
-			for (k = g.kMin; k <= g.kMax; k++) {
-				//Inner cell
-				cellCenter.x = g.CoordinateX[i];
-				cellCenter.z = g.CoordinateZ[k];
 
-				//And face
-				faceCenter.x = g.CoordinateX[i];
-				faceCenter.z = g.CoordinateZ[k];
+		////	Y direction		/////		
+		if (!g.IsPeriodicY) {
+			// Normals
+			faceNormalL = Vector(0.0, -1.0, 0.0);
+			faceNormalR = Vector(0.0, 1.0, 0.0);
 
-				for (int layer = 1; layer <= g.dummyCellLayersY; layer++) {
-					if (!g.IsPeriodicY) {
+			// Obtain top and bottom layers
+			for (i = g.iMin; i <= g.iMax; i++) {
+				for (k = g.kMin; k <= g.kMax; k++) {
+					//Inner cell
+					cellCenter.x = g.CoordinateX[i];
+					cellCenter.z = g.CoordinateZ[k];
+
+					//And face
+					faceCenter.x = g.CoordinateX[i];
+					faceCenter.z = g.CoordinateZ[k];
+
+					for (int layer = 1; layer <= g.dummyCellLayersY; layer++) {
 						if (pManager->rankCart[1] == 0) {
 							//Left border
 							j = g.jMin - layer; // layer index
 							int jIn = g.jMin + layer - 1; // opposite index
 							cellCenter.y = g.CoordinateY[jIn];
-							faceCenter.y = (g.CoordinateY[jIn] + g.CoordinateY[j]) / 2.0;
+							faceCenter.y = (g.CoordinateY[jIn] + g.CoordinateY[j]) / 2.0;		// TO DO wrong for nonuniform grid
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(i, jIn, k);
 
@@ -548,7 +551,7 @@ public:
 							j = g.jMax + layer; // layer index
 							int jIn = g.jMax - layer + 1; // opposite index
 							cellCenter.y = g.CoordinateY[jIn];
-							faceCenter.y = (g.CoordinateY[jIn] + g.CoordinateY[j]) / 2.0;
+							faceCenter.y = (g.CoordinateY[jIn] + g.CoordinateY[j]) / 2.0;		// TO DO wrong for nonuniform grid
 							int idx = getSerialIndexLocal(i, j, k);
 							int idxIn = getSerialIndexLocal(i, jIn, k);
 
@@ -560,12 +563,12 @@ public:
 							dGrad = yRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityY[idx] = dGrad;
 							dGrad = yRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
+							gradientVelocityZ[idx] = dGrad;
 						};
-
 					};
 				};
 			};
-		}; //Y direction
+		}; // Y direction
 
 		if (DebugOutputEnabled) {
 			std::cout << "rank = " << pManager->getRank() << ", Gradients dummy cells Y-direction calculated\n";
@@ -573,6 +576,78 @@ public:
 		};
 		//Sync
 		pManager->Barrier();
+		if (nDims < 3) return;
+
+		////	Z direction		/////		
+		if (!g.IsPeriodicZ) {
+			// Normals
+			faceNormalL = Vector(0.0, 0.0, -1.0);
+			faceNormalR = Vector(0.0, 0.0, 1.0);
+
+			// Obtain back and front layers
+			for (i = g.iMin; i <= g.iMax; i++) {
+				for (j = g.jMin; j <= g.jMax; j++) {
+					//Inner cell
+					cellCenter.x = g.CoordinateX[i];
+					cellCenter.y= g.CoordinateY[j];
+
+					//And face
+					faceCenter.x = g.CoordinateX[i];
+					faceCenter.y = g.CoordinateY[j];
+
+					for (int layer = 1; layer <= g.dummyCellLayersZ; layer++) {
+						if (pManager->rankCart[2] == 0) {
+							//Left border
+							k = g.kMin - layer; // layer index
+							int kIn = g.kMin + layer - 1; // opposite index
+							cellCenter.z = g.CoordinateZ[kIn];
+							faceCenter.z = (g.CoordinateZ[kIn] + g.CoordinateZ[k]) / 2.0;		// TO DO wrong for nonuniform grid
+							int idx = getSerialIndexLocal(i, j, k);
+							int idxIn = getSerialIndexLocal(i, j, kIn);
+
+							//Apply left boundary conditions						
+							double *V = getCellValues(i, j, kIn);
+							Vector dGrad;
+							dGrad = zLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
+							gradientVelocityX[idx] = dGrad;
+							dGrad = zLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
+							gradientVelocityY[idx] = dGrad;
+							dGrad = zLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
+							gradientVelocityZ[idx] = dGrad;
+						};
+
+						if (pManager->rankCart[1] == pManager->dimsCart[1] - 1.0) {
+							//Right border
+							k = g.kMax + layer; // layer index
+							int kIn = g.kMax - layer + 1; // opposite index
+							cellCenter.z = g.CoordinateZ[kIn];
+							faceCenter.z = (g.CoordinateZ[kIn] + g.CoordinateZ[k]) / 2.0;		// TO DO wrong for nonuniform grid
+							int idx = getSerialIndexLocal(i, j, k);
+							int idxIn = getSerialIndexLocal(i, j, kIn);
+
+							//Apply right boundary conditions						
+							double *V = getCellValues(i, j, kIn);
+							Vector dGrad;
+							dGrad = zRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
+							gradientVelocityX[idx] = dGrad;
+							dGrad = zRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
+							gradientVelocityY[idx] = dGrad;
+							dGrad = zRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
+							gradientVelocityZ[idx] = dGrad;
+						};
+					};
+				};
+			};
+		}; // Y direction
+
+		if (DebugOutputEnabled) {
+			std::cout << "rank = " << pManager->getRank() << ", Gradients dummy cells Z-direction calculated\n";
+			std::cout.flush();
+		};
+		//Sync
+		pManager->Barrier();
+
+
 	};
 
 	//Compute viscous Fluxes in all faces
@@ -603,7 +678,7 @@ public:
 		auto getw = [](double *U) { return U[3] / U[0]; };
 
 		//X direction first
-		faceInd = 0;
+		faceInd = 0;			/// Don't change the order in cycle
 		for (int k = g.kMin; k <= g.kMax; k++) {
 			for (int j = g.jMin; j <= g.jMax; j++) {
 				for (int i = g.iMin; i <= g.iMax + 1; i++) {
@@ -614,7 +689,7 @@ public:
 					double* UR = getCellValues(i, j, k);
 					int sL = getSerialIndexLocal(i - 1, j, k);
 					int sR = getSerialIndexLocal(i, j, k);
-					double dx = g.CoordinateX[i - 1] - g.CoordinateX[i];
+					double dx = g.CoordinateX[i] - g.CoordinateX[i - 1];
 
 					//U component derivatives
 					Vector& graduL = gradientVelocityX[sL];
@@ -635,15 +710,15 @@ public:
 					dw.x = (getw(UR) - getw(UL)) / dx;
 
 					//compute average velocity vector
-					double l = 0.5 * g.hx[i - 1] / dx;	//weights
-					double r = 0.5 * g.hx[i] / dx;
+					double l = g.hx[i - 1] / dx;	//weights
+					double r = g.hx[i] / dx;
 					double u = 0.5 * (l * getu(UR) + r * getu(UL));
 					double v = 0.5 * (l * getv(UR) + r * getv(UL));
 					double w = 0.5 * (l * getw(UR) + r * getw(UL));
 
 					//compute stress tensor
 					double tau_diagonal = s_viscosity * (du.x + dv.y + dw.z);
-					double tau_xx = tau_diagonal + 2 * viscosity*du.x;
+					double tau_xx = tau_diagonal + 2 * viscosity * du.x;
 					double tau_xy = viscosity * (du.y + dv.x);
 					double tau_xz = viscosity * (du.z + dw.x);
 
@@ -664,7 +739,7 @@ public:
 
 		if (nDims < 2) return;
 		//Y direction then
-		faceInd = 0;
+		faceInd = 0;			/// Don't change the order in cycle
 		for (int k = g.kMin; k <= g.kMax; k++) {
 			for (int i = g.iMin; i <= g.iMax; i++) {
 				for (int j = g.jMin; j <= g.jMax + 1; j++) {
@@ -696,15 +771,15 @@ public:
 					dw.y = (getw(UR) - getw(UL)) / dy;
 
 					//compute average velocity vector
-					double l = 0.5 * g.hy[j - 1] / dy;
-					double r = 0.5 * g.hy[j] / dy;
+					double l = g.hy[j - 1] / dy;
+					double r = g.hy[j] / dy;
 					double u = 0.5 * (l * getu(UR) + r * getu(UL));
 					double v = 0.5 * (l * getv(UR) + r * getv(UL));
 					double w = 0.5 * (l * getw(UR) + r * getw(UL));
-
+					
 					//compute stress tensor
 					double tau_diagonal = s_viscosity * (du.x + dv.y + dw.z);
-					double tau_yy = tau_diagonal + 2 * viscosity*dv.y;
+					double tau_yy = tau_diagonal + 2 * viscosity * dv.y;
 					double tau_xy = viscosity * (du.y + dv.x);
 					double tau_yz = viscosity * (dv.z + dw.y);
 
@@ -725,7 +800,7 @@ public:
 
 		if (nDims < 3) return;
 		//Z direction then
-		faceInd = 0;
+		faceInd = 0;			/// Don't change the order in cycle
 		for (int i = g.iMin; i <= g.iMax; i++) {
 			for (int j = g.jMin; j <= g.jMax; j++) {
 				for (int k = g.kMin; k <= g.kMax + 1; k++) {
@@ -757,20 +832,20 @@ public:
 					dw.z = (getw(UR) - getw(UL)) / dz;
 
 					//compute average velocity vector
-					double l = 0.5 * g.hz[k - 1] / dz;		//weights
-					double r = 0.5 * g.hz[k] / dz;
+					double l = g.hz[k - 1] / dz;		//weights
+					double r = g.hz[k] / dz;
 					double u = 0.5 * (l * getu(UR) + r * getu(UL));
 					double v = 0.5 * (l * getv(UR) + r * getv(UL));
 					double w = 0.5 * (l * getw(UR) + r * getw(UL));
 
 					//compute stress tensor
-					double tau_diagonal = s_viscosity*(du.x + dv.y + dw.z);
-					double tau_zz = tau_diagonal + 2 * viscosity*dw.z;
+					double tau_diagonal = s_viscosity * (du.x + dv.y + dw.z);
+					double tau_zz = tau_diagonal + 2 * viscosity * dw.z;
 					double tau_xz = viscosity*(du.z + dw.x);
 					double tau_yz = viscosity*(dv.z + dw.y);
 
 					//work of viscous stresses and heat conduction (not implemented yet)
-					double ThettaZ = u*tau_xz + v*tau_yz + w*tau_zz;
+					double ThettaZ = u * tau_xz + v * tau_yz + w * tau_zz;
 
 					//write flux in left vertical face
 					std::vector<double> vflux(5, 0);
@@ -1064,12 +1139,12 @@ public:
 		for (double& sr : spectralRadius) sr = 0; //Nullify
 		for (double& r : residual) r = 0; //Nullify residual
 
-										  // Fluxes temporary storage
+		// Fluxes temporary storage
 		std::vector<double> fl(nVariables, 0); //left flux -1/2
 		std::vector<double> fr(nVariables, 0); //right flux +1/2
 		std::vector<double> fvisc(nVariables, 0); //right flux +1/2		
 
-												  // Viscous part
+		// Viscous part
 		int faceInd = 0;
 		if (isGradientRequired == true) ComputeVelocityGradients();
 
@@ -1092,7 +1167,7 @@ public:
 
 		// I step
 		faceInd = 0;
-		Vector fn = Vector(1.0, 0.0, 0.0); // x direction
+		Vector fn = Vector(1.0, 0.0, 0.0); // Don't change the order in cycles
 		for (int k = g.kMin; k <= g.kMax; k++) {
 			for (int j = g.jMin; j <= g.jMax; j++) {
 				// Compute face square
@@ -1169,7 +1244,7 @@ public:
 		if (nDims > 1)
 		{
 			faceInd = 0;
-			Vector fn = Vector(0.0, 1.0, 0.0); // y direction
+			Vector fn = Vector(0.0, 1.0, 0.0); // Don't change the order in cycles
 			for (int k = g.kMin; k <= g.kMax; k++) {
 				for (int i = g.iMin; i <= g.iMax; i++) {
 					// Compute face square
@@ -1245,9 +1320,9 @@ public:
 		if (nDims > 2)
 		{
 			faceInd = 0;
-			Vector fn = Vector(0.0, 0.0, 1.0); // y direction
-			for (int j = g.jMin; j <= g.jMax; j++) {
-				for (int i = g.iMin; i <= g.iMax; i++) {
+			Vector fn = Vector(0.0, 0.0, 1.0); // Don't change the order in cycles
+			for (int i = g.iMin; i <= g.iMax; i++) {
+				for (int j = g.jMin; j <= g.jMax; j++) {
 					// Compute face square
 					double fS = g.hx[i] * g.hy[j];
 
@@ -1354,21 +1429,21 @@ public:
 		//Sync
 		pManager->Barrier();
 
-		// Prepare to compute residuals
+		// Prepare to compute residuals	//
 
-		//Exchange values between processors
+		// Compute all dummy values first //
+		// Exchange values between processors
 		ExchangeValues();
-
 		// Apply boundary conditions for dummy cells
 		ComputeDummyCellValues();
 
+		// Reconstructions computations
 		// Compute reconstruction functions for each inner cell and one extern layer
 		ComputeSolutionReconstruction();
-
-		//Exchange reconstructions objects between processors
+		// Exchange reconstructions objects between processors
 		ExchangeReconstructions();
 
-		//Compute residual TO DO second argument remove
+		// Compute residual
 		ComputeResidual(values, residual, spectralRadius);
 
 		if (DebugOutputEnabled) {

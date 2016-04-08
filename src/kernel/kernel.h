@@ -58,6 +58,8 @@ public:
 	double gamma;
 	double thermalConductivity;
 	double viscosity;
+	double molarMass;
+	double universalGasConstant;
 	bool isViscousFlow;
 	bool isGradientRequired;
 	bool isExternalAccelaration;
@@ -260,6 +262,8 @@ public:
 		gamma = config.Gamma;
 		viscosity = config.Viscosity;
 		thermalConductivity = config.ThermalConductivity;
+		molarMass = config.MolarMass;
+		universalGasConstant = config.UniversalGasConstant;
 		if (config.IsViscousFlow == true) {
 			isViscousFlow = true;
 			isGradientRequired = true;
@@ -1085,7 +1089,7 @@ public:
 			return;
 		};	//end if
 
-		//2D tecplot style
+		//	2D tecplot style
 		if (nDims == 2) {
 			// Open the file
 			if (pManager->IsMaster()) {
@@ -1103,12 +1107,14 @@ public:
 				ofs << R"("w" )";
 				ofs << R"("P" )";
 				ofs << R"("e")";
+				ofs << R"("T")";
 				ofs << std::endl;
 				ofs << R"(ZONE T=")" << stepInfo.Time << R"(")";
 				ofs << std::endl;
 				ofs << "N=" << (g.nX + 1) * (g.nY + 1) << ", E=" << g.nX * g.nY << ", F=FEBLOCK, ET=QUADRILATERAL";
 				ofs << std::endl;
 				ofs << "VARLOCATION = (NODAL, NODAL";
+				ofs << ", CELLCENTERED";
 				ofs << ", CELLCENTERED";
 				ofs << ", CELLCENTERED";
 				ofs << ", CELLCENTERED";
@@ -1160,6 +1166,10 @@ public:
 			e = e - 0.5 * (u * u + v * v + w * w);
 			std::valarray<double> P = (gamma - 1.0) * (rho * e);
 
+			// Temperature
+			double cond = (gamma - 1.0) * molarMass / universalGasConstant;
+			std::valarray<double> T = cond * e;
+
 			// write all data
 			pManager->WriteData(rho, fname);
 			pManager->WriteData(u, fname);
@@ -1167,6 +1177,7 @@ public:
 			pManager->WriteData(w, fname);
 			pManager->WriteData(P, fname);
 			pManager->WriteData(e, fname);
+			pManager->WriteData(T, fname);
 
 			if (!pManager->IsFirstNode()) pManager->Wait(rank - 1);
 
@@ -1195,7 +1206,7 @@ public:
 			pManager->Barrier();
 		};	//end 2D
 
-		//3D tecplot style
+		//	3D tecplot style
 		if (nDims == 3) {
 			// Open the file
 			if (pManager->IsMaster()) {
@@ -1214,12 +1225,14 @@ public:
 				ofs << R"("w" )";
 				ofs << R"("P" )";
 				ofs << R"("e")";
+				ofs << R"("T")";
 				ofs << std::endl;
 				ofs << R"(ZONE T=")" << stepInfo.Time << R"(")";
 				ofs << std::endl;
 				ofs << "N=" << (g.nX + 1) * (g.nY + 1) * (g.nZ + 1) << ", E=" << g.nX * g.nY * g.nZ << ", F=FEBLOCK, ET=BRICK";
 				ofs << std::endl;
 				ofs << "VARLOCATION = (NODAL, NODAL, NODAL";
+				ofs << ", CELLCENTERED";
 				ofs << ", CELLCENTERED";
 				ofs << ", CELLCENTERED";
 				ofs << ", CELLCENTERED";
@@ -1266,30 +1279,39 @@ public:
 			std::valarray<double> rho = values[std::gslice(idx_first * nVariables, s, str)];
 
 			// X Velocity
-			std::valarray<double> u = values[std::gslice(idx_first * nVariables + 1, s, str)];
-			u /= rho;
+			std::valarray<double> u = values[std::gslice(idx_first * nVariables + 1, s, str)];		// ro * u
 
 			// Y Velocity
-			std::valarray<double> v = values[std::gslice(idx_first * nVariables + 2, s, str)];
-			v /= rho;
-
+			std::valarray<double> v = values[std::gslice(idx_first * nVariables + 2, s, str)];		// ro * v
+			
 			// Z Velocity
-			std::valarray<double> w = values[std::gslice(idx_first * nVariables + 3, s, str)];
-			w /= rho;
+			std::valarray<double> w = values[std::gslice(idx_first * nVariables + 3, s, str)];		// ro * w
 
+			// Mean kinetic energy
+			std::valarray<double> k = 0.5 * (u * u + v * v + w * w) / rho;
+			u /= rho;		// u
+			v /= rho;		// v
+			w /= rho;		// w
+			
 			// Internal Energy and Pressure
-			std::valarray<double> e = values[std::gslice(idx_first * nVariables + 4, s, str)];
-			e /= rho;
-			e = e - 0.5 * (u * u + v * v + w * w);
-			std::valarray<double> P = (gamma - 1.0) * (rho * e);
+			std::valarray<double> e = values[std::gslice(idx_first * nVariables + 4, s, str)];		// ro * E
+			e = e - k;		// ro * e
+			std::valarray<double> P = (gamma - 1.0) * (e);
+			e /= rho;		// e
 
-			// write all data
+
+			// Temperature
+			double cond = (gamma - 1.0) * molarMass / universalGasConstant;
+			std::valarray<double> T = cond * e;
+
+			// Write all data
 			pManager->WriteData(rho, fname);
 			pManager->WriteData(u, fname);
 			pManager->WriteData(v, fname);
 			pManager->WriteData(w, fname);
 			pManager->WriteData(P, fname);
 			pManager->WriteData(e, fname);
+			pManager->WriteData(T, fname);
 
 			if (!pManager->IsFirstNode()) pManager->Wait(rank - 1);
 
@@ -1465,6 +1487,7 @@ public:
 			ofs << "\"" << "w" << "\" ";
 			ofs << "\"" << "P" << "\" ";
 			ofs << "\"" << "e" << "\" ";
+			ofs << "\"" << "T" << "\" ";
 			ofs << std::endl;
 
 			ofs << "ZONE T=\"1\"";	//zone name
@@ -1477,7 +1500,7 @@ public:
 			if (K == -1) ofs << "K=" << g.nZ;
 			else ofs << "K=" << 1;
 			ofs << "F=POINT\n";
-			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
+			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
 		}
 		else {
 			//Wait for previous process to finish writing
@@ -1504,6 +1527,7 @@ public:
 					double w = U[3] / ro;
 					double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
 					double P = (gamma - 1.0) * ro * e;
+					double T = (gamma - 1.0) * molarMass * e / universalGasConstant;
 
 					//Write to file
 					if (I == -1) ofs << x << " ";
@@ -1515,6 +1539,7 @@ public:
 					ofs << w << " ";
 					ofs << P << " ";
 					ofs << e << " ";
+					ofs << T << " ";
 					ofs << std::endl;
 				};
 			};

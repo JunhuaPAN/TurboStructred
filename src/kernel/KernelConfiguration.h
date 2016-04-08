@@ -31,6 +31,8 @@ public:
 	double Gamma{ 1.4 };
 	double Viscosity{ 0.0 };
 	double ThermalConductivity{ 0.0 };
+	double MolarMass{ 0.0 };
+	double UniversalGasConstant{ 8.3144598 };
 
 	//model configuration
 	bool IsViscousFlow{ false };
