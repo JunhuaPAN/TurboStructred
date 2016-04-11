@@ -1955,7 +1955,7 @@ void RunKonuhovMixing(int argc, char *argv[]) {
 	};
 	kernel->isSensorEnable = true;
 	kernel->SaveSensorRecordIterations = 10;
-	std::unique_ptr<CellSensor> sen = std::make_unique<CellSensor>("temp_centr.dat", *kernel->pManager, kernel->g, GetTemp);
+	std::unique_ptr<CellSensor> sen = std::make_unique<CellSensor>("temp_centr.dat", *kernel->pManager, kernel->grid, GetTemp);
 	sen->SetSensor((int)(conf.nX * 0.5), (int)(conf.nY * 0.5), (int)(conf.nZ * 0.5), 5);
 	kernel->Sensors.push_back(std::move(sen));
 	for (auto& r : kernel->Sensors) r->Process(kernel->values);		//initial recording

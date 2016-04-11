@@ -153,12 +153,12 @@ namespace ContactDisTest
 		kernel->Run();
 
 		// Compute exact solution
-		TestsUtility::exact_solution = ComputeExactSolution(params, kernel->g, conf.MaxTime);
+		TestsUtility::exact_solution = ComputeExactSolution(params, kernel->grid, conf.MaxTime);
 
 		// Compute accuracy
-		std::valarray<double> inner_values(&(kernel->values[TestsUtility::nVar * kernel->g.dummyCellLayersX]), kernel->g.nlocalX * kernel->nVariables);
-		std::vector<double> L2 = TestsUtility::ComputeL2Error(inner_values, kernel->g, *(kernel->pManager));
-		std::vector<double> L1 = TestsUtility::ComputeL1Error(inner_values, kernel->g, *(kernel->pManager));
+		std::valarray<double> inner_values(&(kernel->values[TestsUtility::nVar * kernel->grid.dummyCellLayersX]), kernel->grid.nlocalX * kernel->nVariables);
+		std::vector<double> L2 = TestsUtility::ComputeL2Error(inner_values, kernel->grid, *(kernel->pManager));
+		std::vector<double> L1 = TestsUtility::ComputeL1Error(inner_values, kernel->grid, *(kernel->pManager));
 
 		// Write in errors
 		errors = L2;
@@ -183,11 +183,11 @@ namespace ContactDisTest
 		fname << ".dat";
 		std::string filename = fname.str();
 		kernel->SaveSolution(filename);
-		TestsUtility::SaveExactSolution(filename, kernel->g, *(kernel->pManager));
+		TestsUtility::SaveExactSolution(filename, kernel->grid, *(kernel->pManager));
 
 		// Save the errors
 		std::string fname2("Test-ContactDiscontinuity.dat");
-		TestsUtility::WriteErrors(fname2, errors, kernel->g, *(kernel->pManager));
+		TestsUtility::WriteErrors(fname2, errors, kernel->grid, *(kernel->pManager));
 
 		// Finalize kernel
 		kernel->Finalize();

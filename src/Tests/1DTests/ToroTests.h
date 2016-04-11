@@ -455,12 +455,12 @@ namespace ToroTests
 		kernel->Run();
 
 		// Compute exact solution
-		TestsUtility::exact_solution = ComputeExactSolution(Ntest, params, kernel->g, kernel->stepInfo.Time);
+		TestsUtility::exact_solution = ComputeExactSolution(Ntest, params, kernel->grid, kernel->stepInfo.Time);
 
 		// Compute accuracy
-		std::valarray<double> inner_values(&(kernel->values[TestsUtility::nVar * kernel->g.dummyCellLayersX]), kernel->g.nlocalX * kernel->nVariables);
-		std::vector<double> L2 = TestsUtility::ComputeL2Error(inner_values, kernel->g, *(kernel->pManager), conf.nX);
-		std::vector<double> L1 = TestsUtility::ComputeL1Error(inner_values, kernel->g, *(kernel->pManager), conf.nX);
+		std::valarray<double> inner_values(&(kernel->values[TestsUtility::nVar * kernel->grid.dummyCellLayersX]), kernel->grid.nlocalX * kernel->nVariables);
+		std::vector<double> L2 = TestsUtility::ComputeL2Error(inner_values, kernel->grid, *(kernel->pManager), conf.nX);
+		std::vector<double> L1 = TestsUtility::ComputeL1Error(inner_values, kernel->grid, *(kernel->pManager), conf.nX);
 
 		// Write in errors
 		errors = L2;
@@ -485,12 +485,12 @@ namespace ToroTests
 		fname << ".dat";
 		std::string filename = fname.str();
 		kernel->SaveSolution(filename);
-		TestsUtility::SaveExactSolution(filename, kernel->g, *(kernel->pManager));
+		TestsUtility::SaveExactSolution(filename, kernel->grid, *(kernel->pManager));
 
 		// Save the errors
 		std::stringstream fname2;
 		fname2 << "ToroTest_" << Ntest << ".dat";
-		TestsUtility::WriteErrors(fname2.str(), errors, kernel->g, *(kernel->pManager));
+		TestsUtility::WriteErrors(fname2.str(), errors, kernel->grid, *(kernel->pManager));
 
 		// Finalize kernel
 		kernel->Finalize();
