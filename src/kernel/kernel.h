@@ -13,6 +13,7 @@
 
 #include "KernelConfiguration.h"
 #include "grid.h"
+#include "GasProperties.h"
 #include "ParallelManager.h"
 #include "utility/Vector.h"
 #include "utility/Matrix.h"
@@ -54,12 +55,9 @@ public:
 	StepInfo stepInfo;
 
 	// Gas model information
-	int nVariables; // number of conservative variables
-	double gamma;
-	double thermalConductivity;
-	double viscosity;
-	double molarMass;
-	double universalGasConstant;
+	int nVariables;			// number of conservative variables
+	GasProperties gas_prop;	// all parameters of the gas
+
 	bool isViscousFlow;
 	bool isGradientRequired;
 	bool isExternalAccelaration;
@@ -114,7 +112,7 @@ public:
 		double rho_e = vals[4] - 0.5 * rho * (u * u + v * v + w * w);
 
 		// Pressure
-		res[0] = rho_e * (gamma - 1.0);
+		res[0] = rho_e * (gas_prop.gamma - 1.0);
 
 		// Velosities
 		res[1] = u;
@@ -130,7 +128,7 @@ public:
 	// Inverse transition
 	inline std::valarray<double> InverseVariablesTransition(std::valarray<double> &vals) {
 		std::valarray<double> res(nVariables);
-		double rho_e = vals[0] / (gamma - 1.0);
+		double rho_e = vals[0] / (gas_prop.gamma - 1.0);
 		double rho = rho_e / vals[4];
 		double rho_u = rho * vals[1];
 		double rho_v = rho * vals[2];
@@ -224,7 +222,7 @@ public:
 		pManager->Barrier();
 	};
 
-	//Initialize kernel
+	//Initialize kernel  ( TO DO READ THE CONFIG FILE)
 	virtual void Init(KernelConfiguration& config) {
 		// Initialize MPI		
 		nDims = config.nDims;
@@ -259,11 +257,11 @@ public:
 		pManager->Barrier();
 
 		//Initialize gas model parameters and Riemann solver
-		gamma = config.Gamma;
-		viscosity = config.Viscosity;
-		thermalConductivity = config.ThermalConductivity;
-		molarMass = config.MolarMass;
-		universalGasConstant = config.UniversalGasConstant;
+		gas_prop.gamma = config.Gamma;
+		gas_prop.viscosity = config.Viscosity;
+		gas_prop.thermalConductivity = config.ThermalConductivity;
+		gas_prop.molarMass = config.MolarMass;
+		gas_prop.universalGasConstant = config.UniversalGasConstant;
 		if (config.IsViscousFlow == true) {
 			isViscousFlow = true;
 			isGradientRequired = true;
@@ -1064,7 +1062,7 @@ public:
 				double v = U[2] / ro;
 				double w = U[3] / ro;
 				double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
-				double P = (gamma - 1.0) * ro * e;
+				double P = (gas_prop.gamma - 1.0) * ro * e;
 
 				//Write to file
 				ofs << x << " ";
@@ -1164,10 +1162,10 @@ public:
 			std::valarray<double> e = values[std::gslice(idx_first * nVariables + 4, s, str)];
 			e /= rho;
 			e = e - 0.5 * (u * u + v * v + w * w);
-			std::valarray<double> P = (gamma - 1.0) * (rho * e);
+			std::valarray<double> P = (gas_prop.gamma - 1.0) * (rho * e);
 
 			// Temperature
-			double cond = (gamma - 1.0) * molarMass / universalGasConstant;
+			double cond = (gas_prop.gamma - 1.0) * gas_prop.molarMass / gas_prop.universalGasConstant;
 			std::valarray<double> T = cond * e;
 
 			// write all data
@@ -1296,12 +1294,12 @@ public:
 			// Internal Energy and Pressure
 			std::valarray<double> e = values[std::gslice(idx_first * nVariables + 4, s, str)];		// ro * E
 			e = e - k;		// ro * e
-			std::valarray<double> P = (gamma - 1.0) * (e);
+			std::valarray<double> P = (gas_prop.gamma - 1.0) * (e);
 			e /= rho;		// e
 
 
 			// Temperature
-			double cond = (gamma - 1.0) * molarMass / universalGasConstant;
+			double cond = (gas_prop.gamma - 1.0) * gas_prop.molarMass / gas_prop.universalGasConstant;
 			std::valarray<double> T = cond * e;
 
 			// Write all data
@@ -1425,7 +1423,7 @@ public:
 					double v = U[2] / ro;
 					double w = U[3] / ro;
 					double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
-					double P = (gamma - 1.0) * ro * e;
+					double P = (gas_prop.gamma - 1.0) * ro * e;
 
 					//Write to file
 					if (I == -1) ofs << x << " ";
@@ -1526,8 +1524,8 @@ public:
 					double v = U[2] / ro;
 					double w = U[3] / ro;
 					double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
-					double P = (gamma - 1.0) * ro * e;
-					double T = (gamma - 1.0) * molarMass * e / universalGasConstant;
+					double P = (gas_prop.gamma - 1.0) * ro * e;
+					double T = (gas_prop.gamma - 1.0) * gas_prop.molarMass * e / gas_prop.universalGasConstant;
 
 					//Write to file
 					if (I == -1) ofs << x << " ";

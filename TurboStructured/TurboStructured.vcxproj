@@ -60,6 +60,7 @@
     <ClInclude Include="..\src\kernel\grid.h" />
     <ClInclude Include="..\src\kernel\kernel.h" />
     <ClInclude Include="..\src\kernel\KernelConfiguration.h" />
+    <ClInclude Include="..\src\kernel\GasProperties.h" />
     <ClInclude Include="..\src\kernel\ParallelManager.h" />
     <ClInclude Include="..\src\Methods\ExplicitRungeKuttaFVM.h" />
     <ClInclude Include="..\src\Methods\MethodConfiguration.h" />

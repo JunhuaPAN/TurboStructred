@@ -667,7 +667,7 @@ public:
 		};
 
 		//second viscosity
-		double s_viscosity = (-2.0 / 3.0) * viscosity;
+		double s_viscosity = (-2.0 / 3.0) * gas_prop.viscosity;
 
 		//index of face
 		int faceInd = 0;
@@ -718,9 +718,9 @@ public:
 
 					//compute stress tensor
 					double tau_diagonal = s_viscosity * (du.x + dv.y + dw.z);
-					double tau_xx = tau_diagonal + 2 * viscosity * du.x;
-					double tau_xy = viscosity * (du.y + dv.x);
-					double tau_xz = viscosity * (du.z + dw.x);
+					double tau_xx = tau_diagonal + 2 * gas_prop.viscosity * du.x;
+					double tau_xy = gas_prop.viscosity * (du.y + dv.x);
+					double tau_xz = gas_prop.viscosity * (du.z + dw.x);
 
 					//work of viscous stresses and heat conduction (not implemented yet)
 					double ThettaX = u * tau_xx + v * tau_xy + w * tau_xz;
@@ -779,9 +779,9 @@ public:
 					
 					//compute stress tensor
 					double tau_diagonal = s_viscosity * (du.x + dv.y + dw.z);
-					double tau_yy = tau_diagonal + 2 * viscosity * dv.y;
-					double tau_xy = viscosity * (du.y + dv.x);
-					double tau_yz = viscosity * (dv.z + dw.y);
+					double tau_yy = tau_diagonal + 2 * gas_prop.viscosity * dv.y;
+					double tau_xy = gas_prop.viscosity * (du.y + dv.x);
+					double tau_yz = gas_prop.viscosity * (dv.z + dw.y);
 
 					//work of viscous stresses and heat conduction (not implemented yet)
 					double ThettaY = u * tau_xy + v * tau_yy + w * tau_yz;
@@ -840,9 +840,9 @@ public:
 
 					//compute stress tensor
 					double tau_diagonal = s_viscosity * (du.x + dv.y + dw.z);
-					double tau_zz = tau_diagonal + 2 * viscosity * dw.z;
-					double tau_xz = viscosity*(du.z + dw.x);
-					double tau_yz = viscosity*(dv.z + dw.y);
+					double tau_zz = tau_diagonal + 2 * gas_prop.viscosity * dw.z;
+					double tau_xz = gas_prop.viscosity*(du.z + dw.x);
+					double tau_yz = gas_prop.viscosity*(dv.z + dw.y);
 
 					//work of viscous stresses and heat conduction (not implemented yet)
 					double ThettaZ = u * tau_xz + v * tau_yz + w * tau_zz;
@@ -903,7 +903,7 @@ public:
 					};
 
 					//we have only one or no external layer of cells reconstructions
-					reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][k - grid.kMin + zLayer] = ComputeReconstruction<ReconstructionType>(stencil_values, points, cell_values, cell_center, nDims, gamma);
+					reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][k - grid.kMin + zLayer] = ComputeReconstruction<ReconstructionType>(stencil_values, points, cell_values, cell_center, nDims, gas_prop.gamma);
 				};
 			};
 		};
@@ -1221,9 +1221,9 @@ public:
 						// Add up spectral radius estimate
 						spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
 						double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
-						double gammaFace = gamma;
+						double gammaFace = gas_prop.gamma;
 						double vsr = std::max(4.0 / (3.0 * roFace), gammaFace / roFace);
-						double viscosityFace = viscosity;
+						double viscosityFace = gas_prop.viscosity;
 						double PrandtlNumberFace = 1.0;
 						vsr *= viscosityFace / PrandtlNumberFace;
 						vsr *= fS*fS;
@@ -1296,9 +1296,9 @@ public:
 							// Add up spectral radius estimate
 							spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
 							double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
-							double gammaFace = gamma;
+							double gammaFace = gas_prop.gamma;
 							double vsr = std::max(4.0 / (3.0 * roFace), gammaFace / roFace);
-							double viscosityFace = viscosity;
+							double viscosityFace = gas_prop.viscosity;
 							double PrandtlNumberFace = 1.0;
 							vsr *= viscosityFace / PrandtlNumberFace;
 							vsr *= fS*fS;
@@ -1371,9 +1371,9 @@ public:
 							// Add up spectral radius estimate
 							spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
 							double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
-							double gammaFace = gamma;
+							double gammaFace = gas_prop.gamma;
 							double vsr = std::max(4.0 / (3.0 * roFace), gammaFace / roFace);
-							double viscosityFace = viscosity;
+							double viscosityFace = gas_prop.viscosity;
 							double PrandtlNumberFace = 1.0;
 							vsr *= viscosityFace / PrandtlNumberFace;
 							vsr *= fS*fS;
