@@ -69,7 +69,7 @@ namespace ExactEulerSolution {
 
 		conf.MaxTime = par.comp_time;
 		conf.MaxIteration = 1000000;
-		conf.SaveSolutionSnapshotTime = 0.1 * par.comp_time;
+		conf.SaveSolutionTime = 0.1 * par.comp_time;
 		conf.ResidualOutputIterations = 20;
 
 		// init kernel

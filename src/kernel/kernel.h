@@ -34,7 +34,8 @@ public:
 	double TimeStep;	
 	int Iteration;
 	std::vector<double> Residual;
-	double NextSnapshotTime;
+	double NextSolutionSnapshotTime;
+	double NextSliceSnapshotTime;
 };
 
 
@@ -136,10 +137,10 @@ public:
 	// Calculation parameters	
 	int MaxIteration;
 	double MaxTime;
-	double SaveSolutionSnapshotTime;
-	double SaveSliceSnapshotTime;
-	int SaveSolutionSnapshotIterations;
-	int SaveSliceSnapshotIterations;
+	double SaveSolutionTime;
+	double SaveSliceTime;
+	int SaveSolutionIterations;
+	int SaveSliceIterations;
 
 	int ResidualOutputIterations{ };
 	bool ContinueComputation{ false };
@@ -224,7 +225,7 @@ public:
 		// Initialize cartezian topology
 		pManager->InitCartesianTopology(grid);
 
-		// Compute local gris sizes
+		// Compute local gris sizes and initialize local grid
 		grid.nlocalX = grid.nX / pManager->dimsCart[0];
 		grid.nlocalY = grid.nY / pManager->dimsCart[1];
 		grid.nlocalZ = grid.nZ / pManager->dimsCart[2];
@@ -250,6 +251,8 @@ public:
 		gas_prop.thermalConductivity = config.ThermalConductivity;
 		gas_prop.molarMass = config.MolarMass;
 		gas_prop.universalGasConstant = config.UniversalGasConstant;
+
+		// Set all flags as configuration requires
 		if (config.IsViscousFlow == true) {
 			isViscousFlow = true;
 			isGradientRequired = true;
@@ -276,14 +279,19 @@ public:
 		//Initialize calculation parameters
 		MaxTime = config.MaxTime;
 		MaxIteration = config.MaxIteration;
-		SaveSolutionSnapshotTime = config.SaveSolutionSnapshotTime;
-		SaveSliceSnapshotTime = config.SaveSliceSnapshotTime;
-		SaveSolutionSnapshotIterations = config.SaveSolutionSnapshotIterations;
-		SaveSliceSnapshotIterations = config.SaveSliceSnapshotIterations;
+		SaveSolutionTime = config.SaveSolutionTime;
+		SaveSliceTime = config.SaveSliceTime;
+		SaveSolutionIterations = config.SaveSolutionIterations;
+		SaveSliceIterations = config.SaveSliceIterations;
 		ResidualOutputIterations = config.ResidualOutputIterations;
-		stepInfo.Time = 0;
-		stepInfo.Iteration = 0;
-		stepInfo.NextSnapshotTime = max(SaveSolutionSnapshotTime, SaveSliceSnapshotTime);
+
+		// Initialize step information
+		if (ContinueComputation == false) {
+			stepInfo.Time = 0;
+			stepInfo.Iteration = 0;
+			stepInfo.NextSolutionSnapshotTime = SaveSolutionTime;
+			stepInfo.NextSliceSnapshotTime = SaveSliceTime;
+		};
 
 		//Initialize boundary conditions
 		InitBoundaryConditions(config);
@@ -1505,10 +1513,13 @@ public:
 	//Run calculation
 	void Run() {
 		//Calculate snapshot times order of magnitude
-		int snapshotTimePrecision = 0;
-		double SaveTimeInterval = max(SaveSolutionSnapshotTime, SaveSliceSnapshotTime);
-		if (SaveTimeInterval > 0) {
-			snapshotTimePrecision = static_cast<int>(1 - std::floor(std::log10(SaveTimeInterval)));
+		int SolutionTimePrecision = 0;
+		int SliceTimePrecision = 0;
+		if (SaveSolutionTime > 0) {
+			SolutionTimePrecision = static_cast<int>(1 - std::floor(std::log10(SaveSolutionTime)));
+		};
+		if (SaveSliceTime > 0) {
+			SliceTimePrecision = static_cast<int>(1 - std::floor(std::log10(SaveSliceTime)));
 		};
 
 		//Open history file
@@ -1594,23 +1605,23 @@ public:
 			};
 
 			//Solution and slice snapshots every few iterations
-			if ((SaveSolutionSnapshotIterations != 0) && (stepInfo.Iteration % SaveSolutionSnapshotIterations) == 0) {
+			if ((SaveSolutionIterations != 0) && (stepInfo.Iteration % SaveSolutionIterations) == 0) {
 				//Save snapshot
 				std::stringstream snapshotFileName;
 				snapshotFileName.str(std::string());
-				snapshotFileName << "dataI" << stepInfo.Iteration << ".dat";
+				snapshotFileName << "solution, It = " << stepInfo.Iteration << ".dat";
 				SaveSolution(snapshotFileName.str());
 
 				if (pManager->IsMaster()) {
 					std::cout << "Solution has been written to file \"" << snapshotFileName.str() << "\"" << std::endl;
 				};
 			};
-			if ((SaveSliceSnapshotIterations != 0) && (stepInfo.Iteration % SaveSliceSnapshotIterations) == 0) {
+			if ((SaveSliceIterations != 0) && (stepInfo.Iteration % SaveSliceIterations) == 0) {
 				//Save snapshots
 				for (auto i = 0; i < slices.size(); i++) {
 					std::stringstream snapshotFileName;
 					snapshotFileName.str(std::string());
-					snapshotFileName << "slice" << i << ",I=" << stepInfo.Iteration << ".dat";
+					snapshotFileName << "slice" << i << ", It =" << stepInfo.Iteration << ".dat";
 					SaveSliceToTecplot(snapshotFileName.str(), slices[i]);
 
 					if (pManager->IsMaster()) {
@@ -1620,13 +1631,13 @@ public:
 			};
 			
 			//Every fixed time interval
-			if ((SaveSolutionSnapshotTime > 0) && (stepInfo.NextSnapshotTime == stepInfo.Time)) {
+			if ((SaveSolutionTime > 0) && (stepInfo.NextSolutionSnapshotTime == stepInfo.Time)) {
 				//Save snapshot
 				std::stringstream snapshotFileName;
 				snapshotFileName.str(std::string());
 				snapshotFileName << std::fixed;
-				snapshotFileName.precision(snapshotTimePrecision);
-				snapshotFileName << "dataT" << stepInfo.Time << ".dat";
+				snapshotFileName.precision(SolutionTimePrecision);
+				snapshotFileName << "solution, t = " << stepInfo.Time << ".dat";
 				SaveSolution(snapshotFileName.str());
 
 				if (pManager->IsMaster()) {
@@ -1634,16 +1645,16 @@ public:
 				};
 
 				//Adjust next snapshot time
-				if(SaveSliceSnapshotTime == 0) stepInfo.NextSnapshotTime += SaveSolutionSnapshotTime;
+				stepInfo.NextSolutionSnapshotTime += SaveSolutionTime;
 			};
-			if ((SaveSliceSnapshotTime > 0) && (stepInfo.NextSnapshotTime == stepInfo.Time)) {
+			if ((SaveSliceTime > 0) && (stepInfo.NextSliceSnapshotTime == stepInfo.Time)) {
 				//Save snapshots
 				for (auto i = 0; i < slices.size(); i++) {
 					std::stringstream snapshotFileName;
 					snapshotFileName.str(std::string());
 					snapshotFileName << "slice" << i;
 					snapshotFileName << std::fixed;
-					snapshotFileName.precision(snapshotTimePrecision);
+					snapshotFileName.precision(SliceTimePrecision);
 					snapshotFileName << ",T=" << stepInfo.Time << ".dat";
 					SaveSliceToTecplot(snapshotFileName.str(), slices[i]);
 
@@ -1653,7 +1664,7 @@ public:
 				};
 
 				//Adjust next snapshot time
-				stepInfo.NextSnapshotTime += SaveSliceSnapshotTime;
+				stepInfo.NextSliceSnapshotTime += SaveSliceTime;
 			};
 
 			//Save convergence history		

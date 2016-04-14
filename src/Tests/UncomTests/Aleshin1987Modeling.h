@@ -118,8 +118,8 @@ namespace AleshinExp {
 
 		conf.MaxTime = TotalTime;
 		conf.MaxIteration = 1000000;
-		conf.SaveSolutionSnapshotTime = 4.0e-5;
-		conf.SaveSolutionSnapshotIterations = 0;
+		conf.SaveSolutionTime = 4.0e-5;
+		conf.SaveSolutionIterations = 0;
 		conf.ResidualOutputIterations = 40;
 
 		// init kernel
@@ -271,8 +271,8 @@ namespace AleshinExp {
 
 		conf.MaxTime = TotalTime;
 		conf.MaxIteration = 1000000;
-		conf.SaveSolutionSnapshotTime = 1.0e-5;
-		conf.SaveSolutionSnapshotIterations = 0;
+		conf.SaveSolutionTime = 1.0e-5;
+		conf.SaveSolutionIterations = 0;
 		conf.ResidualOutputIterations = 10;
 
 		// init kernel

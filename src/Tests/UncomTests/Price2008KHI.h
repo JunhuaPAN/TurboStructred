@@ -62,7 +62,7 @@ namespace Price2008KHI {
 		// Computational settings
 		conf.MaxTime = 20.0;
 		conf.MaxIteration = 1000000;
-		conf.SaveSolutionSnapshotTime = 0.1;
+		conf.SaveSolutionTime = 0.1;
 		conf.ResidualOutputIterations = 50;
 
 		// Init kernel

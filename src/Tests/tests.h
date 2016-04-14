@@ -118,7 +118,7 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 
 	conf.MaxTime = 0.25;
 	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0.1;
+	conf.SaveSolutionTime = 0.1;
 	conf.ResidualOutputIterations = 10;
 
 	//init kernel
@@ -178,8 +178,8 @@ void RunSODTestReconstruction(int argc, char *argv[]) {
 
 	conf.MaxTime = 0.2;
 	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0.1;
-	conf.SaveSolutionSnapshotIterations = 0;
+	conf.SaveSolutionTime = 0.1;
+	conf.SaveSolutionIterations = 0;
 	conf.ResidualOutputIterations = 10;
 
 	//init kernel
@@ -249,8 +249,8 @@ void RunContactDisconTest1D(int argc, char *argv[]) {
 
 	conf.MaxTime = 0.3;
 	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0.1;
-	conf.SaveSolutionSnapshotIterations = 0;
+	conf.SaveSolutionTime = 0.1;
+	conf.SaveSolutionIterations = 0;
 	conf.ResidualOutputIterations = 10;
 
 	//init kernel
@@ -337,8 +337,8 @@ void RunSODYTest(int argc, char *argv[]) {
 	// Task and output settings
 	conf.MaxTime = 0.25;
 	conf.MaxIteration = 1000000;
-	//conf.SaveSolutionSnapshotTime = 0.1;
-	conf.SaveSliceSnapshotTime = 0.1;
+	//conf.SaveSolutionTime = 0.1;
+	conf.SaveSliceTime = 0.1;
 	conf.ResidualOutputIterations = 10;
 
 	// Init kernel
@@ -428,8 +428,8 @@ void RunSODInverseYTest(int argc, char *argv[]) {
 	// Task and output settings
 	conf.MaxTime = 0.25;
 	conf.MaxIteration = 1000000;
-	//conf.SaveSolutionSnapshotTime = 0.1;
-	conf.SaveSliceSnapshotTime = 0.1;
+	//conf.SaveSolutionTime = 0.1;
+	conf.SaveSliceTime = 0.1;
 	conf.ResidualOutputIterations = 10;
 
 	// Init kernel
@@ -520,8 +520,8 @@ void Run2DComparisonTest(int argc, char *argv[]) {
 
 	conf.MaxTime = 0.2;
 	conf.MaxIteration = 10;
-	conf.SaveSolutionSnapshotTime = 0.1;
-	conf.SaveSolutionSnapshotIterations = 1;
+	conf.SaveSolutionTime = 0.1;
+	conf.SaveSolutionIterations = 1;
 	conf.ResidualOutputIterations = 10;
 
 	//init kernel
@@ -616,8 +616,8 @@ void RunFluxesTest2D(int argc, char *argv[]) {
 
 	conf.MaxTime = 0.2;
 	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0;
-	conf.SaveSolutionSnapshotIterations = 1;
+	conf.SaveSolutionTime = 0;
+	conf.SaveSolutionIterations = 1;
 	conf.ResidualOutputIterations = 1;
 
 	conf.Viscosity = viscosity;
@@ -688,8 +688,8 @@ void RunSODTestRoe2D(int argc, char *argv[]) {
 
 	conf.MaxTime = 0.2;
 	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0.1;
-	conf.SaveSolutionSnapshotIterations = 0;
+	conf.SaveSolutionTime = 0.1;
+	conf.SaveSolutionIterations = 0;
 	conf.ResidualOutputIterations = 10;
 
 	//init kernel
@@ -754,8 +754,8 @@ void RunNohProblem2D(int argc, char *argv[]) {
 
 	conf.MaxTime = 0.6;
 	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0.1;
-	conf.SaveSolutionSnapshotIterations = 0;
+	conf.SaveSolutionTime = 0.1;
+	conf.SaveSolutionIterations = 0;
 	conf.ResidualOutputIterations = 20;
 
 	//init kernel
@@ -847,8 +847,8 @@ void RunTriplePointRoe2D(int argc, char *argv[]) {
 
 	conf.MaxTime = 5.5;
 	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0.5;
-	conf.SaveSolutionSnapshotIterations = 0;
+	conf.SaveSolutionTime = 0.5;
+	conf.SaveSolutionIterations = 0;
 	conf.ResidualOutputIterations = 10;
 
 	//init kernel
@@ -948,7 +948,7 @@ void RunKHI2D(int argc, char *argv[]) {
 	// Computational settings
 	conf.MaxTime = 20.0;
 	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0.1;
+	conf.SaveSolutionTime = 0.1;
 	conf.ResidualOutputIterations = 50;
 
 	// Init kernel
@@ -1019,8 +1019,8 @@ void RunExactEulerTest2D(int argc, char *argv[]) {
 
 	conf.MaxTime = 4.0;
 	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 1.0;
-	conf.SaveSolutionSnapshotIterations = 0;
+	conf.SaveSolutionTime = 1.0;
+	conf.SaveSolutionIterations = 0;
 	conf.ResidualOutputIterations = 50;
 
 	//init kernel
@@ -1112,8 +1112,8 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 
 	conf.MaxTime = 10.0;
 	conf.MaxIteration = 10000000;
-	conf.SaveSolutionSnapshotTime = 0.1;
-	conf.SaveSliceSnapshotTime = 0.1;
+	conf.SaveSolutionTime = 0.1;
+	conf.SaveSliceTime = 0.1;
 	conf.ResidualOutputIterations = 50;
 	conf.DebugOutputEnabled = false;
 
@@ -1222,8 +1222,8 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 
 	conf.MaxTime = 1.0;
 	conf.MaxIteration = 10000000;
-	//conf.SaveSolutionSnapshotTime = 0.001;
-	conf.SaveSliceSnapshotTime = 0.001;
+	//conf.SaveSolutionTime = 0.001;
+	conf.SaveSliceTime = 0.001;
 	conf.ResidualOutputIterations = 50;
 	conf.DebugOutputEnabled = false;
 
@@ -1324,8 +1324,8 @@ void RunShearFlow2D(int argc, char *argv[]) {
 
 	conf.MaxTime = 20.0;
 	conf.MaxIteration = 10000000;
-	conf.SaveSolutionSnapshotTime = 0.05;
-	conf.SaveSolutionSnapshotIterations = 0;
+	conf.SaveSolutionTime = 0.05;
+	conf.SaveSolutionIterations = 0;
 	conf.ResidualOutputIterations = 1000;
 	conf.DebugOutputEnabled = false;
 
@@ -1463,9 +1463,9 @@ void RunShearFlow3D(int argc, char *argv[]) {
 
 	conf.MaxTime = 20.0;
 	conf.MaxIteration = 10000000;
-	//conf.SaveSolutionSnapshotTime = 0.05;
-	//conf.SaveSolutionSnapshotIterations = 0;
-	conf.SaveSliceSnapshotTime = 0.05;
+	//conf.SaveSolutionTime = 0.05;
+	//conf.SaveSolutionIterations = 0;
+	conf.SaveSliceTime = 0.05;
 	conf.ResidualOutputIterations = 100;
 	conf.DebugOutputEnabled = false;
 
@@ -1588,8 +1588,8 @@ void RunShearFlow3DZ(int argc, char *argv[]) {
 	// Output info
 	conf.MaxTime = 2.0;
 	conf.MaxIteration = 10000000;
-	conf.SaveSolutionSnapshotTime = 0.0005;
-	conf.SaveSliceSnapshotTime = 0.0005;
+	conf.SaveSolutionTime = 0.0005;
+	conf.SaveSliceTime = 0.0005;
 	conf.ResidualOutputIterations = 10;
 	conf.DebugOutputEnabled = false;
 
@@ -1714,8 +1714,8 @@ void RunRTI2D(int argc, char *argv[]) {
 	// Computation Settings
 	conf.MaxTime = 1.0;
 	conf.MaxIteration = 10000000;
-	conf.SaveSolutionSnapshotTime = 0.1;
-	conf.SaveSolutionSnapshotIterations = 0;
+	conf.SaveSolutionTime = 0.1;
+	conf.SaveSolutionIterations = 0;
 	conf.ResidualOutputIterations = 50;
 
 	// Source terms
@@ -1810,9 +1810,9 @@ void RunTurbulentMixing(int argc, char *argv[]) {
 
 	conf.MaxTime = 20.0;
 	conf.MaxIteration = 10000000;
-	conf.SaveSolutionSnapshotTime = 0.001;
-	//conf.SaveSolutionSnapshotIterations = 0;
-	//conf.SaveSliceSnapshotTime = 0.05;
+	conf.SaveSolutionTime = 0.001;
+	//conf.SaveSolutionIterations = 0;
+	//conf.SaveSliceTime = 0.05;
 	conf.ResidualOutputIterations = 10;
 	conf.DebugOutputEnabled = false;
 
@@ -1907,7 +1907,7 @@ void RunKonuhovMixing(int argc, char *argv[]) {
 	// Computational settings
 	conf.MaxTime = 10.0;
 	conf.MaxIteration = 1000000;
-	conf.SaveSolutionSnapshotTime = 0;
+	conf.SaveSolutionTime = 0;
 	conf.ResidualOutputIterations = 20;
 
 	// Init kernel
@@ -2016,8 +2016,8 @@ void RunPoiseuille3DZ(int argc, char *argv[]) {
 
 	conf.MaxTime = 1.0;
 	conf.MaxIteration = 10000000;
-	conf.SaveSolutionSnapshotTime = 0.005;
-	//conf.SaveSliceSnapshotTime = 0.005;
+	conf.SaveSolutionTime = 0.005;
+	//conf.SaveSliceTime = 0.005;
 	conf.ResidualOutputIterations = 50;
 	conf.DebugOutputEnabled = false;
 
@@ -2126,9 +2126,9 @@ void RunPoiseuille3DX(int argc, char *argv[]) {
 
 	conf.MaxTime = 1.0;
 	conf.MaxIteration = 10000000;
-	//conf.SaveSolutionSnapshotIterations = 1;
-	//conf.SaveSolutionSnapshotTime = 0.005;
-	conf.SaveSliceSnapshotTime = 0.005;
+	//conf.SaveSolutionIterations = 1;
+	//conf.SaveSolutionTime = 0.005;
+	conf.SaveSliceTime = 0.005;
 	conf.ResidualOutputIterations = 10;
 	conf.DebugOutputEnabled = false;
 
@@ -2236,9 +2236,9 @@ void RunPoiseuille3DY(int argc, char *argv[]) {
 
 	conf.MaxTime = 1.0;
 	conf.MaxIteration = 10000000;
-	//conf.SaveSolutionSnapshotIterations = 1;
-	//conf.SaveSolutionSnapshotTime = 0.001;
-	conf.SaveSliceSnapshotTime = 0.001;
+	//conf.SaveSolutionIterations = 1;
+	//conf.SaveSolutionTime = 0.001;
+	conf.SaveSliceTime = 0.001;
 	conf.ResidualOutputIterations = 20;
 	conf.DebugOutputEnabled = false;
 

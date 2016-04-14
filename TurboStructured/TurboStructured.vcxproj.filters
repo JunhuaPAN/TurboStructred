@@ -260,9 +260,6 @@
     <ClInclude Include="..\src\utility\VariablesTransition.h">
       <Filter>Header Files\Utility</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Reconstruction\ENO2CharactVars.h">
-      <Filter>Header Files\Reconstruction</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\utility\Integration.h">
       <Filter>Header Files\Utility</Filter>
     </ClInclude>
@@ -298,6 +295,9 @@
     </ClInclude>
     <ClInclude Include="..\src\kernel\GasProperties.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Reconstruction\ENO2CharactVars.h">
+      <Filter>Header Files\Reconstruction</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

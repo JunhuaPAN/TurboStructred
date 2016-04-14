@@ -84,8 +84,8 @@ namespace RarefactionTest1
 
 		conf.MaxTime = 0.012;
 		conf.MaxIteration = 100000;
-		conf.SaveSolutionSnapshotTime = 0;
-		conf.SaveSolutionSnapshotIterations = 0;
+		conf.SaveSolutionTime = 0;
+		conf.SaveSolutionIterations = 0;
 		conf.ResidualOutputIterations = 100;
 
 		return conf;

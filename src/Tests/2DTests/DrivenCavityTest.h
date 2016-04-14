@@ -87,9 +87,9 @@ namespace DrivenCavityTest {
 		// Computational settings
 		conf.MaxTime = 100.0;
 		conf.MaxIteration = 10000000;
-		conf.SaveSolutionSnapshotTime = 0.01;
-		conf.SaveSolutionSnapshotIterations = 0;
-		conf.SaveSliceSnapshotTime = 0.01;
+		conf.SaveSolutionTime = 0.01;
+		conf.SaveSolutionIterations = 0;
+		conf.SaveSliceTime = 0.01;
 		conf.ResidualOutputIterations = 100;
 		
 		// init kernel

@@ -1414,7 +1414,8 @@ public:
 			};
 		};
 
-		if ((SaveSolutionSnapshotTime != 0) || (SaveSliceSnapshotTime != 0)) dt = std::min(stepInfo.NextSnapshotTime - stepInfo.Time, dt);
+		if ((SaveSolutionTime > 0) && (stepInfo.NextSolutionSnapshotTime < stepInfo.Time + dt)) dt = stepInfo.NextSolutionSnapshotTime - stepInfo.Time;
+		if ((SaveSliceTime > 0) && (stepInfo.NextSliceSnapshotTime < stepInfo.Time + dt)) dt = stepInfo.NextSliceSnapshotTime - stepInfo.Time;
 		dt = pManager->Min(dt);
 
 		return dt;
