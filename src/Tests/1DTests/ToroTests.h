@@ -499,7 +499,7 @@ namespace ToroTests
 	};
 	
 	void RunExperiment(int argc, char *argv[]) {
-		int Ntest = 1;	// Toro test number
+		int Ntest = 4;	// Toro test number
 		int Nx = 400;
 
 		//	Reconstruction type

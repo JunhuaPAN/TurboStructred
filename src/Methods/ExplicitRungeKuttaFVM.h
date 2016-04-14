@@ -199,7 +199,7 @@ public:
 		for (int i = grid.iMin; i <= grid.iMax; i++) {
 			for (int j = grid.jMin; j <= grid.jMax; j++) {
 				for (int k = grid.kMin; k <= grid.kMax; k++) {
-					int idx = getSerialIndexLocal(i, j, k);
+					int idx = grid.getSerialIndexLocal(i, j, k);
 
 					//Cell values
 					double *V = getCellValues(i, j, k);
@@ -280,7 +280,7 @@ public:
 						nRecv += nDims;
 						if (rankDest == -1) continue;
 
-						int idxCell = getSerialIndexLocal(i, j, k);
+						int idxCell = grid.getSerialIndexLocal(i, j, k);
 						bufferToSend[idxBuffer * nDims] = cellGradients[idxCell].x;
 						if (nDims > 1) bufferToSend[idxBuffer * nDims + 1] = cellGradients[idxCell].y;
 						if (nDims > 2) bufferToSend[idxBuffer * nDims + 2] = cellGradients[idxCell].z;
@@ -307,7 +307,7 @@ public:
 					if ((direction == Direction::YDirection) && (j != iRecv)) continue; //skip
 					for (k = grid.kMin - grid.dummyCellLayersZ; k <= grid.kMax + grid.dummyCellLayersZ; k++) {
 						if ((direction == Direction::ZDirection) && (k != iRecv)) continue; //skip
-						int idxCell = getSerialIndexLocal(i, j, k);
+						int idxCell = grid.getSerialIndexLocal(i, j, k);
 						cellGradients[idxCell].x = bufferToRecv[idxBuffer * nDims];
 						cellGradients[idxCell].y = 0;
 						if (nDims > 1) cellGradients[idxCell].y = bufferToRecv[idxBuffer * nDims + 1];
@@ -462,8 +462,8 @@ public:
 							int iIn = grid.iMin + layer - 1; // opposite index
 							cellCenter.x = grid.CoordinateX[iIn];
 							faceCenter.x = (grid.CoordinateX[iIn] + grid.CoordinateX[i]) / 2.0;		// TO DO WRONG for nonuniform grid
-							int idx = getSerialIndexLocal(i, j, k);
-							int idxIn = getSerialIndexLocal(iIn, j, k);
+							int idx = grid.getSerialIndexLocal(i, j, k);
+							int idxIn = grid.getSerialIndexLocal(iIn, j, k);
 
 							//Apply left boundary conditions						
 							double *V = getCellValues(iIn, j, k);
@@ -482,8 +482,8 @@ public:
 							int iIn = grid.iMax - layer + 1; // opposite index
 							cellCenter.x = grid.CoordinateX[iIn];
 							faceCenter.x = (grid.CoordinateX[iIn] + grid.CoordinateX[i]) / 2.0;	// TO DO wrong for nonuniform grid
-							int idx = getSerialIndexLocal(i, j, k);
-							int idxIn = getSerialIndexLocal(iIn, j, k);
+							int idx = grid.getSerialIndexLocal(i, j, k);
+							int idxIn = grid.getSerialIndexLocal(iIn, j, k);
 
 							//Apply right boundary conditions						
 							double *V = getCellValues(iIn, j, k);
@@ -532,8 +532,8 @@ public:
 							int jIn = grid.jMin + layer - 1; // opposite index
 							cellCenter.y = grid.CoordinateY[jIn];
 							faceCenter.y = (grid.CoordinateY[jIn] + grid.CoordinateY[j]) / 2.0;		// TO DO wrong for nonuniform grid
-							int idx = getSerialIndexLocal(i, j, k);
-							int idxIn = getSerialIndexLocal(i, jIn, k);
+							int idx = grid.getSerialIndexLocal(i, j, k);
+							int idxIn = grid.getSerialIndexLocal(i, jIn, k);
 
 							//Apply left boundary conditions						
 							double *V = getCellValues(i, jIn, k);
@@ -552,8 +552,8 @@ public:
 							int jIn = grid.jMax - layer + 1; // opposite index
 							cellCenter.y = grid.CoordinateY[jIn];
 							faceCenter.y = (grid.CoordinateY[jIn] + grid.CoordinateY[j]) / 2.0;		// TO DO wrong for nonuniform grid
-							int idx = getSerialIndexLocal(i, j, k);
-							int idxIn = getSerialIndexLocal(i, jIn, k);
+							int idx = grid.getSerialIndexLocal(i, j, k);
+							int idxIn = grid.getSerialIndexLocal(i, jIn, k);
 
 							//Apply right boundary conditions						
 							double *V = getCellValues(i, jIn, k);
@@ -602,8 +602,8 @@ public:
 							int kIn = grid.kMin + layer - 1; // opposite index
 							cellCenter.z = grid.CoordinateZ[kIn];
 							faceCenter.z = (grid.CoordinateZ[kIn] + grid.CoordinateZ[k]) / 2.0;		// TO DO wrong for nonuniform grid
-							int idx = getSerialIndexLocal(i, j, k);
-							int idxIn = getSerialIndexLocal(i, j, kIn);
+							int idx = grid.getSerialIndexLocal(i, j, k);
+							int idxIn = grid.getSerialIndexLocal(i, j, kIn);
 
 							//Apply left boundary conditions						
 							double *V = getCellValues(i, j, kIn);
@@ -622,8 +622,8 @@ public:
 							int kIn = grid.kMax - layer + 1; // opposite index
 							cellCenter.z = grid.CoordinateZ[kIn];
 							faceCenter.z = (grid.CoordinateZ[kIn] + grid.CoordinateZ[k]) / 2.0;		// TO DO wrong for nonuniform grid
-							int idx = getSerialIndexLocal(i, j, k);
-							int idxIn = getSerialIndexLocal(i, j, kIn);
+							int idx = grid.getSerialIndexLocal(i, j, k);
+							int idxIn = grid.getSerialIndexLocal(i, j, kIn);
 
 							//Apply right boundary conditions						
 							double *V = getCellValues(i, j, kIn);
@@ -687,8 +687,8 @@ public:
 					//Conservative variables and serial index in left and right cell 
 					double* UL = getCellValues(i - 1, j, k);
 					double* UR = getCellValues(i, j, k);
-					int sL = getSerialIndexLocal(i - 1, j, k);
-					int sR = getSerialIndexLocal(i, j, k);
+					int sL = grid.getSerialIndexLocal(i - 1, j, k);
+					int sR = grid.getSerialIndexLocal(i, j, k);
 					double dx = grid.CoordinateX[i] - grid.CoordinateX[i - 1];
 
 					//U component derivatives
@@ -748,8 +748,8 @@ public:
 					//Conservative variables and serial index in left (bottom) and right (top) cell 
 					double* UL = getCellValues(i, j - 1, k);
 					double* UR = getCellValues(i, j, k);
-					int sL = getSerialIndexLocal(i, j - 1, k);
-					int sR = getSerialIndexLocal(i, j, k);
+					int sL = grid.getSerialIndexLocal(i, j - 1, k);
+					int sR = grid.getSerialIndexLocal(i, j, k);
 					double dy = grid.CoordinateY[j] - grid.CoordinateY[j - 1];
 
 					//U component derivatives
@@ -809,8 +809,8 @@ public:
 					//Conservative variables and serial index in left (back) and right (front) cell 
 					double* UL = getCellValues(i, j, k - 1);
 					double* UR = getCellValues(i, j, k);
-					int sL = getSerialIndexLocal(i, j, k - 1);
-					int sR = getSerialIndexLocal(i, j, k);
+					int sL = grid.getSerialIndexLocal(i, j, k - 1);
+					int sR = grid.getSerialIndexLocal(i, j, k);
 					double dz = grid.CoordinateZ[k] - grid.CoordinateZ[k - 1];
 
 					//U component derivatives
@@ -1203,8 +1203,8 @@ public:
 					fr = result.Fluxes;
 
 					// Compute viscous flux
-					int sL = getSerialIndexLocal(i - 1, j, k);
-					int sR = getSerialIndexLocal(i, j, k);
+					int sL = grid.getSerialIndexLocal(i - 1, j, k);
+					int sR = grid.getSerialIndexLocal(i, j, k);
 					if (isViscousFlow == true) fvisc = vfluxesX[faceInd];
 					for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
 
@@ -1212,7 +1212,7 @@ public:
 					if (i > grid.iMin)
 					{
 						// Fluxes difference equals residual
-						int idx = getSerialIndexLocal(i - 1, j, k);
+						int idx = grid.getSerialIndexLocal(i - 1, j, k);
 						for (int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += -(fr[nv] - fl[nv]) * fS;
 
 						// Compute volume of cell
@@ -1278,8 +1278,8 @@ public:
 						fr = result.Fluxes;
 
 						// Compute viscous flux
-						int sL = getSerialIndexLocal(i, j - 1, k);
-						int sR = getSerialIndexLocal(i, j, k);
+						int sL = grid.getSerialIndexLocal(i, j - 1, k);
+						int sR = grid.getSerialIndexLocal(i, j, k);
 						if (isViscousFlow == true) fvisc = vfluxesY[faceInd];
 						for (int nv = 0; nv < nVariables; nv++) fr[nv] -= fvisc[nv];
 
@@ -1287,7 +1287,7 @@ public:
 						if (j > grid.jMin)
 						{
 							// Fluxes difference equals residual
-							int idx = getSerialIndexLocal(i, j - 1, k);
+							int idx = grid.getSerialIndexLocal(i, j - 1, k);
 							for (int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += -(fr[nv] - fl[nv]) * fS;
 
 							// Compute volume of cell
@@ -1353,8 +1353,8 @@ public:
 						fr = result.Fluxes;
 
 						// Compute viscous flux
-						int sL = getSerialIndexLocal(i, j, k - 1);
-						int sR = getSerialIndexLocal(i, j, k);
+						int sL = grid.getSerialIndexLocal(i, j, k - 1);
+						int sR = grid.getSerialIndexLocal(i, j, k);
 						if (isViscousFlow == true) fvisc = vfluxesZ[faceInd];
 						for (int nv = 0; nv < nVariables; nv++) fr[nv] -= fvisc[nv];
 
@@ -1362,7 +1362,7 @@ public:
 						if (k > grid.kMin)
 						{
 							// Fluxes difference equals residual
-							int idx = getSerialIndexLocal(i, j, k - 1);
+							int idx = grid.getSerialIndexLocal(i, j, k - 1);
 							for (int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += -(fr[nv] - fl[nv]) * fS;
 
 							// Compute volume of cell
@@ -1404,7 +1404,7 @@ public:
 				for (int k = grid.kMin; k <= grid.kMax; k++) {
 					//Compute cell volume
 					double volume = grid.hx[i] * grid.hy[j] * grid.hz[k];
-					int idx = getSerialIndexLocal(i, j, k);
+					int idx = grid.getSerialIndexLocal(i, j, k);
 					double sR = spectralRadius[idx];
 					double localdt = CFL * volume / sR; //Blazek f. 6.20
 

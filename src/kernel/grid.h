@@ -54,6 +54,10 @@ public:
 	std::valarray<double> hy;
 	std::valarray<double> hz;
 
+	// local grid volumes in order of local serial indexes of cells
+	std::valarray<double> volumes;
+
+	// number of dummy layers
 	int dummyCellLayersX;
 	int dummyCellLayersY;
 	int dummyCellLayersZ;
@@ -138,7 +142,7 @@ public:
 		nCellsLocal = nlocalX * nlocalY * nlocalZ;
 		nCellsLocalAll = nlocalXAll * nlocalYAll * nlocalZAll;
 
-		//Compressible Grid scheme
+		// Compressible Grid scheme
 		//
 		//	_|________|_________|_
 		//	 |        |         |
@@ -159,7 +163,7 @@ public:
 		//	_|________|_________|_		)
 		//	 |		  |			|
 
-		//fill cell centers positions and edges sizes
+		// fill cell centers positions and edges sizes
 		double h_x = Lx / nX;			//uniform grid case
 		if ((qx != 1) && (nX % 2 == 0)) h_x = 0.5 * Lx * (1.0 - qx) / (1.0 - pow(qx, 0.5 * nX));	// X step around the border for even cells number
 		if ((qx != 1) && (nX % 2 == 1)) h_x = Lx * (1.0 - qx) / (2.0 - pow(qx, 0.5 * (nX - 1)) * (1.0 + qx));		// for odd cell numbers
@@ -234,7 +238,29 @@ public:
 
 		if (nDims < 2) hy[0] = 1.0;
 		if (nDims < 3) hz[0] = 1.0;
+
+		// compute volumes of local cells
+		volumes.resize(nCellsLocalAll);
+		for (int i = iMin - dummyCellLayersX; i <= iMax + dummyCellLayersX; i++)
+		{
+			for (int j = jMin - dummyCellLayersY; j <= jMax + dummyCellLayersY; j++)
+			{
+				for (int k = kMin - dummyCellLayersZ; k <= kMax + dummyCellLayersZ; k++)
+				{
+					// get serial local index
+					int idx = getSerialIndexLocal(i, j, k);
+					//Compute cell volume
+					volumes[idx] = hx[i] * hy[j] * hz[k];
+				};
+			};
+		};
 	}
+
+	// Get local index for cell
+	inline int getSerialIndexLocal(int i, int j, int k) {
+		int sI = (k - kMin + dummyCellLayersZ) * nlocalXAll * nlocalYAll + (j - jMin + dummyCellLayersY) * nlocalXAll + (i - iMin + dummyCellLayersX);
+		return sI;
+	};
 
 };
 

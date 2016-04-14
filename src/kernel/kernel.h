@@ -84,21 +84,9 @@ public:
 	std::valarray<double> residual;
 	std::vector<Slice> slices;
 
-	// Get serial index for cell
-	inline int getSerialIndexGlobal(int i, int j, int k) {
-		int sI = (k * grid.nXAll * grid.nYAll + j * grid.nXAll + i);
-		return sI;
-	};
-
-	// Get local index for cell
-	inline int getSerialIndexLocal(int i, int j, int k) {
-		int sI = (k - grid.kMin + grid.dummyCellLayersZ) * grid.nlocalXAll * grid.nlocalYAll + (j - grid.jMin + grid.dummyCellLayersY) * grid.nlocalXAll + (i - grid.iMin + grid.dummyCellLayersX);
-		return sI;
-	};
-
 	// Get cell values
 	inline double* getCellValues(int i, int j, int k) {
-		int sBegin = getSerialIndexLocal(i, j, k) * nVariables;
+		int sBegin = grid.getSerialIndexLocal(i, j, k) * nVariables;
 		return &values[sBegin];
 	};
 
@@ -175,7 +163,7 @@ public:
 					double x = grid.CoordinateX[i];
 					double y = grid.CoordinateY[j];
 					double z = grid.CoordinateZ[k];
-					int sBegin = getSerialIndexLocal(i, j, k) * nVariables;
+					int sBegin = grid.getSerialIndexLocal(i, j, k) * nVariables;
 					std::vector<double> U = initF(Vector(x, y, z));
 					for (int varn = 0; varn < nVariables; varn++) values[sBegin + varn] = U[varn];
 
@@ -208,7 +196,7 @@ public:
 					cell.hz = grid.hz[k];
 					double cellV = cell.hx * cell.hy * cell.hz;
 
-					int sBegin = getSerialIndexLocal(i, j, k) * nVariables;
+					int sBegin = grid.getSerialIndexLocal(i, j, k) * nVariables;
 					values[slice(sBegin, nVariables, 1)] = Int.IntegrateGroap(cell, initF, nVariables) / cellV;
 				};
 			};
@@ -336,53 +324,13 @@ public:
 
 	//Update solution
 	void UpdateSolution(double dt) {
-		stepInfo.Residual.resize(nVariables);
-		for (int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = 0;
+		stepInfo.Residual.resize(nVariables, 0);		
 
-		for (int i = grid.iMin; i <= grid.iMax; i++)
-		{
-			for (int j = grid.jMin; j <= grid.jMax; j++)
-			{
-				for (int k = grid.kMin; k <= grid.kMax; k++)
-				{
-					int idx = getSerialIndexLocal(i, j, k);
-					//Compute cell volume
-					double volume{ grid.hx[i] * grid.hy[j] * grid.hz[k] };
-					//Update cell values
-					for (int nv = 0; nv < nVariables; nv++) {
-						values[idx * nVariables + nv] += residual[idx * nVariables + nv] * dt / volume;
-						//Compute total residual
-						stepInfo.Residual[nv] += abs(residual[idx * nVariables + nv]);			// L1 norm
-					};
-				};
-			};
-		};
-
-		//Aggregate
-		for (int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = pManager->Sum(stepInfo.Residual[nv]);
-	};
-
-	//Update Residual
-	void UpdateResiduals() {
-		stepInfo.Residual.resize(nVariables);
-		for (int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = 0;
-
-		for (int i = grid.iMin; i <= grid.iMax; i++)
-		{
-			for (int j = grid.jMin; j <= grid.jMax; j++)
-			{
-				for (int k = grid.kMin; k <= grid.kMax; k++)
-				{
-					int idx = getSerialIndexLocal(i, j, k);
-					//Compute cell volume
-					double volume = grid.hx[i] * grid.hy[j] * grid.hz[k];
-					//Update cell values
-					for (int nv = 0; nv < nVariables; nv++) {
-						//Compute total residual
-						stepInfo.Residual[nv] += abs(residual[idx * nVariables + nv]);
-					};
-				};
-			};
+		for (auto nv = 0; nv < nVariables; nv++) {
+			std::slice val_slice(nv, grid.nCellsLocalAll, nVariables);
+			std::valarray<double> c = dt * ((std::valarray<double>)residual[val_slice] / grid.volumes);
+			values[val_slice] += c;
+			stepInfo.Residual[nv] = ( grid.volumes * abs((std::valarray<double>)residual[val_slice]) ).sum();
 		};
 
 		//Aggregate
@@ -546,7 +494,7 @@ public:
 				for (i = grid.iMin; i <= grid.iMax; i++) {
 					for (k = grid.kMin; k <= grid.kMax; k++) {
 						int idxBuffer = (i - grid.iMin) + (k - grid.kMin) * grid.nlocalX; //Exclude y index
-						int idxValues = getSerialIndexLocal(i, jSend, k);
+						int idxValues = grid.getSerialIndexLocal(i, jSend, k);
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
 					};
 				};
@@ -571,7 +519,7 @@ public:
 			for (i = grid.iMin; i <= grid.iMax; i++) {
 				for (k = grid.kMin; k <= grid.kMax; k++) {
 					int idxBuffer = (i - grid.iMin) + (k - grid.kMin) * grid.nlocalX; //Exclude y index
-					int idxValues = getSerialIndexLocal(i, jRecv, k);
+					int idxValues = grid.getSerialIndexLocal(i, jRecv, k);
 					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
 				};
 			};
@@ -595,7 +543,7 @@ public:
 				for (i = grid.iMin; i <= grid.iMax; i++) {
 					for (k = grid.kMin; k <= grid.kMax; k++) {
 						int idxBuffer = (i - grid.iMin) + (k - grid.kMin) * grid.nlocalX; //Exclude y index
-						int idxValues = getSerialIndexLocal(i, jSend, k);
+						int idxValues = grid.getSerialIndexLocal(i, jSend, k);
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
 					};
 				};
@@ -613,7 +561,7 @@ public:
 			for (i = grid.iMin; i <= grid.iMax; i++) {
 				for (k = grid.kMin; k <= grid.kMax; k++) {
 					int idxBuffer = (i - grid.iMin) + (k - grid.kMin) * grid.nlocalX; //Exclude y index
-					int idxValues = getSerialIndexLocal(i, jRecv, k);
+					int idxValues = grid.getSerialIndexLocal(i, jRecv, k);
 					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
 				};
 			};
@@ -659,7 +607,7 @@ public:
 				for (i = grid.iMin; i <= grid.iMax; i++) {
 					for (j = grid.jMin; j <= grid.jMax; j++) {
 						int idxBuffer = (i - grid.iMin) + (j - grid.jMin) * grid.nlocalX; //Exclude z index
-						int idxValues = getSerialIndexLocal(i, j, kSend);
+						int idxValues = grid.getSerialIndexLocal(i, j, kSend);
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
 					};
 				};
@@ -684,7 +632,7 @@ public:
 			for (i = grid.iMin; i <= grid.iMax; i++) {
 				for (j = grid.jMin; j <= grid.jMax; j++) {
 					int idxBuffer = (i - grid.iMin) + (j - grid.jMin) * grid.nlocalX; //Exclude z index
-					int idxValues = getSerialIndexLocal(i, j, kRecv);
+					int idxValues = grid.getSerialIndexLocal(i, j, kRecv);
 					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
 				};
 			};
@@ -708,7 +656,7 @@ public:
 				for (i = grid.iMin; i <= grid.iMax; i++) {
 					for (j = grid.jMin; j <= grid.jMax; j++) {
 						int idxBuffer = (i - grid.iMin) + (j - grid.jMin) * grid.nlocalX; //Exclude z index
-						int idxValues = getSerialIndexLocal(i, j, kSend);
+						int idxValues = grid.getSerialIndexLocal(i, j, kSend);
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
 					};
 				};
@@ -726,7 +674,7 @@ public:
 			for (i = grid.iMin; i <= grid.iMax; i++) {
 				for (j = grid.jMin; j <= grid.jMax; j++) {
 					int idxBuffer = (i - grid.iMin) + (j - grid.jMin) * grid.nlocalX; //Exclude z index
-					int idxValues = getSerialIndexLocal(i, j, kRecv);
+					int idxValues = grid.getSerialIndexLocal(i, j, kRecv);
 					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
 				};
 			};
@@ -794,8 +742,8 @@ public:
 							int iIn = grid.iMin + layer - 1; // opposite index
 							cellCenter.x = grid.CoordinateX[iIn];
 							faceCenter.x = (grid.CoordinateX[iIn] + grid.CoordinateX[i]) / 2.0;		// TO DO WRONG for nonuniform grid
-							int idx = getSerialIndexLocal(i, j, k);
-							int idxIn = getSerialIndexLocal(iIn, j, k);
+							int idx = grid.getSerialIndexLocal(i, j, k);
+							int idxIn = grid.getSerialIndexLocal(iIn, j, k);
 
 							//Apply left boundary conditions						
 							std::valarray<double> dValues = xLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
@@ -810,8 +758,8 @@ public:
 							int iIn = grid.iMax - layer + 1; // opposite index
 							cellCenter.x = grid.CoordinateX[iIn];
 							faceCenter.x = (grid.CoordinateX[iIn] + grid.CoordinateX[i]) / 2.0;		// TO DO WRONG for nonuniform grid
-							int idx = getSerialIndexLocal(i, j, k);
-							int idxIn = getSerialIndexLocal(iIn, j, k);
+							int idx = grid.getSerialIndexLocal(i, j, k);
+							int idxIn = grid.getSerialIndexLocal(iIn, j, k);
 
 							//Apply right boundary conditions						
 							std::valarray<double> dValues = xRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
@@ -861,8 +809,8 @@ public:
 							int jIn = grid.jMin + layer - 1; // opposite index
 							cellCenter.y = grid.CoordinateY[jIn];
 							faceCenter.y = (grid.CoordinateY[jIn] + grid.CoordinateY[j]) / 2.0;	//for uniform dummy cells		TO DO MODIFY
-							int idx = getSerialIndexLocal(i, j, k);
-							int idxIn = getSerialIndexLocal(i, jIn, k);
+							int idx = grid.getSerialIndexLocal(i, j, k);
+							int idxIn = grid.getSerialIndexLocal(i, jIn, k);
 
 							//Apply left boundary conditions						
 							std::valarray<double> dValues = yLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
@@ -877,8 +825,8 @@ public:
 							int jIn = grid.jMax - layer + 1; // opposite index
 							cellCenter.y = grid.CoordinateY[jIn];
 							faceCenter.y = (grid.CoordinateY[jIn] + grid.CoordinateY[j]) / 2.0;
-							int idx = getSerialIndexLocal(i, j, k);
-							int idxIn = getSerialIndexLocal(i, jIn, k);
+							int idx = grid.getSerialIndexLocal(i, j, k);
+							int idxIn = grid.getSerialIndexLocal(i, jIn, k);
 
 							//Apply right boundary conditions						
 							std::valarray<double> dValues = yRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
@@ -929,8 +877,8 @@ public:
 							int kIn = grid.kMin + layer - 1; // opposite index
 							cellCenter.z = grid.CoordinateZ[kIn];
 							faceCenter.z = (grid.CoordinateZ[kIn] + grid.CoordinateZ[k]) / 2.0;
-							int idx = getSerialIndexLocal(i, j, k);
-							int idxIn = getSerialIndexLocal(i, j, kIn);
+							int idx = grid.getSerialIndexLocal(i, j, k);
+							int idxIn = grid.getSerialIndexLocal(i, j, kIn);
 
 							//Apply left boundary conditions						
 							std::valarray<double> dValues = zLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
@@ -945,8 +893,8 @@ public:
 							int kIn = grid.kMax - layer + 1; // opposite index
 							cellCenter.z = grid.CoordinateZ[kIn];
 							faceCenter.z = (grid.CoordinateZ[kIn] + grid.CoordinateZ[k]) / 2.0;
-							int idx = getSerialIndexLocal(i, j, k);
-							int idxIn = getSerialIndexLocal(i, j, kIn);
+							int idx = grid.getSerialIndexLocal(i, j, k);
+							int idxIn = grid.getSerialIndexLocal(i, j, kIn);
 
 							//Apply right boundary conditions						
 							std::valarray<double> dValues = zRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
@@ -973,7 +921,7 @@ public:
 		for (int i = grid.iMin; i <= grid.iMax; i++) {
 			for (int j = grid.jMin; j <= grid.jMax; j++) {
 				for (int k = grid.kMin; k <= grid.kMax; k++) {
-					int idx = getSerialIndexLocal(i, j, k);
+					int idx = grid.getSerialIndexLocal(i, j, k);
 					//Compute cell volume
 					double volume = grid.hx[i] * grid.hy[j] * grid.hz[k];
 
@@ -998,7 +946,7 @@ public:
 		for (int i = grid.iMin; i <= grid.iMax; i++) {
 			for (int j = grid.jMin; j <= grid.jMax; j++) {
 				for (int k = grid.kMin; k <= grid.kMax; k++) {
-					int idx = getSerialIndexLocal(i, j, k);
+					int idx = grid.getSerialIndexLocal(i, j, k);
 					//Compute cell volume
 					double volume = grid.hx[i] * grid.hy[j] * grid.hz[k];
 					double *V = getCellValues(i, j, k);
@@ -1139,7 +1087,7 @@ public:
 			pManager->Barrier();
 
 			// Compute variables
-			auto idx_first = getSerialIndexLocal(grid.iMin, grid.jMin, 0);
+			auto idx_first = grid.getSerialIndexLocal(grid.iMin, grid.jMin, 0);
 			std::valarray<size_t> s{ size_t(grid.nlocalY), size_t(grid.nlocalX) };
 			std::valarray<size_t> str{ size_t(grid.nlocalXAll * nVariables), size_t(nVariables) };
 
@@ -1269,7 +1217,7 @@ public:
 			pManager->Barrier();
 
 			// Compute variables
-			auto idx_first = getSerialIndexLocal(grid.iMin, grid.jMin, grid.kMin);
+			auto idx_first = grid.getSerialIndexLocal(grid.iMin, grid.jMin, grid.kMin);
 			std::valarray<size_t> s{ size_t(grid.nlocalZ), size_t(grid.nlocalY), size_t(grid.nlocalX) };
 			std::valarray<size_t> str{ size_t(grid.nlocalYAll * grid.nlocalXAll * nVariables), size_t(grid.nlocalXAll * nVariables), size_t(nVariables) };
 
