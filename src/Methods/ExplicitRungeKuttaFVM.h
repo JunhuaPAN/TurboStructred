@@ -35,81 +35,49 @@ public:
 	std::vector<Vector> gradientVelocityZ;  //array for storing gradients of w
 	std::vector< std::vector< std::vector<ReconstructionType> > > reconstructions; //array for storing 
 
-																				   // Initizalization
-	void Init(KernelConfiguration& kernelConfig) {
-		// Invoke base class init
-		Kernel::Init(kernelConfig);
-
+	// Initialize Method
+	virtual void InitializeMethod(KernelConfiguration& kernelConfig) override {
 		// Method specific part
 		MethodConfiguration config = kernelConfig.methodConfiguration;
-		assert(config.RungeKuttaOrder != 0);			// Runge-Kutta order is not initialized
+		assert(config.RungeKuttaOrder != 0);							// Runge-Kutta order is not initialized
 		assert(config.RiemannProblemSolver != RPSolver::NoSolver);		// No solver was choosen
+
+		// Set parameters CFL and so on
 		CFL = config.CFL;
 		RungeKuttaOrder = config.RungeKuttaOrder;
+
+		// Set RP solver
 		if (config.RiemannProblemSolver == RPSolver::RoePikeSolver) {
-			_riemannSolver = (std::unique_ptr<RiemannSolver>)std::move(new RoeSolverPerfectGasEOS(kernelConfig.Gamma, config.Eps, config.OperatingPresure));
+			_riemannSolver = (std::unique_ptr<RiemannSolver>)std::move(new RoeSolverPerfectGasEOS(kernelConfig.Gamma, config.Eps));
 		};
 		if (config.RiemannProblemSolver == RPSolver::GodunovSolver) {
-			_riemannSolver = (std::unique_ptr<RiemannSolver>)std::move(new GodunovSolverPerfectGasEOS(kernelConfig.Gamma, config.Eps, config.OperatingPresure));
+			_riemannSolver = (std::unique_ptr<RiemannSolver>)std::move(new GodunovSolverPerfectGasEOS(kernelConfig.Gamma, config.Eps));
 		};
 
-		// Allocate memory for values and residual
+		// Allocate memory for all structures
 		spectralRadius.resize(grid.nCellsLocalAll);
 
-		// Resize our reconstructions array
-		reconstructions.resize(grid.nlocalX + 2 * grid.dummyCellLayersX);
-		for (auto& r : reconstructions) r.resize(grid.nlocalY + 2 * grid.dummyCellLayersY);
-		for (auto& r : reconstructions) {
-			for (auto& s : r) s.resize(grid.nlocalZ + 2 * grid.dummyCellLayersZ);
-		};
+		// Resize reconstructions 3D array and initialize them
+		reconstructions.resize(grid.nlocalX + 2 * min(1, grid.dummyCellLayersX));
+		for (auto i = 0; i < reconstructions.size(); i++) {
+			size_t sy = grid.nlocalY + 2 * min(1, grid.dummyCellLayersY);
+			reconstructions[i].resize(sy);
 
-		// Pass N Dimensions and N values to dummy cells reconstructions
-		if (grid.dummyCellLayersX > 0) {
-			int yLayer = 0;
-			int zLayer = 0;
-			if (grid.dummyCellLayersY > 0) yLayer = 1;
-			if (grid.dummyCellLayersZ > 0) zLayer = 1;
-			for (int j = yLayer; j <= grid.jMax - grid.jMin + yLayer; j++) {
-				for (int k = zLayer; k <= grid.kMax - grid.kMin + zLayer; k++) {
-					reconstructions[0][j][k].nValues = nVariables;
-					reconstructions[0][j][k].nDims = nDims;
-					reconstructions[grid.iMax - grid.iMin + 2][j][k].nValues = nVariables;
-					reconstructions[grid.iMax - grid.iMin + 2][j][k].nDims = nDims;
-				};
-			};
-		};
-		if (grid.dummyCellLayersY > 0) {
-			int xLayer = 0;
-			int zLayer = 0;
-			if (grid.dummyCellLayersX > 0) xLayer = 1;
-			if (grid.dummyCellLayersZ > 0) zLayer = 1;
-			for (int i = xLayer; i <= grid.iMax - grid.iMin + xLayer; i++) {
-				for (int k = zLayer; k <= grid.kMax - grid.kMin + zLayer; k++) {
-					reconstructions[i][0][k].nValues = nVariables;
-					reconstructions[i][0][k].nDims = nDims;
-					reconstructions[i][grid.jMax - grid.jMin + 2][k].nValues = nVariables;
-					reconstructions[i][grid.jMax - grid.jMin + 2][k].nDims = nDims;
-				};
-			};
-		};
-		if (grid.dummyCellLayersZ > 0) {
-			int xLayer = 0;
-			int yLayer = 0;
-			if (grid.dummyCellLayersX > 0) xLayer = 1;
-			if (grid.dummyCellLayersY > 0) yLayer = 1;
-			for (int i = xLayer; i <= grid.iMax - grid.iMin + xLayer; i++) {
-				for (int j = yLayer; j <= grid.jMax - grid.jMin + yLayer; j++) {
-					reconstructions[i][j][0].nValues = nVariables;
-					reconstructions[i][j][0].nDims = nDims;
-					reconstructions[i][j][grid.kMax - grid.kMin + 2].nValues = nVariables;
-					reconstructions[i][j][grid.kMax - grid.kMin + 2].nDims = nDims;
+			for(auto j = 0; j < sy; j++) {
+				size_t sz = grid.nlocalZ + 2 * min(1, grid.dummyCellLayersZ);
+				reconstructions[i][j].resize(sz);
+
+				for (auto k = 0; k < sz; k++) {
+					reconstructions[i][j][k].nValues = nVariables;
+					reconstructions[i][j][k].nDims = nDims;
 				};
 			};
 		};
 
-		//Sync
-		pManager->Barrier();
+		// end of method initialization part
 	};
+
+	
 
 	//=================================   Viscous Part  ======================================
 

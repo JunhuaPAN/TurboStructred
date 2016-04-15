@@ -42,7 +42,8 @@ public:
 // Calculation kernel
 class Kernel {
 public:
-	virtual void IterationStep() = 0; // main function
+	virtual void IterationStep() = 0;		// main function
+	virtual void InitializeMethod(KernelConfiguration& config) = 0;	// initialization of parameters of the Method
 
 	// Parallel run information
 	std::unique_ptr<ParallelManager> pManager;
@@ -293,12 +294,15 @@ public:
 			stepInfo.NextSliceSnapshotTime = SaveSliceTime;
 		};
 
-		//Initialize boundary conditions
+		// Initialize boundary conditions
 		InitBoundaryConditions(config);
 
-		//External forces
+		// External forces
 		Sigma = config.Sigma;
 		UniformAcceleration = config.UniformAcceleration;
+
+		// Initialize method by method configuration
+		InitializeMethod(config);
 
 		if (DebugOutputEnabled) {
 			std::cout << "rank = " << pManager->getRank() << ", Kernel initialized\n";
