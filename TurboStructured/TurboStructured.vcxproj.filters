@@ -137,9 +137,6 @@
     <ClInclude Include="..\src\BoundaryConditions\BCGeneral.h">
       <Filter>Header Files\BoundaryConditions</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\utility\GeomFunctions.h">
-      <Filter>Header Files\Utility</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\tests\tests.h">
       <Filter>Header Files\Tests</Filter>
     </ClInclude>

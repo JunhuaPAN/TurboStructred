@@ -14,7 +14,7 @@
 
 using namespace Eigen;
 
-//Compute gradient using least squares
+//Compute gradient using least squares  (NOT USED NOW)
 Vector ComputeGradientByPoints(int ndims, Vector point, double value, const std::vector<Vector>& points, const std::vector<double>& values) {
   Vector grad;
 

@@ -28,7 +28,7 @@ public:
 	ExplicitRungeKuttaFVM(int* argc, char **argv[]) : Kernel(argc, argv) {};
 
 	//Additional data
-	std::vector<double> spectralRadius;		//array for storing spectral radiuses
+	std::valarray<double> spectralRadius;		//array for storing spectral radiuses
 	std::vector<std::vector<double>> fluxes; // array for storing fluxes
 	std::vector<Vector> gradientVelocityX;  //array for storing gradients of u
 	std::vector<Vector> gradientVelocityY;  //array for storing gradients of v
@@ -76,40 +76,9 @@ public:
 
 		// end of method initialization part
 	};
-
-	
+		
 
 	//=================================   Viscous Part  ======================================
-
-	//! Compute gradient of given function in given cell
-	Vector ComputeGradient(int i, int j, int k, std::function<double(double*)> func) {
-		std::vector<Vector> points;
-		std::vector<double> pointValues;
-		Vector center = Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k]);
-		double value = func(getCellValues(i, j, k));
-
-		//Add neighbours
-		points.clear();
-		pointValues.clear();
-		points.push_back(Vector(CoordinateX[i - 1], CoordinateY[j], CoordinateZ[k]));
-		pointValues.push_back(func(getCellValues(i - 1, j, k)));
-		points.push_back(Vector(CoordinateX[i + 1], CoordinateY[j], CoordinateZ[k]));
-		pointValues.push_back(func(getCellValues(i + 1, j, k)));
-		if (nDims > 1) {
-			points.push_back(Vector(CoordinateX[i], CoordinateY[j - 1], CoordinateZ[k]));
-			pointValues.push_back(func(getCellValues(i, j - 1, k)));
-			points.push_back(Vector(CoordinateX[i], CoordinateY[j + 1], CoordinateZ[k]));
-			pointValues.push_back(func(getCellValues(i, j + 1, k)));
-		};
-		if (nDims > 2) {
-			points.push_back(Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k - 1]));
-			pointValues.push_back(func(getCellValues(i, j, k - 1)));
-			points.push_back(Vector(CoordinateX[i], CoordinateY[j], CoordinateZ[k + 1]));
-			pointValues.push_back(func(getCellValues(i, j, k + 1)));
-		};
-		Vector grad = ComputeGradientByPoints(nDims, center, value, points, pointValues);
-		return grad;
-	};
 
 	// TO DO only first order now
 	Vector ComputeGradientUniformStructured(int i, int j, int k, std::function<double(double*)> func) {
@@ -1102,7 +1071,7 @@ public:
 	}; // function
 
 	   //Compute residual
-	void ComputeResidual(const std::valarray<double>& values, std::valarray<double>& residual, std::vector<double>& spectralRadius) {
+	void ComputeResidual(const std::valarray<double>& values, std::valarray<double>& residual, std::valarray<double>& spectralRadius) {
 		//  init spectral radius storage for each cell
 		for (double& sr : spectralRadius) sr = 0; //Nullify
 		for (double& r : residual) r = 0; //Nullify residual
@@ -1365,28 +1334,16 @@ public:
 	};
 
 	//Compute global time step
-	double ComputeTimeStep(std::vector<double>& spectralRadius) {
-		double dt = std::numeric_limits<double>::max();
-		for (int i = grid.iMin; i <= grid.iMax; i++) {
-			for (int j = grid.jMin; j <= grid.jMax; j++) {
-				for (int k = grid.kMin; k <= grid.kMax; k++) {
-					//Compute cell volume
-					double volume = grid.hx[i] * grid.hy[j] * grid.hz[k];
-					int idx = grid.getSerialIndexLocal(i, j, k);
-					double sR = spectralRadius[idx];
-					double localdt = CFL * volume / sR; //Blazek f. 6.20
+	double ComputeTimeStep(std::valarray<double>& spectralRadius) {
 
-														//Find minimum
-					if (dt > localdt) dt = localdt;
-				};
-			};
-		};
+		// Compute local domain timestep
+		double dt = (grid.volumes / spectralRadius).min() * CFL;
 
+		//Check if we need to save data
 		if ((SaveSolutionTime > 0) && (stepInfo.NextSolutionSnapshotTime < stepInfo.Time + dt)) dt = stepInfo.NextSolutionSnapshotTime - stepInfo.Time;
 		if ((SaveSliceTime > 0) && (stepInfo.NextSliceSnapshotTime < stepInfo.Time + dt)) dt = stepInfo.NextSliceSnapshotTime - stepInfo.Time;
-		dt = pManager->Min(dt);
-
-		return dt;
+		
+		return pManager->Min(dt);
 	};
 
 	//Explicit time step
