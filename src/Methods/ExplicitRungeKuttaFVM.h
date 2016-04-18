@@ -5,7 +5,6 @@
 #include "utility/Vector.h"
 #include "utility/Matrix.h"
 #include "utility/Timer.h"
-#include "utility/GeomFunctions.h"
 #include "RiemannSolvers/RiemannSolversList.h"
 #include "kernel.h"
 #include "Reconstruction/ReconstructorsList.h"
@@ -76,51 +75,9 @@ public:
 
 		// end of method initialization part
 	};
-		
+
 
 	//=================================   Viscous Part  ======================================
-
-	// TO DO only first order now
-	Vector ComputeGradientUniformStructured(int i, int j, int k, std::function<double(double*)> func) {
-		\
-			Vector grad(0, 0, 0);
-		double dux = func(getCellValues(i + 1, j, k)) - func(getCellValues(i - 1, j, k));
-		double dudx = dux / (2.0 * hx[0]);
-		grad.x = dudx;
-
-		if (nDims > 1) {
-			double duy = func(getCellValues(i, j + 1, k)) - func(getCellValues(i, j - 1, k));
-			double dudy = duy / (2.0 * hy[0]);
-			grad.y = dudy;
-		};
-		if (nDims > 2) {
-			double duz = func(getCellValues(i, j, k + 1)) - func(getCellValues(i, j, k - 1));
-			double dudz = duz / (2.0 * hz[0]);
-			grad.z = dudz;
-		};
-		return grad;
-	};
-	Vector ComputeGradientNonUniformStructured(int i, int j, int k, std::function<double(double*)> func) {
-		Vector grad(0, 0, 0);
-		double dux = func(getCellValues(i + 1, j, k)) - func(getCellValues(i - 1, j, k));
-		double dudx = dux / (grid.CoordinateX[i + 1] - grid.CoordinateX[i - 1]);
-		grad.x = dudx;
-
-		// 2D case
-		if (nDims > 1) {
-			double duy = func(getCellValues(i, j + 1, k)) - func(getCellValues(i, j - 1, k));
-			double dudy = duy / (grid.CoordinateY[j + 1] - grid.CoordinateY[j - 1]);
-			grad.y = dudy;
-		};
-
-		// 3D case
-		if (nDims > 2) {
-			double duz = func(getCellValues(i, j, k + 1)) - func(getCellValues(i, j, k - 1));
-			double dudz = duz / (grid.CoordinateZ[k + 1] - grid.CoordinateZ[k - 1]);
-			grad.z = dudz;
-		};
-		return grad;
-	};
 
 	//Compute all required gradient in each inner cell
 	void ComputeVelocityGradients() {
@@ -360,7 +317,7 @@ public:
 
 	}; // function
 
-	   //Compute gradients inside dummy cells
+	//Compute gradients inside dummy cells
 	void ComputeDummyCellGradients() {
 		//Index variables
 		int i = 0;
@@ -1073,8 +1030,8 @@ public:
 	   //Compute residual
 	void ComputeResidual(const std::valarray<double>& values, std::valarray<double>& residual, std::valarray<double>& spectralRadius) {
 		//  init spectral radius storage for each cell
-		for (double& sr : spectralRadius) sr = 0; //Nullify
-		for (double& r : residual) r = 0; //Nullify residual
+		for (auto& sr : spectralRadius) sr = 0; //Nullify
+		for (auto& r : residual) r = 0; //Nullify residual
 
 		// Fluxes temporary storage
 		std::vector<double> fl(nVariables, 0); //left flux -1/2

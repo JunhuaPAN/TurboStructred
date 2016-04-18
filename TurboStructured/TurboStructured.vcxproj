@@ -167,11 +167,11 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\libs\MicrosoftMPI\Inc;..\libs\eigen;..\libs\cgnslib_3.1.4\src;..\src;..\src\kernel;..\src\utility;..\src\BoundaryConditions;..\src\RiemannSolvers;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\include;..\libs\alglib-3.8.0.cpp\cpp\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\libs\MicrosoftMPI\Inc;..\libs\eigen;..\libs\cgnslib_3.1.4\src;..\src;..\src\kernel;..\src\utility;..\src\BoundaryConditions;..\src\RiemannSolvers;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\include;C:\Program Files %28x86%29\Intel\MKL_include\intel64;..\libs\alglib-3.8.0.cpp\cpp\src</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\libs\MicrosoftMPI\Lib\amd64;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\lib\intel64;D:\Projects\Lib\cgnslib_3.1.4\build\src\Release;D:\Dropbox\!Sega\GitHub\TurboStructred\libs\cgnslib_3.1.4\build\src\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\libs\MicrosoftMPI\Lib\amd64;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\lib\intel64;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\lib\intel64;D:\Projects\Lib\cgnslib_3.1.4\build\src\Release;D:\Dropbox\!Sega\GitHub\TurboStructred\libs\cgnslib_3.1.4\build\src\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>cgns.lib;msmpi.lib;mkl_core.lib;mkl_sequential.lib;mkl_intel_lp64.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -195,13 +195,13 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\libs\MicrosoftMPI\Inc;..\libs\eigen;..\libs\cgnslib_3.1.4\src;..\src;..\src\kernel;..\src\utility;..\src\BoundaryConditions;..\src\RiemannSolvers;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\include;..\libs\alglib-3.8.0.cpp\cpp\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\libs\MicrosoftMPI\Inc;..\libs\eigen;..\libs\cgnslib_3.1.4\src;..\src;..\src\kernel;..\src\utility;..\src\BoundaryConditions;..\src\RiemannSolvers;C:\Program Files\Microsoft MPI\Inc;C:\Program Files (x86)\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\include;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\include;C:\Program Files %28x86%29\Intel\MKL_include\intel64;..\libs\alglib-3.8.0.cpp\cpp\src</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>..\libs\MicrosoftMPI\Lib\amd64;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\lib\intel64;D:\Projects\Lib\cgnslib_3.1.4\build\src\Release;D:\Dropbox\!Sega\GitHub\TurboStructred\libs\cgnslib_3.1.4\build\src\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\libs\MicrosoftMPI\Lib\amd64;C:\Program Files %28x86%29\Intel\Composer XE 2015\mkl\lib\intel64;C:\Program Files %28x86%29\Intel\ComposerXE-2011\mkl\lib\intel64;D:\Projects\Lib\cgnslib_3.1.4\build\src\Release;D:\Dropbox\!Sega\GitHub\TurboStructred\libs\cgnslib_3.1.4\build\src\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>cgns.lib;msmpi.lib;mkl_core.lib;mkl_sequential.lib;mkl_intel_lp64.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>

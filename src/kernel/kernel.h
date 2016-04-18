@@ -212,7 +212,7 @@ public:
 		pManager->Barrier();
 	};
 
-	//Initialize kernel  ( TO DO READ THE CONFIG FILE)
+	// Initialize kernel  ( TO DO READ THE CONFIG FILE)
 	virtual void Init(KernelConfiguration& config) {
 		// Initialize MPI		
 		nDims = config.nDims;
@@ -312,7 +312,7 @@ public:
 		pManager->Barrier();
 	};
 
-	//Initialize boundary conditions
+	// Initialize boundary conditions
 	virtual void InitBoundaryConditions(KernelConfiguration& config) {
 		if (!grid.IsPeriodicX) {
 			xLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
@@ -334,7 +334,7 @@ public:
 		};
 	};
 
-	//Update solution
+	// Update solution
 	void UpdateSolution(double dt) {
 		stepInfo.Residual.resize(nVariables, 0);		
 
@@ -349,7 +349,7 @@ public:
 		for (int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = pManager->Sum(stepInfo.Residual[nv]);
 	};
 
-	//Exchange values between processors
+	// Exchange values between processors
 	void ExchangeValues() {
 		//Index variables
 		int i = 0;
@@ -708,7 +708,7 @@ public:
 
 	}; // function
 
-	//Compute dummy cell values as result of boundary conditions and interprocessor exchange communication
+	// Compute dummy cell values as result of boundary conditions and interprocessor exchange communication
 	void ComputeDummyCellValues() {
 		//Index variables
 		int i = 0;
@@ -927,7 +927,30 @@ public:
 		pManager->Barrier();
 	};
 
-	//Compute source terms
+	// Compute gradient of value in ijk cell
+	Vector ComputeGradientNonUniformStructured(int i, int j, int k, std::function<double(double*)> func) {
+		Vector grad(0, 0, 0);
+		double dux = func(getCellValues(i + 1, j, k)) - func(getCellValues(i - 1, j, k));
+		double dudx = dux / (grid.CoordinateX[i + 1] - grid.CoordinateX[i - 1]);
+		grad.x = dudx;
+
+		// 2D case
+		if (nDims > 1) {
+			double duy = func(getCellValues(i, j + 1, k)) - func(getCellValues(i, j - 1, k));
+			double dudy = duy / (grid.CoordinateY[j + 1] - grid.CoordinateY[j - 1]);
+			grad.y = dudy;
+		};
+
+		// 3D case
+		if (nDims > 2) {
+			double duz = func(getCellValues(i, j, k + 1)) - func(getCellValues(i, j, k - 1));
+			double dudz = duz / (grid.CoordinateZ[k + 1] - grid.CoordinateZ[k - 1]);
+			grad.z = dudz;
+		};
+		return grad;
+	};
+
+	// Compute source terms
 	virtual void ProcessExternalForces() {
 		//right handside part - mass foces
 		for (int i = grid.iMin; i <= grid.iMax; i++) {
