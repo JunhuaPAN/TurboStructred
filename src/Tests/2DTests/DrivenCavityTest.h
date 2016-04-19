@@ -1,19 +1,16 @@
+/*!
+\file
+\brief 2D test: driven cavity problem
+
+Standart experiment with viscous vortex in the cavity see Ghia et al (1982) to compare result
+http://www.cfd-online.com/Wiki/Lid-driven_cavity_problem
+*/
+
 #ifndef TurboStructured_Tests_2DTests_DrivenCavityTest
 #define TurboStructured_Tests_2DTests_DrivenCavityTest
 
+#include "kernel.h"
 
-#include <iostream>
-#include <vector>
-#include "math.h"
-#include "kernel.h";
-#include "Methods/ExplicitRungeKuttaFVM.h"
-#include "utility/Vector.h"
-
-// Standart experiment with viscous vortex in the cavity 
-//
-// see Ghia et al (1982) to compare result
-//
-// http://www.cfd-online.com/Wiki/Lid-driven_cavity_problem
 
 // TO DO FIX -- tecplot save solution function wasn't works on 6 or 8 comput. nodes
 namespace DrivenCavityTest {

@@ -1,12 +1,7 @@
 #ifndef TurboStructured_Tests_2DTests_ExactEulerSolution
 #define TurboStructured_Tests_2DTests_ExactEulerSolution
 
-
-#include <iostream>
-#include <vector>
-#include "math.h"
 #include "kernel.h";
-#include "Methods/ExplicitRungeKuttaFVM.h"
 
 // Test with smooth solution of 2D Euler system of equations
 //

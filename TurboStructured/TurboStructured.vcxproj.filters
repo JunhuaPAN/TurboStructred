@@ -296,6 +296,9 @@
     <ClInclude Include="..\src\Reconstruction\ENO2CharactVars.h">
       <Filter>Header Files\Reconstruction</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\Tests\2DTests\BlasiusFlowTest.h">
+      <Filter>Header Files\Tests\2DTests</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
