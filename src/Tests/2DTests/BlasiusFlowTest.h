@@ -39,7 +39,7 @@ namespace BlasiusFlowTest {
 		par.Pin = 1.0e5;
 		par.Pout = par.Pin;
 		par.ro = 1.2;
-		par.viscosity = 1.0e-3;
+		par.viscosity = 1.0e-4;
 	};
 
 	// compute viscosity value
@@ -54,26 +54,34 @@ namespace BlasiusFlowTest {
 		// Init config structure
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 40;
-		conf.nY = 40;
+		conf.nX = 80;
+		conf.nY = 80;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
 		conf.isPeriodicY = false;
-		conf.Gamma = 1.4;
+		conf.Gamma = par.gamma;
 		conf.IsViscousFlow = true;
 		conf.Viscosity = par.viscosity;
 
-		// BC
-		conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
-		conf.xLeftBoundary.Gamma = 1.4;
-		conf.xRightBoundary.BCType = BoundaryConditionType::Wall;
-		conf.xRightBoundary.Gamma = 1.4;
+		// Boundary conditions Subsonic inlet
+		conf.xLeftBoundary.BCType = BoundaryConditionType::SubsonicInlet;
+		conf.xLeftBoundary.Gamma = par.gamma;
+		conf.xLeftBoundary.Density = par.ro;
+		conf.xLeftBoundary.Pstatic = par.Pin;
+		conf.xLeftBoundary.Vdirection = Vector(1, 0, 0);
+
+		// Supersonic outlet
+		conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
+		conf.xRightBoundary.Gamma = par.gamma;
+
+		// No-slip condition on the bottom
 		conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
-		conf.yLeftBoundary.Gamma = 1.4;
-		conf.yRightBoundary.BCType = BoundaryConditionType::MovingWall;
-		conf.yRightBoundary.Gamma = 1.4;
-		conf.yRightBoundary.Velocity = Vector(0, 0, 0);
+		conf.yLeftBoundary.Gamma = par.gamma;
+
+		// Symmetry or somthing else on the top border
+		conf.yRightBoundary.BCType = BoundaryConditionType::Natural;
+		conf.yRightBoundary.Gamma = par.gamma;
 
 		// Method settings
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
@@ -81,15 +89,15 @@ namespace BlasiusFlowTest {
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
 		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
-		conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
+		conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
 		conf.DummyLayerSize = 1;
 
 		// Computational settings
 		conf.MaxTime = 10.0;
 		conf.MaxIteration = 10000000;
 		conf.SaveSolutionTime = 0.1;
-		conf.SaveSliceTime = 1.0;
-		conf.ResidualOutputIterations = 20;
+		conf.SaveSliceTime = 0.1;
+		conf.ResidualOutputIterations = 100;
 		
 		// init kernel
 		std::unique_ptr<Kernel> kernel;
@@ -106,7 +114,7 @@ namespace BlasiusFlowTest {
 
 		// init distributions
 		NumericQuadrature Integ(3, 2);
-		auto InitDriven = [Udr, &conf](Vector r) {
+		auto InitDriven = [Udr](Vector r) {
 			// Density
 			double rho = par.ro;
 
@@ -124,7 +132,7 @@ namespace BlasiusFlowTest {
 			res[1] = rho * u;
 			res[2] = rho * v;
 			res[3] = rho * w;
-			res[4] = roe + rho * (u * u + v * v + w * w);
+			res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
 			return res;
 		};
 		kernel->SetInitialConditions(InitDriven, Integ);

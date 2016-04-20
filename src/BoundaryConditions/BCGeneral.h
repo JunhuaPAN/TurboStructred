@@ -42,31 +42,29 @@ public:
 	double CValue;
 	double CGradient;
 	double Value;
-	double Vreff;	// refference value
 
 	//Set values
-	inline void SetValues(double cValue, double cGradient, double value, double valueref) {
+	inline void SetValues(double cValue, double cGradient, double value) {
 		CValue = cValue;
 		CGradient = cGradient;
 		Value = value;
-		Vreff = valueref;
 	};
 
 	//Set dirichlet boundary condition
 	void SetDirichletBoundary(double Value) {
-		SetValues(1.0, 0.0, Value, 0);
+		SetValues(1.0, 0.0, Value);
 	};
 
 	//Set neuman boundary condition
 	void SetNeumanBoundary(double Gradient) {
-		SetValues(0.0, 1.0, Gradient, 0);
+		SetValues(0.0, 1.0, Gradient);
 	};
 
 	//Interpolate
 	inline double GetDummyValue(const double Vin, const Vector& faceNormal, const Vector& faceCenter, const Vector& cellCenter) {
 		double dn = (faceCenter - cellCenter) * faceNormal;
 		double Vout = Vin * (CGradient - CValue) + 2.0 * Value * (CGradient * dn + CValue);
-		return Vout + Vreff;
+		return Vout;
 	};
 
 	//Interpolate
@@ -128,8 +126,8 @@ public:
 	};
 
 	//! Get dummy reconstructions
-	virtual std::valarray<double> getDummyReconstructions(double* values) {
-		return getDummyValues(values, Vector(0, 0, 0), Vector(0, 0, 0), Vector(0, 0, 0));
+	virtual std::valarray<double> getDummyReconstructions(double* values, Vector faceNormal) {
+		return getDummyValues(values, faceNormal, Vector(0, 0, 0), Vector(0, 0, 0));
 	};
  
 	virtual void loadConfiguration(BoundaryConditionConfiguration& bcConfig) {
@@ -283,6 +281,7 @@ public:
 
 	virtual void loadConfiguration(BoundaryConditionConfiguration& bcConfig) {
 		// Set output parameters
+		gamma = bcConfig.Gamma;
 		Pout = bcConfig.Pstatic;
 		Rhout = bcConfig.Density;
 		Vdir = bcConfig.Vdirection;

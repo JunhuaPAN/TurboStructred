@@ -314,9 +314,13 @@ public:
 
 	// Initialize boundary conditions
 	virtual void InitBoundaryConditions(KernelConfiguration& config) {
+		// TO DO (COARSE IMPLEMENTATION)
 		if (!grid.IsPeriodicX) {
-			xLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
+			if (config.xLeftBoundary.BCType == BoundaryConditionType::SubsonicInlet) {
+				xLeftBC = std::unique_ptr<BoundaryConditions::SubsonicInletBC>(new BoundaryConditions::SubsonicInletBC());
+			} else xLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
 			xRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
+
 			xLeftBC->loadConfiguration(config.xLeftBoundary);
 			xRightBC->loadConfiguration(config.xRightBoundary);
 		};
