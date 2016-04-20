@@ -15,7 +15,7 @@ enum class BoundaryConditionType {
 	SymmetryY,	///< symmetry condition for XZ plane border
 	SymmetryZ,	///< symmetry condition for XY plane border
 	MovingWall,	///< no-clip condition with some constant velocity
-	General,	///< general type??
+	SubsonicInlet,	///< inlet boundary condition
 	Natural		///< subsonic outflow condition 
 };
 
@@ -25,6 +25,10 @@ public:
 	BoundaryConditionType BCType;	///<  One of allowed BC types 
 	Vector Velocity;				///<  3D vector of Velocity (need for MovingWall type) 
 	double Gamma;					///<  Medium property
+	double Pstatic;					///<  Static pressure
+	double Density;					///<  External density
+	double Temperature;				///<  External temperature
+	Vector Vdirection;					///<  Velocity direction
 };
 
 #endif

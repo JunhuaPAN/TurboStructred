@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="BoundaryConditions::CompositeBoundaryConditionInfo">
+    <Position X="5.5" Y="0.75" Width="2.75" />
+    <TypeIdentifier>
+      <HashCode>AAAABAAAAAAAAgAAAAAAAAAAAAAAAAAAAAUiAIAAEAA=</HashCode>
+      <FileName>d:\Dropbox\!Sega\GitHub\TurboStructred\src\BoundaryConditions\BCGeneral.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="BoundaryConditions::BCGeneral">
+    <Position X="2.75" Y="0.75" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AAEAAAAAAAAAAAAAAgAAAAAAAACABAAAAAAEAAAAAAA=</HashCode>
+      <FileName>d:\Dropbox\!Sega\GitHub\TurboStructred\src\BoundaryConditions\BCGeneral.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="BoundaryConditionConfiguration">
+    <Position X="3" Y="4" Width="2.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAFAAA=</HashCode>
+      <FileName>d:\Dropbox\!Sega\GitHub\TurboStructred\src\BoundaryConditions\BoundaryConditionConfiguration.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Enum Name="BoundaryConditions::BoundaryVariableType">
+    <Position X="0.5" Y="0.75" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAQAABAAAAAAIAAAAAAAAABAAQAAAAAAAAAAgAEAAA=</HashCode>
+      <FileName>d:\Dropbox\!Sega\GitHub\TurboStructred\src\BoundaryConditions\BCGeneral.h</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="BoundaryConditionType">
+    <Position X="0.5" Y="3.5" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAgAAAAAACAAAAAAAAQAAAAAAAECAAA=</HashCode>
+      <FileName>d:\Dropbox\!Sega\GitHub\TurboStructred\src\BoundaryConditions\BoundaryConditionConfiguration.h</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>
