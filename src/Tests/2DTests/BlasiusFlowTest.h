@@ -54,8 +54,8 @@ namespace BlasiusFlowTest {
 		// Init config structure
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 40;
-		conf.nY = 40;
+		conf.nX = 100;
+		conf.nY = 100;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
@@ -64,12 +64,15 @@ namespace BlasiusFlowTest {
 		conf.IsViscousFlow = true;
 		conf.Viscosity = par.viscosity;
 
+		// Compute driven velocity
+		double Udr = ComputeInletVelocity();
+
 		// Boundary conditions Subsonic inlet
 		conf.xLeftBoundary.BCType = BoundaryConditionType::SubsonicInlet;
 		conf.xLeftBoundary.Gamma = par.gamma;
-		conf.xLeftBoundary.Density = par.ro;
+		//conf.xLeftBoundary.Density = par.ro;
 		conf.xLeftBoundary.Pstatic = par.Pin;
-		conf.xLeftBoundary.Vdirection = Vector(1, 0, 0);
+		conf.xLeftBoundary.Velocity = Vector(Udr, 0, 0);
 
 		// Supersonic outlet
 		conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
@@ -84,11 +87,8 @@ namespace BlasiusFlowTest {
 		conf.yRightBoundary.Gamma = par.gamma;
 
 		// Symmetry in front of the plate
-		// Compute driven velocity
-		double Udr = ComputeInletVelocity();
-		conf.yLeftSpecialBoundary.BCType = BoundaryConditionType::MovingWall;
+		conf.yLeftSpecialBoundary.BCType = BoundaryConditionType::SymmetryY;
 		conf.yLeftSpecialBoundary.Gamma = par.gamma;
-		conf.yLeftSpecialBoundary.Velocity = Vector(Udr, 0, 0);
 
 		// Method settings
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
@@ -96,7 +96,7 @@ namespace BlasiusFlowTest {
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
 		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
-		conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
+		conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
 		conf.DummyLayerSize = 1;
 
 		// Computational settings

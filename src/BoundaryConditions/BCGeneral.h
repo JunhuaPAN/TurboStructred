@@ -241,9 +241,10 @@ class SubsonicInletBC : public BCGeneral {
 public:
 	double Pout, Rhout;
 	Vector Vdir;		// unity vector of velocity direction in dummy cell
+	Vector V;			// vector of velosity
 
 	//! Get dummy cell values
-	virtual std::valarray<double> getDummyValues(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) override {
+	virtual std::valarray<double> getDummyValues2(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) {
 		// Compute dummy values
 		double ro = values[0];
 		double u = values[1] / values[0];
@@ -278,14 +279,62 @@ public:
 		res[4] = roeDummy + 0.5 * roDummy * (VDummy * VDummy);
 		return res;
 	};
+	virtual std::valarray<double> getDummyValues(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) override {
+		// Compute dummy values
+		double ro = values[0];
+		double u = values[1] / values[0];
+		double v = values[2] / values[0];
+		double w = values[3] / values[0];
+		double E = values[4] / values[0];
+		double roe = ro * E - 0.5 * ro * (u * u + v * v + w * w);
+		double P = (gamma - 1.0) * roe;
 
-	virtual void loadConfiguration(BoundaryConditionConfiguration& bcConfig) {
+		// Compute R- invariant
+		double c = sqrt(gamma * P / ro);
+		Vector Vel{ u, v, w };
+		double Rm = Vel * faceNormal - 2.0 * c / (gamma - 1);
+
+		// Compute dummy state
+		double cDummy = 0.5 * (V * faceNormal - Rm) * (gamma - 1);
+		double PDummy = Pout;
+		double roDummy = gamma * PDummy / (cDummy * cDummy);
+		double roeDummy = PDummy / (gamma - 1);
+
+		// return conservative form
+		std::valarray<double> res(5);
+		res[0] = roDummy;
+		res[1] = roDummy * V.x;
+		res[2] = roDummy * V.y;
+		res[3] = roDummy * V.z;
+		res[4] = roeDummy + 0.5 * roDummy * (V * V);
+		return res;
+	};
+
+	// P, rho, dir - inlet
+	virtual void loadConfiguration2(BoundaryConditionConfiguration& bcConfig) {
 		// Set output parameters
 		gamma = bcConfig.Gamma;
 		Pout = bcConfig.Pstatic;
 		Rhout = bcConfig.Density;
 		Vdir = bcConfig.Vdirection;
 		Vdir /= Vdir.mod();
+
+		// create boundary conditions with zero velocity gradients
+		boundaryConditions[BoundaryVariableType::VelocityX] = CompositeBoundaryConditionInfo();
+		boundaryConditions[BoundaryVariableType::VelocityY] = CompositeBoundaryConditionInfo();
+		boundaryConditions[BoundaryVariableType::VelocityZ] = CompositeBoundaryConditionInfo();
+		boundaryConditions[BoundaryVariableType::VelocityX].SetNeumanBoundary(0);
+		boundaryConditions[BoundaryVariableType::VelocityY].SetNeumanBoundary(0);
+		boundaryConditions[BoundaryVariableType::VelocityZ].SetNeumanBoundary(0);
+
+		return;
+	};
+	// P Velocity vector - inlet
+	virtual void loadConfiguration(BoundaryConditionConfiguration& bcConfig) {
+		// Set output parameters
+		gamma = bcConfig.Gamma;
+		Pout = bcConfig.Pstatic;
+		V = bcConfig.Velocity;
 
 		// create boundary conditions with zero velocity gradients
 		boundaryConditions[BoundaryVariableType::VelocityX] = CompositeBoundaryConditionInfo();
