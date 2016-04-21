@@ -1155,6 +1155,7 @@ public:
 						{
 							UR = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][1][k - grid.kMin + zLayer].SampleSolution(CubeFaces::yL));
 							UL = yLeftBC->getDummyReconstructions(&UR[0], fn);
+							if (grid.CoordinateX[i] < 0.25) UL = yLeftBCspecial->getDummyReconstructions(&UR[0], fn);		// TO DO improve
 						}
 						else if ((pManager->rankCart[1] == pManager->dimsCart[1] - 1) && (j == grid.jMax + 1) && (grid.IsPeriodicY != true))	// Right border
 						{

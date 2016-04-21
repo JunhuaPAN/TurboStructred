@@ -77,6 +77,7 @@ public:
 	std::unique_ptr<BoundaryConditions::BCGeneral> xLeftBC;
 	std::unique_ptr<BoundaryConditions::BCGeneral> xRightBC;
 	std::unique_ptr<BoundaryConditions::BCGeneral> yLeftBC;
+	std::unique_ptr<BoundaryConditions::BCGeneral> yLeftBCspecial;
 	std::unique_ptr<BoundaryConditions::BCGeneral> yRightBC;
 	std::unique_ptr<BoundaryConditions::BCGeneral> zLeftBC;
 	std::unique_ptr<BoundaryConditions::BCGeneral> zRightBC;
@@ -329,6 +330,10 @@ public:
 			yRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
 			yLeftBC->loadConfiguration(config.yLeftBoundary);
 			yRightBC->loadConfiguration(config.yRightBoundary);
+			
+			// to do improve (special case)
+			yLeftBCspecial = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
+			yLeftBCspecial->loadConfiguration(config.yLeftSpecialBoundary);
 		};
 		if ((!grid.IsPeriodicZ) && (nDims > 2)) {
 			zLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());

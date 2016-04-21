@@ -65,6 +65,9 @@ public:
 	BoundaryConditionConfiguration zLeftBoundary;
 	BoundaryConditionConfiguration zRightBoundary;
 
+	// TO DO improve
+	BoundaryConditionConfiguration yLeftSpecialBoundary;
+
 	//External potential forces
 	Vector Sigma{ Vector(0,0,0) };			            //!< Pressure gradient
 	Vector UniformAcceleration{ Vector(0,0,0) };		//!< Uniform external gravity field

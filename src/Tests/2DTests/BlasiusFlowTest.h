@@ -32,9 +32,9 @@ namespace BlasiusFlowTest {
 	// Default parameters
 	void DefaultSettings() {
 		par.gamma = 1.4;
-		par.Lx = 1.2;
+		par.Lx = 1.25;
 		par.Ly = 0.5;
-		par.Xplate = 0.2;
+		par.Xplate = 0.25;
 		par.M = 0.2;
 		par.Pin = 1.0e5;
 		par.Pout = par.Pin;
@@ -54,8 +54,8 @@ namespace BlasiusFlowTest {
 		// Init config structure
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 80;
-		conf.nY = 80;
+		conf.nX = 40;
+		conf.nY = 40;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
@@ -83,6 +83,13 @@ namespace BlasiusFlowTest {
 		conf.yRightBoundary.BCType = BoundaryConditionType::Natural;
 		conf.yRightBoundary.Gamma = par.gamma;
 
+		// Symmetry in front of the plate
+		// Compute driven velocity
+		double Udr = ComputeInletVelocity();
+		conf.yLeftSpecialBoundary.BCType = BoundaryConditionType::MovingWall;
+		conf.yLeftSpecialBoundary.Gamma = par.gamma;
+		conf.yLeftSpecialBoundary.Velocity = Vector(Udr, 0, 0);
+
 		// Method settings
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 		conf.methodConfiguration.CFL = 0.45;
@@ -108,9 +115,6 @@ namespace BlasiusFlowTest {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 		};
 		kernel->Init(conf);
-
-		// Compute driven velocity
-		double Udr = ComputeInletVelocity();
 
 		// init distributions
 		NumericQuadrature Integ(3, 2);
