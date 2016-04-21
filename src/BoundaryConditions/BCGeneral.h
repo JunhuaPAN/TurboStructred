@@ -279,7 +279,7 @@ public:
 		res[4] = roeDummy + 0.5 * roDummy * (VDummy * VDummy);
 		return res;
 	};
-	virtual std::valarray<double> getDummyValues(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) override {
+	virtual std::valarray<double> getDummyValues1(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) {
 		// Compute dummy values
 		double ro = values[0];
 		double u = values[1] / values[0];
@@ -309,6 +309,17 @@ public:
 		res[4] = roeDummy + 0.5 * roDummy * (V * V);
 		return res;
 	};
+	virtual std::valarray<double> getDummyValues(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) override {
+		
+		// return conservative form
+		std::valarray<double> res(5);
+		res[0] = Rhout;
+		res[1] = Rhout * V.x;
+		res[2] = Rhout * V.y;
+		res[3] = Rhout * V.z;
+		res[4] = Pout / (gamma - 1) + 0.5 * Rhout * (V * V);
+		return res;
+	};
 
 	// P, rho, dir - inlet
 	virtual void loadConfiguration2(BoundaryConditionConfiguration& bcConfig) {
@@ -330,11 +341,29 @@ public:
 		return;
 	};
 	// P Velocity vector - inlet
+	virtual void loadConfiguration1(BoundaryConditionConfiguration& bcConfig) {
+		// Set output parameters
+		gamma = bcConfig.Gamma;
+		Pout = bcConfig.Pstatic;
+		V = bcConfig.Velocity;
+
+		// create boundary conditions with zero velocity gradients
+		boundaryConditions[BoundaryVariableType::VelocityX] = CompositeBoundaryConditionInfo();
+		boundaryConditions[BoundaryVariableType::VelocityY] = CompositeBoundaryConditionInfo();
+		boundaryConditions[BoundaryVariableType::VelocityZ] = CompositeBoundaryConditionInfo();
+		boundaryConditions[BoundaryVariableType::VelocityX].SetNeumanBoundary(0);
+		boundaryConditions[BoundaryVariableType::VelocityY].SetNeumanBoundary(0);
+		boundaryConditions[BoundaryVariableType::VelocityZ].SetNeumanBoundary(0);
+
+		return;
+	};
+	// P rho and Velocity vector - inlet
 	virtual void loadConfiguration(BoundaryConditionConfiguration& bcConfig) {
 		// Set output parameters
 		gamma = bcConfig.Gamma;
 		Pout = bcConfig.Pstatic;
 		V = bcConfig.Velocity;
+		Rhout = bcConfig.Density;
 
 		// create boundary conditions with zero velocity gradients
 		boundaryConditions[BoundaryVariableType::VelocityX] = CompositeBoundaryConditionInfo();

@@ -33,13 +33,13 @@ namespace BlasiusFlowTest {
 	void DefaultSettings() {
 		par.gamma = 1.4;
 		par.Lx = 1.25;
-		par.Ly = 0.5;
+		par.Ly = 0.2;
 		par.Xplate = 0.25;
 		par.M = 0.2;
 		par.Pin = 1.0e5;
 		par.Pout = par.Pin;
 		par.ro = 1.2;
-		par.viscosity = 1.0e-4;
+		par.viscosity = 1.0e-3;
 	};
 
 	// compute viscosity value
@@ -54,8 +54,8 @@ namespace BlasiusFlowTest {
 		// Init config structure
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 100;
-		conf.nY = 100;
+		conf.nX = 400;
+		conf.nY = 400;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
@@ -70,7 +70,7 @@ namespace BlasiusFlowTest {
 		// Boundary conditions Subsonic inlet
 		conf.xLeftBoundary.BCType = BoundaryConditionType::SubsonicInlet;
 		conf.xLeftBoundary.Gamma = par.gamma;
-		//conf.xLeftBoundary.Density = par.ro;
+		conf.xLeftBoundary.Density = par.ro;
 		conf.xLeftBoundary.Pstatic = par.Pin;
 		conf.xLeftBoundary.Velocity = Vector(Udr, 0, 0);
 
@@ -96,14 +96,14 @@ namespace BlasiusFlowTest {
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
 		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
-		conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
+		conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
 		conf.DummyLayerSize = 1;
 
 		// Computational settings
-		conf.MaxTime = 10.0;
+		conf.MaxTime = 10 * par.Lx / Udr;
 		conf.MaxIteration = 10000000;
-		conf.SaveSolutionTime = 0.1;
-		conf.SaveSliceTime = 0.1;
+		conf.SaveSolutionTime = 0.01;
+		conf.SaveSliceTime = conf.SaveSolutionTime;
 		conf.ResidualOutputIterations = 100;
 		
 		// init kernel
@@ -142,7 +142,7 @@ namespace BlasiusFlowTest {
 		kernel->SetInitialConditions(InitDriven, Integ);
 
 		// Create slices
-		kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, 0));
+		kernel->slices.push_back(Slice((int)(0.8 * conf.nX), -1, 0));
 		//kernel->SaveSliceToTecplot("ySlice_init.dat", kernel->slices[0]);
 
 		//save init solution and run the test
