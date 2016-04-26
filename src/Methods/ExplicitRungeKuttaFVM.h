@@ -429,15 +429,27 @@ public:
 							int idx = grid.getSerialIndexLocal(i, j, k);
 							int idxIn = grid.getSerialIndexLocal(i, jIn, k);
 
-							//Apply left boundary conditions						
+							//Apply left boundary conditions
+							// TO DO need to refactore that part for general case
 							double *V = getCellValues(i, jIn, k);
 							Vector dGrad;
-							dGrad = yLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
-							gradientVelocityX[idx] = dGrad;
-							dGrad = yLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
-							gradientVelocityY[idx] = dGrad;
-							dGrad = yLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
-							gradientVelocityZ[idx] = dGrad;
+							if (cellCenter.x > 0.5) {
+								dGrad = yLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
+								gradientVelocityX[idx] = dGrad;
+								dGrad = yLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
+								gradientVelocityY[idx] = dGrad;
+								dGrad = yLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
+								gradientVelocityZ[idx] = dGrad;
+							}
+							else {
+								dGrad = yLeftBCspecial->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
+								gradientVelocityX[idx] = dGrad;
+								dGrad = yLeftBCspecial->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
+								gradientVelocityY[idx] = dGrad;
+								dGrad = yLeftBCspecial->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
+								gradientVelocityZ[idx] = dGrad;
+							}
+
 						};
 
 						if (pManager->rankCart[1] == pManager->dimsCart[1] - 1.0) {
@@ -540,8 +552,6 @@ public:
 		};
 		//Sync
 		pManager->Barrier();
-
-
 	};
 
 	//Compute viscous Fluxes in all faces
@@ -1155,7 +1165,7 @@ public:
 						{
 							UR = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][1][k - grid.kMin + zLayer].SampleSolution(CubeFaces::yL));
 							UL = yLeftBC->getDummyReconstructions(&UR[0], fn);
-							if (grid.CoordinateX[i] < 0.25) UL = yLeftBCspecial->getDummyReconstructions(&UR[0], fn);		// TO DO improve
+							if (grid.CoordinateX[i] < 0.5) UL = yLeftBCspecial->getDummyReconstructions(&UR[0], fn);		// TO DO improve
 						}
 						else if ((pManager->rankCart[1] == pManager->dimsCart[1] - 1) && (j == grid.jMax + 1) && (grid.IsPeriodicY != true))	// Right border
 						{

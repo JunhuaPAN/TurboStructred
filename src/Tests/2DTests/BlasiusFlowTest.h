@@ -32,14 +32,14 @@ namespace BlasiusFlowTest {
 	// Default parameters
 	void DefaultSettings() {
 		par.gamma = 1.4;
-		par.Lx = 1.25;
-		par.Ly = 0.2;
-		par.Xplate = 0.25;
-		par.M = 0.2;
+		par.Lx = 1.5;
+		par.Ly = 0.25;
+		par.Xplate = 0.5;
+		par.M = 0.06;
 		par.Pin = 1.0e5;
 		par.Pout = par.Pin;
-		par.ro = 1.2;
-		par.viscosity = 1.0e-3;
+		par.ro = 1.0;
+		par.viscosity = 1.0e-4;
 	};
 
 	// compute viscosity value
@@ -54,8 +54,8 @@ namespace BlasiusFlowTest {
 		// Init config structure
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 400;
-		conf.nY = 400;
+		conf.nX = 420;
+		conf.nY = 80;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
@@ -92,7 +92,7 @@ namespace BlasiusFlowTest {
 
 		// Method settings
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-		conf.methodConfiguration.CFL = 0.45;
+		conf.methodConfiguration.CFL = 0.7;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
 		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
@@ -103,7 +103,7 @@ namespace BlasiusFlowTest {
 		conf.MaxTime = 10 * par.Lx / Udr;
 		conf.MaxIteration = 10000000;
 		conf.SaveSolutionTime = 0.01;
-		conf.SaveSliceTime = conf.SaveSolutionTime;
+		conf.SaveSliceTime = par.Lx / Udr;
 		conf.ResidualOutputIterations = 100;
 		
 		// init kernel
@@ -139,10 +139,35 @@ namespace BlasiusFlowTest {
 			res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
 			return res;
 		};
-		kernel->SetInitialConditions(InitDriven, Integ);
+		auto InitLinearBL = [Udr](Vector r) {
+			// Compute laminar layer height
+			double h = 4.91 * sqrt( par.viscosity * (r.x - par.Xplate) / (Udr * par.ro) );
+
+			// Density
+			double rho = par.ro;
+
+			// Velocity
+			double u = Udr;
+			if (r.y < h) u *= r.y / h;
+			double v = 0;
+			double w = 0;
+
+			// Energy
+			double roe = par.Pin / (par.gamma - 1.0);
+
+			// Compute local initial values
+			std::vector<double> res(5, 0);
+			res[0] = rho;
+			res[1] = rho * u;
+			res[2] = rho * v;
+			res[3] = rho * w;
+			res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
+			return res;
+		};
+		kernel->SetInitialConditions(InitLinearBL, Integ);
 
 		// Create slices
-		kernel->slices.push_back(Slice((int)(0.8 * conf.nX), -1, 0));
+		kernel->slices.push_back(Slice((int)(0.9 * conf.nX), -1, 0));
 		//kernel->SaveSliceToTecplot("ySlice_init.dat", kernel->slices[0]);
 
 		//save init solution and run the test

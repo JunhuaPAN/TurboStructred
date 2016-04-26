@@ -279,7 +279,7 @@ public:
 		res[4] = roeDummy + 0.5 * roDummy * (VDummy * VDummy);
 		return res;
 	};
-	virtual std::valarray<double> getDummyValues1(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) {
+	virtual std::valarray<double> getDummyValues1(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter)  {
 		// Compute dummy values
 		double ro = values[0];
 		double u = values[1] / values[0];
@@ -309,7 +309,7 @@ public:
 		res[4] = roeDummy + 0.5 * roDummy * (V * V);
 		return res;
 	};
-	virtual std::valarray<double> getDummyValues(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) override {
+	virtual std::valarray<double> getDummyValues(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) override  {
 		
 		// return conservative form
 		std::valarray<double> res(5);
