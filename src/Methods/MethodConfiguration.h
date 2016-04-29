@@ -15,7 +15,6 @@ struct MethodConfiguration {
 	int RungeKuttaOrder { 0 };
 	double CFL { 0.25 };
 	double Eps { 0.0 };
-	double OperatingPresure { 0 };
 };
 
 #endif

@@ -13,6 +13,7 @@
 
 #include "KernelConfiguration.h"
 #include "grid.h"
+#include "GasProperties.h"
 #include "ParallelManager.h"
 #include "utility/Vector.h"
 #include "utility/Matrix.h"
@@ -33,14 +34,16 @@ public:
 	double TimeStep;	
 	int Iteration;
 	std::vector<double> Residual;
-	double NextSnapshotTime;
+	double NextSolutionSnapshotTime;
+	double NextSliceSnapshotTime;
 };
 
 
 // Calculation kernel
 class Kernel {
 public:
-	virtual void IterationStep() = 0; // main function
+	virtual void IterationStep() = 0;		// main function
+	virtual void InitializeMethod(KernelConfiguration& config) = 0;	// initialization of parameters of the Method
 
 	// Parallel run information
 	std::unique_ptr<ParallelManager> pManager;
@@ -48,18 +51,15 @@ public:
 
 	// Structured grid and dimensions number
 	int nDims;
-	Grid g;
+	Grid grid;
 
 	// Current step information
 	StepInfo stepInfo;
 
 	// Gas model information
-	int nVariables; // number of conservative variables
-	double gamma;
-	double thermalConductivity;
-	double viscosity;
-	double molarMass;
-	double universalGasConstant;
+	int nVariables;			// number of conservative variables
+	GasProperties gas_prop;	// all parameters of the gas
+
 	bool isViscousFlow;
 	bool isGradientRequired;
 	bool isExternalAccelaration;
@@ -77,6 +77,7 @@ public:
 	std::unique_ptr<BoundaryConditions::BCGeneral> xLeftBC;
 	std::unique_ptr<BoundaryConditions::BCGeneral> xRightBC;
 	std::unique_ptr<BoundaryConditions::BCGeneral> yLeftBC;
+	std::unique_ptr<BoundaryConditions::BCGeneral> yLeftBCspecial;
 	std::unique_ptr<BoundaryConditions::BCGeneral> yRightBC;
 	std::unique_ptr<BoundaryConditions::BCGeneral> zLeftBC;
 	std::unique_ptr<BoundaryConditions::BCGeneral> zRightBC;
@@ -86,74 +87,32 @@ public:
 	std::valarray<double> residual;
 	std::vector<Slice> slices;
 
-	// Get serial index for cell
-	inline int getSerialIndexGlobal(int i, int j, int k) {
-		int sI = (k * g.nXAll * g.nYAll + j * g.nXAll + i);
-		return sI;
-	};
-
-	// Get local index for cell
-	inline int getSerialIndexLocal(int i, int j, int k) {
-		int sI = (k - g.kMin + g.dummyCellLayersZ) * g.nlocalXAll * g.nlocalYAll + (j - g.jMin + g.dummyCellLayersY) * g.nlocalXAll + (i - g.iMin + g.dummyCellLayersX);
-		return sI;
-	};
-
 	// Get cell values
 	inline double* getCellValues(int i, int j, int k) {
-		int sBegin = getSerialIndexLocal(i, j, k) * nVariables;
+		int sBegin = grid.getSerialIndexLocal(i, j, k) * nVariables;
 		return &values[sBegin];
 	};
 
 	// Transition beatween variables (trivial by default)
 	inline std::valarray<double> ForvardVariablesTransition(double* vals) {
 		std::valarray<double> res(nVariables);
-		double rho = vals[0];
-		double u = vals[1] / rho;
-		double v = vals[2] / rho;
-		double w = vals[3] / rho;
-		double rho_e = vals[4] - 0.5 * rho * (u * u + v * v + w * w);
-
-		// Pressure
-		res[0] = rho_e * (gamma - 1.0);
-
-		// Velosities
-		res[1] = u;
-		res[2] = v;
-		res[3] = w;
-
-		// Internal energy
-		res[4] = rho_e / rho;
+		for (int i = 0; i < nVariables; i++) res[i] = vals[i];
 
 		return std::move(res);
 	};
 
 	// Inverse transition
 	inline std::valarray<double> InverseVariablesTransition(std::valarray<double> &vals) {
-		std::valarray<double> res(nVariables);
-		double rho_e = vals[0] / (gamma - 1.0);
-		double rho = rho_e / vals[4];
-		double rho_u = rho * vals[1];
-		double rho_v = rho * vals[2];
-		double rho_w = rho * vals[3];
-		double rho_E = rho_e + 0.5 * (rho_u * rho_u + rho_v * rho_v + rho_w * rho_w) / rho;
-
-		//fill conservative result array
-		res[0] = rho;
-		res[1] = rho_u;
-		res[2] = rho_v;
-		res[3] = rho_w;
-		res[4] = rho_E;
-
-		return std::move(res);
+		return vals;
 	};
 
 	// Calculation parameters	
 	int MaxIteration;
 	double MaxTime;
-	double SaveSolutionSnapshotTime;
-	double SaveSliceSnapshotTime;
-	int SaveSolutionSnapshotIterations;
-	int SaveSliceSnapshotIterations;
+	double SaveSolutionTime;
+	double SaveSliceTime;
+	int SaveSolutionIterations;
+	int SaveSliceIterations;
 
 	int ResidualOutputIterations{ };
 	bool ContinueComputation{ false };
@@ -170,14 +129,14 @@ public:
 
 	// Set initial conditions using exact values in cell centers
 	void SetInitialConditions(std::function<std::vector<double>(const Vector& r)> initF) {
-		for (int i = g.iMin; i <= g.iMax; i++) {
-			for (int j = g.jMin; j <= g.jMax; j++) {
-				for (int k = g.kMin; k <= g.kMax; k++) {
+		for (int i = grid.iMin; i <= grid.iMax; i++) {
+			for (int j = grid.jMin; j <= grid.jMax; j++) {
+				for (int k = grid.kMin; k <= grid.kMax; k++) {
 					//Obtain cell data
-					double x = g.CoordinateX[i];
-					double y = g.CoordinateY[j];
-					double z = g.CoordinateZ[k];
-					int sBegin = getSerialIndexLocal(i, j, k) * nVariables;
+					double x = grid.CoordinateX[i];
+					double y = grid.CoordinateY[j];
+					double z = grid.CoordinateZ[k];
+					int sBegin = grid.getSerialIndexLocal(i, j, k) * nVariables;
 					std::vector<double> U = initF(Vector(x, y, z));
 					for (int varn = 0; varn < nVariables; varn++) values[sBegin + varn] = U[varn];
 
@@ -198,19 +157,19 @@ public:
 	// Set initial conditions using cell averaged values
 	void SetInitialConditions(std::function<std::vector<double>(const Vector& r)> initF, NumericQuadrature& Int) {
 		CellInfo cell;
-		for (int i = g.iMin; i <= g.iMax; i++) {
-			for (int j = g.jMin; j <= g.jMax; j++) {
-				for (int k = g.kMin; k <= g.kMax; k++) {
+		for (int i = grid.iMin; i <= grid.iMax; i++) {
+			for (int j = grid.jMin; j <= grid.jMax; j++) {
+				for (int k = grid.kMin; k <= grid.kMax; k++) {
 					//Obtain cell data
-					cell.x = g.CoordinateX[i];
-					cell.y = g.CoordinateY[j];
-					cell.z = g.CoordinateZ[k];
-					cell.hx = g.hx[i];
-					cell.hy = g.hy[j];
-					cell.hz = g.hz[k];
+					cell.x = grid.CoordinateX[i];
+					cell.y = grid.CoordinateY[j];
+					cell.z = grid.CoordinateZ[k];
+					cell.hx = grid.hx[i];
+					cell.hy = grid.hy[j];
+					cell.hz = grid.hz[k];
 					double cellV = cell.hx * cell.hy * cell.hz;
 
-					int sBegin = getSerialIndexLocal(i, j, k) * nVariables;
+					int sBegin = grid.getSerialIndexLocal(i, j, k) * nVariables;
 					values[slice(sBegin, nVariables, 1)] = Int.IntegrateGroap(cell, initF, nVariables) / cellV;
 				};
 			};
@@ -224,7 +183,7 @@ public:
 		pManager->Barrier();
 	};
 
-	//Initialize kernel
+	// Initialize kernel  ( TO DO READ THE CONFIG FILE)
 	virtual void Init(KernelConfiguration& config) {
 		// Initialize MPI		
 		nDims = config.nDims;
@@ -233,37 +192,39 @@ public:
 		DebugOutputEnabled = config.DebugOutputEnabled;
 
 		// Initialize global grid
-		g.InitGlobal(config);
+		grid.InitGlobal(config);
 
 		// Initialize cartezian topology
-		pManager->InitCartesianTopology(g);
+		pManager->InitCartesianTopology(grid);
 
-		// Compute local gris sizes
-		g.nlocalX = g.nX / pManager->dimsCart[0];
-		g.nlocalY = g.nY / pManager->dimsCart[1];
-		g.nlocalZ = g.nZ / pManager->dimsCart[2];
-		g.iMin = pManager->rankCart[0] * g.nlocalX + g.dummyCellLayersX;
-		g.iMax = (pManager->rankCart[0] + 1) * g.nlocalX + g.dummyCellLayersX - 1;
-		g.jMin = pManager->rankCart[1] * g.nlocalY + g.dummyCellLayersY;
-		g.jMax = (pManager->rankCart[1] + 1) * g.nlocalY + g.dummyCellLayersY - 1;
-		g.kMin = pManager->rankCart[2] * g.nlocalZ + g.dummyCellLayersZ;
-		g.kMax = (pManager->rankCart[2] + 1) * g.nlocalZ + g.dummyCellLayersZ - 1;
-		g.InitLocal(config);
+		// Compute local gris sizes and initialize local grid
+		grid.nlocalX = grid.nX / pManager->dimsCart[0];
+		grid.nlocalY = grid.nY / pManager->dimsCart[1];
+		grid.nlocalZ = grid.nZ / pManager->dimsCart[2];
+		grid.iMin = pManager->rankCart[0] * grid.nlocalX + grid.dummyCellLayersX;
+		grid.iMax = (pManager->rankCart[0] + 1) * grid.nlocalX + grid.dummyCellLayersX - 1;
+		grid.jMin = pManager->rankCart[1] * grid.nlocalY + grid.dummyCellLayersY;
+		grid.jMax = (pManager->rankCart[1] + 1) * grid.nlocalY + grid.dummyCellLayersY - 1;
+		grid.kMin = pManager->rankCart[2] * grid.nlocalZ + grid.dummyCellLayersZ;
+		grid.kMax = (pManager->rankCart[2] + 1) * grid.nlocalZ + grid.dummyCellLayersZ - 1;
+		grid.InitLocal(config);
 		if (DebugOutputEnabled) {
-			std::cout << "rank = " << pManager->_rankCart << ", iMin = " << g.iMin << ", iMax = " << g.iMax << "\n";
-			std::cout << "rank = " << pManager->_rankCart << ", jMin = " << g.jMin << ", jMax = " << g.jMax << "\n";
-			std::cout << "rank = " << pManager->_rankCart << ", kMin = " << g.kMin << ", kMax = " << g.kMax << "\n";
+			std::cout << "rank = " << pManager->_rankCart << ", iMin = " << grid.iMin << ", iMax = " << grid.iMax << "\n";
+			std::cout << "rank = " << pManager->_rankCart << ", jMin = " << grid.jMin << ", jMax = " << grid.jMax << "\n";
+			std::cout << "rank = " << pManager->_rankCart << ", kMin = " << grid.kMin << ", kMax = " << grid.kMax << "\n";
 		};
 		
 		//Sync
 		pManager->Barrier();
 
 		//Initialize gas model parameters and Riemann solver
-		gamma = config.Gamma;
-		viscosity = config.Viscosity;
-		thermalConductivity = config.ThermalConductivity;
-		molarMass = config.MolarMass;
-		universalGasConstant = config.UniversalGasConstant;
+		gas_prop.gamma = config.Gamma;
+		gas_prop.viscosity = config.Viscosity;
+		gas_prop.thermalConductivity = config.ThermalConductivity;
+		gas_prop.molarMass = config.MolarMass;
+		gas_prop.universalGasConstant = config.UniversalGasConstant;
+
+		// Set all flags as configuration requires
 		if (config.IsViscousFlow == true) {
 			isViscousFlow = true;
 			isGradientRequired = true;
@@ -284,27 +245,35 @@ public:
 		ContinueComputation = config.ContinueComputation;
 
 		//Allocate data structures
-		values.resize(nVariables * g.nlocalXAll * g.nlocalYAll * g.nlocalZAll);
-		residual.resize(nVariables * g.nlocalXAll * g.nlocalYAll * g.nlocalZAll);
+		values.resize(nVariables * grid.nlocalXAll * grid.nlocalYAll * grid.nlocalZAll);
+		residual.resize(nVariables * grid.nlocalXAll * grid.nlocalYAll * grid.nlocalZAll);
 
 		//Initialize calculation parameters
 		MaxTime = config.MaxTime;
 		MaxIteration = config.MaxIteration;
-		SaveSolutionSnapshotTime = config.SaveSolutionSnapshotTime;
-		SaveSliceSnapshotTime = config.SaveSliceSnapshotTime;
-		SaveSolutionSnapshotIterations = config.SaveSolutionSnapshotIterations;
-		SaveSliceSnapshotIterations = config.SaveSliceSnapshotIterations;
+		SaveSolutionTime = config.SaveSolutionTime;
+		SaveSliceTime = config.SaveSliceTime;
+		SaveSolutionIterations = config.SaveSolutionIterations;
+		SaveSliceIterations = config.SaveSliceIterations;
 		ResidualOutputIterations = config.ResidualOutputIterations;
-		stepInfo.Time = 0;
-		stepInfo.Iteration = 0;
-		stepInfo.NextSnapshotTime = max(SaveSolutionSnapshotTime, SaveSliceSnapshotTime);
 
-		//Initialize boundary conditions
+		// Initialize step information
+		if (ContinueComputation == false) {
+			stepInfo.Time = 0;
+			stepInfo.Iteration = 0;
+			stepInfo.NextSolutionSnapshotTime = SaveSolutionTime;
+			stepInfo.NextSliceSnapshotTime = SaveSliceTime;
+		};
+
+		// Initialize boundary conditions
 		InitBoundaryConditions(config);
 
-		//External forces
+		// External forces
 		Sigma = config.Sigma;
 		UniformAcceleration = config.UniformAcceleration;
+
+		// Initialize method by method configuration
+		InitializeMethod(config);
 
 		if (DebugOutputEnabled) {
 			std::cout << "rank = " << pManager->getRank() << ", Kernel initialized\n";
@@ -314,21 +283,29 @@ public:
 		pManager->Barrier();
 	};
 
-	//Initialize boundary conditions
+	// Initialize boundary conditions
 	virtual void InitBoundaryConditions(KernelConfiguration& config) {
-		if (!g.IsPeriodicX) {
-			xLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
+		// TO DO (COARSE IMPLEMENTATION)
+		if (!grid.IsPeriodicX) {
+			if (config.xLeftBoundary.BCType == BoundaryConditionType::SubsonicInlet) {
+				xLeftBC = std::unique_ptr<BoundaryConditions::SubsonicInletBC>(new BoundaryConditions::SubsonicInletBC());
+			} else xLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
 			xRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
+
 			xLeftBC->loadConfiguration(config.xLeftBoundary);
 			xRightBC->loadConfiguration(config.xRightBoundary);
 		};
-		if ((!g.IsPeriodicY) && (nDims > 1)) {
+		if ((!grid.IsPeriodicY) && (nDims > 1)) {
 			yLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
 			yRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
 			yLeftBC->loadConfiguration(config.yLeftBoundary);
 			yRightBC->loadConfiguration(config.yRightBoundary);
+			
+			// to do improve (special case)
+			yLeftBCspecial = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
+			yLeftBCspecial->loadConfiguration(config.yLeftSpecialBoundary);
 		};
-		if ((!g.IsPeriodicZ) && (nDims > 2)) {
+		if ((!grid.IsPeriodicZ) && (nDims > 2)) {
 			zLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
 			zRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
 			zLeftBC->loadConfiguration(config.zLeftBoundary);
@@ -336,62 +313,22 @@ public:
 		};
 	};
 
-	//Update solution
+	// Update solution
 	void UpdateSolution(double dt) {
-		stepInfo.Residual.resize(nVariables);
-		for (int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = 0;
+		stepInfo.Residual.resize(nVariables, 0);		
 
-		for (int i = g.iMin; i <= g.iMax; i++)
-		{
-			for (int j = g.jMin; j <= g.jMax; j++)
-			{
-				for (int k = g.kMin; k <= g.kMax; k++)
-				{
-					int idx = getSerialIndexLocal(i, j, k);
-					//Compute cell volume
-					double volume{ g.hx[i] * g.hy[j] * g.hz[k] };
-					//Update cell values
-					for (int nv = 0; nv < nVariables; nv++) {
-						values[idx * nVariables + nv] += residual[idx * nVariables + nv] * dt / volume;
-						//Compute total residual
-						stepInfo.Residual[nv] += abs(residual[idx * nVariables + nv]);			// L1 norm
-					};
-				};
-			};
+		for (auto nv = 0; nv < nVariables; nv++) {
+			std::slice val_slice(nv, grid.nCellsLocalAll, nVariables);
+			std::valarray<double> c = dt * ((std::valarray<double>)residual[val_slice] / grid.volumes);
+			values[val_slice] += c;
+			stepInfo.Residual[nv] = ( grid.volumes * abs((std::valarray<double>)residual[val_slice]) ).sum();
 		};
 
 		//Aggregate
 		for (int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = pManager->Sum(stepInfo.Residual[nv]);
 	};
 
-	//Update Residual
-	void UpdateResiduals() {
-		stepInfo.Residual.resize(nVariables);
-		for (int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = 0;
-
-		for (int i = g.iMin; i <= g.iMax; i++)
-		{
-			for (int j = g.jMin; j <= g.jMax; j++)
-			{
-				for (int k = g.kMin; k <= g.kMax; k++)
-				{
-					int idx = getSerialIndexLocal(i, j, k);
-					//Compute cell volume
-					double volume = g.hx[i] * g.hy[j] * g.hz[k];
-					//Update cell values
-					for (int nv = 0; nv < nVariables; nv++) {
-						//Compute total residual
-						stepInfo.Residual[nv] += abs(residual[idx * nVariables + nv]);
-					};
-				};
-			};
-		};
-
-		//Aggregate
-		for (int nv = 0; nv < nVariables; nv++) stepInfo.Residual[nv] = pManager->Sum(stepInfo.Residual[nv]);
-	};
-
-	//Exchange values between processors
+	// Exchange values between processors
 	void ExchangeValues() {
 		//Index variables
 		int i = 0;
@@ -410,7 +347,7 @@ public:
 		//X direction exchange		
 
 		//Allocate buffers
-		int layerSize = g.nlocalY * g.nlocalZ;
+		int layerSize = grid.nlocalY * grid.nlocalZ;
 		bufferToSend.resize(layerSize * nVariables);
 		bufferToRecv.resize(layerSize * nVariables);
 
@@ -424,19 +361,19 @@ public:
 				std::endl << std::flush;
 		};
 
-		for (int layer = 1; layer <= g.dummyCellLayersX; layer++) {
+		for (int layer = 1; layer <= grid.dummyCellLayersX; layer++) {
 			// Minus direction exchange
 			int nSend = 0; //
 			int nRecv = 0; //
-			int iSend = g.iMin + layer - 1; // layer index to send
-			int iRecv = g.iMax + layer; // layer index to recv
+			int iSend = grid.iMin + layer - 1; // layer index to send
+			int iRecv = grid.iMax + layer; // layer index to recv
 
 									  // Prepare values to send
 			if (rankL != -1) {
 				nSend = layerSize * nVariables;
-				for (j = g.jMin; j <= g.jMax; j++) {
-					for (k = g.kMin; k <= g.kMax; k++) {
-						int idxBuffer = (j - g.jMin) + (k - g.kMin)* g.nlocalY; //Exclude x index
+				for (j = grid.jMin; j <= grid.jMax; j++) {
+					for (k = grid.kMin; k <= grid.kMax; k++) {
+						int idxBuffer = (j - grid.jMin) + (k - grid.kMin)* grid.nlocalY; //Exclude x index
 						double* U = getCellValues(iSend, j, k);
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = U[nv];
 					};
@@ -459,9 +396,9 @@ public:
 			pManager->SendRecvDouble(comm, rankL, rankR, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
 
 			//Write to recieving layer of dummy cells
-			for (j = g.jMin; j <= g.jMax; j++) {
-				for (k = g.kMin; k <= g.kMax; k++) {
-					int idxBuffer = (j - g.jMin) + (k - g.kMin)* g.nlocalY; //Exclude x index
+			for (j = grid.jMin; j <= grid.jMax; j++) {
+				for (k = grid.kMin; k <= grid.kMax; k++) {
+					int idxBuffer = (j - grid.jMin) + (k - grid.kMin)* grid.nlocalY; //Exclude x index
 					double* U = getCellValues(iRecv, j, k);
 					for (int nv = 0; nv < nVariables; nv++) U[nv] = bufferToRecv[idxBuffer * nVariables + nv];
 				};
@@ -470,8 +407,8 @@ public:
 			// Plus direction exchange
 			nSend = 0; //
 			nRecv = 0; //
-			iSend = g.iMax - layer + 1; // layer index to send
-			iRecv = g.iMin - layer; // layer index to recv
+			iSend = grid.iMax - layer + 1; // layer index to send
+			iRecv = grid.iMin - layer; // layer index to recv
 
 			if (DebugOutputEnabled) {
 				std::cout << "rank = " << rank <<
@@ -483,9 +420,9 @@ public:
 			// Prepare values to send
 			if (rankR != -1) {
 				nSend = layerSize * nVariables;
-				for (j = g.jMin; j <= g.jMax; j++) {
-					for (k = g.kMin; k <= g.kMax; k++) {
-						int idxBuffer = (j - g.jMin) + (k - g.kMin)* g.nlocalY; //Exclude x index
+				for (j = grid.jMin; j <= grid.jMax; j++) {
+					for (k = grid.kMin; k <= grid.kMax; k++) {
+						int idxBuffer = (j - grid.jMin) + (k - grid.kMin)* grid.nlocalY; //Exclude x index
 						double *U = getCellValues(iSend, j, k);
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = U[nv];
 					};
@@ -501,9 +438,9 @@ public:
 			pManager->SendRecvDouble(comm, rankR, rankL, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
 
 			//Write to recieving layer of dummy cells
-			for (j = g.jMin; j <= g.jMax; j++) {
-				for (k = g.kMin; k <= g.kMax; k++) {
-					int idxBuffer = (j - g.jMin) + (k - g.kMin)* g.nlocalY; //Exclude x index
+			for (j = grid.jMin; j <= grid.jMax; j++) {
+				for (k = grid.kMin; k <= grid.kMax; k++) {
+					int idxBuffer = (j - grid.jMin) + (k - grid.kMin)* grid.nlocalY; //Exclude x index
 					double *U = getCellValues(iRecv, j, k);
 					for (int nv = 0; nv < nVariables; nv++) U[nv] = bufferToRecv[idxBuffer * nVariables + nv];
 				};
@@ -520,7 +457,7 @@ public:
 		//Y direction exchange		
 
 		//Allocate buffers
-		layerSize = g.nlocalX * g.nlocalZ;
+		layerSize = grid.nlocalX * grid.nlocalZ;
 		bufferToSend.resize(layerSize * nVariables);
 		bufferToRecv.resize(layerSize * nVariables);
 
@@ -535,20 +472,20 @@ public:
 				std::endl << std::flush;
 		};
 
-		for (int layer = 1; layer <= g.dummyCellLayersY; layer++) {
+		for (int layer = 1; layer <= grid.dummyCellLayersY; layer++) {
 			// Minus direction exchange
 			int nSend = 0; //
 			int nRecv = 0; //
-			int jSend = g.jMin + layer - 1; // layer index to send
-			int jRecv = g.jMax + layer; // layer index to recv
+			int jSend = grid.jMin + layer - 1; // layer index to send
+			int jRecv = grid.jMax + layer; // layer index to recv
 
 			// Prepare values to send
 			if (rankL != -1) {
 				nSend = layerSize * nVariables;
-				for (i = g.iMin; i <= g.iMax; i++) {
-					for (k = g.kMin; k <= g.kMax; k++) {
-						int idxBuffer = (i - g.iMin) + (k - g.kMin) * g.nlocalX; //Exclude y index
-						int idxValues = getSerialIndexLocal(i, jSend, k);
+				for (i = grid.iMin; i <= grid.iMax; i++) {
+					for (k = grid.kMin; k <= grid.kMax; k++) {
+						int idxBuffer = (i - grid.iMin) + (k - grid.kMin) * grid.nlocalX; //Exclude y index
+						int idxValues = grid.getSerialIndexLocal(i, jSend, k);
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
 					};
 				};
@@ -570,10 +507,10 @@ public:
 			pManager->SendRecvDouble(comm, rankL, rankR, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
 
 			//Write to recieving layer of dummy cells
-			for (i = g.iMin; i <= g.iMax; i++) {
-				for (k = g.kMin; k <= g.kMax; k++) {
-					int idxBuffer = (i - g.iMin) + (k - g.kMin) * g.nlocalX; //Exclude y index
-					int idxValues = getSerialIndexLocal(i, jRecv, k);
+			for (i = grid.iMin; i <= grid.iMax; i++) {
+				for (k = grid.kMin; k <= grid.kMax; k++) {
+					int idxBuffer = (i - grid.iMin) + (k - grid.kMin) * grid.nlocalX; //Exclude y index
+					int idxValues = grid.getSerialIndexLocal(i, jRecv, k);
 					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
 				};
 			};
@@ -581,8 +518,8 @@ public:
 			// Plus direction exchange
 			nSend = 0; //
 			nRecv = 0; //
-			jSend = g.jMax - layer + 1; // layer index to send
-			jRecv = g.jMin - layer; // layer index to recv
+			jSend = grid.jMax - layer + 1; // layer index to send
+			jRecv = grid.jMin - layer; // layer index to recv
 
 			if (DebugOutputEnabled) {
 				std::cout << "rank = " << rank <<
@@ -594,10 +531,10 @@ public:
 			// Prepare values to send
 			if (rankR != -1) {
 				nSend = layerSize * nVariables;
-				for (i = g.iMin; i <= g.iMax; i++) {
-					for (k = g.kMin; k <= g.kMax; k++) {
-						int idxBuffer = (i - g.iMin) + (k - g.kMin) * g.nlocalX; //Exclude y index
-						int idxValues = getSerialIndexLocal(i, jSend, k);
+				for (i = grid.iMin; i <= grid.iMax; i++) {
+					for (k = grid.kMin; k <= grid.kMax; k++) {
+						int idxBuffer = (i - grid.iMin) + (k - grid.kMin) * grid.nlocalX; //Exclude y index
+						int idxValues = grid.getSerialIndexLocal(i, jSend, k);
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
 					};
 				};
@@ -612,10 +549,10 @@ public:
 			pManager->SendRecvDouble(comm, rankR, rankL, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
 
 			//Write to recieving layer of dummy cells
-			for (i = g.iMin; i <= g.iMax; i++) {
-				for (k = g.kMin; k <= g.kMax; k++) {
-					int idxBuffer = (i - g.iMin) + (k - g.kMin) * g.nlocalX; //Exclude y index
-					int idxValues = getSerialIndexLocal(i, jRecv, k);
+			for (i = grid.iMin; i <= grid.iMax; i++) {
+				for (k = grid.kMin; k <= grid.kMax; k++) {
+					int idxBuffer = (i - grid.iMin) + (k - grid.kMin) * grid.nlocalX; //Exclude y index
+					int idxValues = grid.getSerialIndexLocal(i, jRecv, k);
 					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
 				};
 			};
@@ -632,7 +569,7 @@ public:
 		//Z direction exchange		
 
 		//Allocate buffers
-		layerSize = g.nlocalX * g.nlocalY;
+		layerSize = grid.nlocalX * grid.nlocalY;
 		bufferToSend.resize(layerSize * nVariables);
 		bufferToRecv.resize(layerSize * nVariables);
 
@@ -648,20 +585,20 @@ public:
 		};
 
 
-		for (int layer = 1; layer <= g.dummyCellLayersZ; layer++) {
+		for (int layer = 1; layer <= grid.dummyCellLayersZ; layer++) {
 			// Minus direction exchange
 			int nSend = 0; //
 			int nRecv = 0; //
-			int kSend = g.kMin + layer - 1; // layer index to send
-			int kRecv = g.kMax + layer; // layer index to recv
+			int kSend = grid.kMin + layer - 1; // layer index to send
+			int kRecv = grid.kMax + layer; // layer index to recv
 
 									  // Prepare values to send
 			if (rankL != -1) {
 				nSend = layerSize * nVariables;
-				for (i = g.iMin; i <= g.iMax; i++) {
-					for (j = g.jMin; j <= g.jMax; j++) {
-						int idxBuffer = (i - g.iMin) + (j - g.jMin) * g.nlocalX; //Exclude z index
-						int idxValues = getSerialIndexLocal(i, j, kSend);
+				for (i = grid.iMin; i <= grid.iMax; i++) {
+					for (j = grid.jMin; j <= grid.jMax; j++) {
+						int idxBuffer = (i - grid.iMin) + (j - grid.jMin) * grid.nlocalX; //Exclude z index
+						int idxValues = grid.getSerialIndexLocal(i, j, kSend);
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
 					};
 				};
@@ -683,10 +620,10 @@ public:
 			pManager->SendRecvDouble(comm, rankL, rankR, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
 
 			//Write to recieving layer of dummy cells
-			for (i = g.iMin; i <= g.iMax; i++) {
-				for (j = g.jMin; j <= g.jMax; j++) {
-					int idxBuffer = (i - g.iMin) + (j - g.jMin) * g.nlocalX; //Exclude z index
-					int idxValues = getSerialIndexLocal(i, j, kRecv);
+			for (i = grid.iMin; i <= grid.iMax; i++) {
+				for (j = grid.jMin; j <= grid.jMax; j++) {
+					int idxBuffer = (i - grid.iMin) + (j - grid.jMin) * grid.nlocalX; //Exclude z index
+					int idxValues = grid.getSerialIndexLocal(i, j, kRecv);
 					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
 				};
 			};
@@ -694,8 +631,8 @@ public:
 			// Plus direction exchange
 			nSend = 0; //
 			nRecv = 0; //
-			kSend = g.kMax - layer + 1; // layer index to send
-			kRecv = g.kMin - layer; // layer index to recv
+			kSend = grid.kMax - layer + 1; // layer index to send
+			kRecv = grid.kMin - layer; // layer index to recv
 
 			if (DebugOutputEnabled) {
 				std::cout << "rank = " << rank <<
@@ -707,10 +644,10 @@ public:
 			// Prepare values to send
 			if (rankR != -1) {
 				nSend = layerSize * nVariables;
-				for (i = g.iMin; i <= g.iMax; i++) {
-					for (j = g.jMin; j <= g.jMax; j++) {
-						int idxBuffer = (i - g.iMin) + (j - g.jMin) * g.nlocalX; //Exclude z index
-						int idxValues = getSerialIndexLocal(i, j, kSend);
+				for (i = grid.iMin; i <= grid.iMax; i++) {
+					for (j = grid.jMin; j <= grid.jMax; j++) {
+						int idxBuffer = (i - grid.iMin) + (j - grid.jMin) * grid.nlocalX; //Exclude z index
+						int idxValues = grid.getSerialIndexLocal(i, j, kSend);
 						for (int nv = 0; nv < nVariables; nv++) bufferToSend[idxBuffer * nVariables + nv] = values[idxValues * nVariables + nv];
 					};
 				};
@@ -725,10 +662,10 @@ public:
 			pManager->SendRecvDouble(comm, rankR, rankL, &bufferToSend.front(), nSend, &bufferToRecv.front(), nRecv);
 
 			//Write to recieving layer of dummy cells
-			for (i = g.iMin; i <= g.iMax; i++) {
-				for (j = g.jMin; j <= g.jMax; j++) {
-					int idxBuffer = (i - g.iMin) + (j - g.jMin) * g.nlocalX; //Exclude z index
-					int idxValues = getSerialIndexLocal(i, j, kRecv);
+			for (i = grid.iMin; i <= grid.iMax; i++) {
+				for (j = grid.jMin; j <= grid.jMax; j++) {
+					int idxBuffer = (i - grid.iMin) + (j - grid.jMin) * grid.nlocalX; //Exclude z index
+					int idxValues = grid.getSerialIndexLocal(i, j, kRecv);
 					for (int nv = 0; nv < nVariables; nv++) values[idxValues * nVariables + nv] = bufferToRecv[idxBuffer * nVariables + nv];
 				};
 			};
@@ -750,7 +687,7 @@ public:
 
 	}; // function
 
-	//Compute dummy cell values as result of boundary conditions and interprocessor exchange communication
+	// Compute dummy cell values as result of boundary conditions and interprocessor exchange communication
 	void ComputeDummyCellValues() {
 		//Index variables
 		int i = 0;
@@ -771,16 +708,16 @@ public:
 		//X direction		
 		faceNormalL = Vector(-1.0, 0.0, 0.0);
 		faceNormalR = Vector(1.0, 0.0, 0.0);
-		if (!g.IsPeriodicX) {
-			for (j = g.jMin; j <= g.jMax; j++) {
-				for (k = g.kMin; k <= g.kMax; k++) {
+		if (!grid.IsPeriodicX) {
+			for (j = grid.jMin; j <= grid.jMax; j++) {
+				for (k = grid.kMin; k <= grid.kMax; k++) {
 					//Inner cell
-					cellCenter.y = g.CoordinateY[j];
-					cellCenter.z = g.CoordinateZ[k];
+					cellCenter.y = grid.CoordinateY[j];
+					cellCenter.z = grid.CoordinateZ[k];
 
 					//And face
-					faceCenter.y = g.CoordinateY[j];
-					faceCenter.z = g.CoordinateZ[k];
+					faceCenter.y = grid.CoordinateY[j];
+					faceCenter.z = grid.CoordinateZ[k];
 
 					if (DebugOutputEnabled) {
 						std::cout << "rank = " << rank <<
@@ -789,15 +726,15 @@ public:
 							std::endl << std::flush;
 					};
 
-					for (int layer = 1; layer <= g.dummyCellLayersX; layer++) {
+					for (int layer = 1; layer <= grid.dummyCellLayersX; layer++) {
 						if (pManager->rankCart[0] == 0) {
 							//Left border
-							i = g.iMin - layer; // layer index
-							int iIn = g.iMin + layer - 1; // opposite index
-							cellCenter.x = g.CoordinateX[iIn];
-							faceCenter.x = (g.CoordinateX[iIn] + g.CoordinateX[i]) / 2.0;		// TO DO WRONG for nonuniform grid
-							int idx = getSerialIndexLocal(i, j, k);
-							int idxIn = getSerialIndexLocal(iIn, j, k);
+							i = grid.iMin - layer; // layer index
+							int iIn = grid.iMin + layer - 1; // opposite index
+							cellCenter.x = grid.CoordinateX[iIn];
+							faceCenter.x = (grid.CoordinateX[iIn] + grid.CoordinateX[i]) / 2.0;		// TO DO WRONG for nonuniform grid
+							int idx = grid.getSerialIndexLocal(i, j, k);
+							int idxIn = grid.getSerialIndexLocal(iIn, j, k);
 
 							//Apply left boundary conditions						
 							std::valarray<double> dValues = xLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
@@ -808,12 +745,12 @@ public:
 
 						if (pManager->rankCart[0] == pManager->dimsCart[0] - 1) {
 							//Right border
-							i = g.iMax + layer; // layer index
-							int iIn = g.iMax - layer + 1; // opposite index
-							cellCenter.x = g.CoordinateX[iIn];
-							faceCenter.x = (g.CoordinateX[iIn] + g.CoordinateX[i]) / 2.0;		// TO DO WRONG for nonuniform grid
-							int idx = getSerialIndexLocal(i, j, k);
-							int idxIn = getSerialIndexLocal(iIn, j, k);
+							i = grid.iMax + layer; // layer index
+							int iIn = grid.iMax - layer + 1; // opposite index
+							cellCenter.x = grid.CoordinateX[iIn];
+							faceCenter.x = (grid.CoordinateX[iIn] + grid.CoordinateX[i]) / 2.0;		// TO DO WRONG for nonuniform grid
+							int idx = grid.getSerialIndexLocal(i, j, k);
+							int idxIn = grid.getSerialIndexLocal(iIn, j, k);
 
 							//Apply right boundary conditions						
 							std::valarray<double> dValues = xRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
@@ -837,16 +774,16 @@ public:
 		//Y direction		
 		faceNormalL = Vector(0.0, -1.0, 0.0);
 		faceNormalR = Vector(0.0, 1.0, 0.0);
-		if (!g.IsPeriodicY) {
-			for (i = g.iMin; i <= g.iMax; i++) {
-				for (k = g.kMin; k <= g.kMax; k++) {
+		if (!grid.IsPeriodicY) {
+			for (i = grid.iMin; i <= grid.iMax; i++) {
+				for (k = grid.kMin; k <= grid.kMax; k++) {
 					//Inner cell
-					cellCenter.x = g.CoordinateX[i];
-					cellCenter.z = g.CoordinateZ[k];
+					cellCenter.x = grid.CoordinateX[i];
+					cellCenter.z = grid.CoordinateZ[k];
 
 					//And face
-					faceCenter.x = g.CoordinateX[i];
-					faceCenter.z = g.CoordinateZ[k];
+					faceCenter.x = grid.CoordinateX[i];
+					faceCenter.z = grid.CoordinateZ[k];
 
 					//Debug info
 					if (DebugOutputEnabled) {
@@ -856,15 +793,15 @@ public:
 							std::endl << std::flush;
 					};
 
-					for (int layer = 1; layer <= g.dummyCellLayersY; layer++) {
+					for (int layer = 1; layer <= grid.dummyCellLayersY; layer++) {
 						if (pManager->rankCart[1] == 0) {
 							//Left border
-							j = g.jMin - layer; // layer index
-							int jIn = g.jMin + layer - 1; // opposite index
-							cellCenter.y = g.CoordinateY[jIn];
-							faceCenter.y = (g.CoordinateY[jIn] + g.CoordinateY[j]) / 2.0;	//for uniform dummy cells		TO DO MODIFY
-							int idx = getSerialIndexLocal(i, j, k);
-							int idxIn = getSerialIndexLocal(i, jIn, k);
+							j = grid.jMin - layer; // layer index
+							int jIn = grid.jMin + layer - 1; // opposite index
+							cellCenter.y = grid.CoordinateY[jIn];
+							faceCenter.y = (grid.CoordinateY[jIn] + grid.CoordinateY[j]) / 2.0;	//for uniform dummy cells		TO DO MODIFY
+							int idx = grid.getSerialIndexLocal(i, j, k);
+							int idxIn = grid.getSerialIndexLocal(i, jIn, k);
 
 							//Apply left boundary conditions						
 							std::valarray<double> dValues = yLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
@@ -875,12 +812,12 @@ public:
 
 						if (pManager->rankCart[1] == pManager->dimsCart[1] - 1) {
 							//Right border
-							j = g.jMax + layer; // layer index
-							int jIn = g.jMax - layer + 1; // opposite index
-							cellCenter.y = g.CoordinateY[jIn];
-							faceCenter.y = (g.CoordinateY[jIn] + g.CoordinateY[j]) / 2.0;
-							int idx = getSerialIndexLocal(i, j, k);
-							int idxIn = getSerialIndexLocal(i, jIn, k);
+							j = grid.jMax + layer; // layer index
+							int jIn = grid.jMax - layer + 1; // opposite index
+							cellCenter.y = grid.CoordinateY[jIn];
+							faceCenter.y = (grid.CoordinateY[jIn] + grid.CoordinateY[j]) / 2.0;
+							int idx = grid.getSerialIndexLocal(i, j, k);
+							int idxIn = grid.getSerialIndexLocal(i, jIn, k);
 
 							//Apply right boundary conditions						
 							std::valarray<double> dValues = yRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
@@ -904,16 +841,16 @@ public:
 		//Z direction		
 		faceNormalL = Vector(0.0, 0.0, -1.0);
 		faceNormalR = Vector(0.0, 0.0, 1.0);
-		if (!g.IsPeriodicZ) {
-			for (i = g.iMin; i <= g.iMax; i++) {
-				for (j = g.jMin; j <= g.jMax; j++) {
+		if (!grid.IsPeriodicZ) {
+			for (i = grid.iMin; i <= grid.iMax; i++) {
+				for (j = grid.jMin; j <= grid.jMax; j++) {
 					//Inner cell
-					cellCenter.x = g.CoordinateX[i];
-					cellCenter.y = g.CoordinateY[j];
+					cellCenter.x = grid.CoordinateX[i];
+					cellCenter.y = grid.CoordinateY[j];
 
 					//And face
-					faceCenter.x = g.CoordinateX[i];
-					faceCenter.y = g.CoordinateY[j];
+					faceCenter.x = grid.CoordinateX[i];
+					faceCenter.y = grid.CoordinateY[j];
 
 					//Debug info
 					if (DebugOutputEnabled) {
@@ -923,16 +860,16 @@ public:
 							std::endl << std::flush;
 					};
 
-					for (int layer = 1; layer <= g.dummyCellLayersY; layer++) {
+					for (int layer = 1; layer <= grid.dummyCellLayersY; layer++) {
 
 						if (pManager->rankCart[2] == 0) {
 							//Left border
-							k = g.kMin - layer; // layer index
-							int kIn = g.kMin + layer - 1; // opposite index
-							cellCenter.z = g.CoordinateZ[kIn];
-							faceCenter.z = (g.CoordinateZ[kIn] + g.CoordinateZ[k]) / 2.0;
-							int idx = getSerialIndexLocal(i, j, k);
-							int idxIn = getSerialIndexLocal(i, j, kIn);
+							k = grid.kMin - layer; // layer index
+							int kIn = grid.kMin + layer - 1; // opposite index
+							cellCenter.z = grid.CoordinateZ[kIn];
+							faceCenter.z = (grid.CoordinateZ[kIn] + grid.CoordinateZ[k]) / 2.0;
+							int idx = grid.getSerialIndexLocal(i, j, k);
+							int idxIn = grid.getSerialIndexLocal(i, j, kIn);
 
 							//Apply left boundary conditions						
 							std::valarray<double> dValues = zLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
@@ -943,12 +880,12 @@ public:
 
 						if (pManager->rankCart[2] == pManager->dimsCart[2] - 1) {
 							//Right border
-							k = g.kMax + layer; // layer index
-							int kIn = g.kMax - layer + 1; // opposite index
-							cellCenter.z = g.CoordinateZ[kIn];
-							faceCenter.z = (g.CoordinateZ[kIn] + g.CoordinateZ[k]) / 2.0;
-							int idx = getSerialIndexLocal(i, j, k);
-							int idxIn = getSerialIndexLocal(i, j, kIn);
+							k = grid.kMax + layer; // layer index
+							int kIn = grid.kMax - layer + 1; // opposite index
+							cellCenter.z = grid.CoordinateZ[kIn];
+							faceCenter.z = (grid.CoordinateZ[kIn] + grid.CoordinateZ[k]) / 2.0;
+							int idx = grid.getSerialIndexLocal(i, j, k);
+							int idxIn = grid.getSerialIndexLocal(i, j, kIn);
 
 							//Apply right boundary conditions						
 							std::valarray<double> dValues = zRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
@@ -969,15 +906,38 @@ public:
 		pManager->Barrier();
 	};
 
-	//Compute source terms
+	// Compute gradient of value in ijk cell
+	Vector ComputeGradientNonUniformStructured(int i, int j, int k, std::function<double(double*)> func) {
+		Vector grad(0, 0, 0);
+		double dux = func(getCellValues(i + 1, j, k)) - func(getCellValues(i - 1, j, k));
+		double dudx = dux / (grid.CoordinateX[i + 1] - grid.CoordinateX[i - 1]);
+		grad.x = dudx;
+
+		// 2D case
+		if (nDims > 1) {
+			double duy = func(getCellValues(i, j + 1, k)) - func(getCellValues(i, j - 1, k));
+			double dudy = duy / (grid.CoordinateY[j + 1] - grid.CoordinateY[j - 1]);
+			grad.y = dudy;
+		};
+
+		// 3D case
+		if (nDims > 2) {
+			double duz = func(getCellValues(i, j, k + 1)) - func(getCellValues(i, j, k - 1));
+			double dudz = duz / (grid.CoordinateZ[k + 1] - grid.CoordinateZ[k - 1]);
+			grad.z = dudz;
+		};
+		return grad;
+	};
+
+	// Compute source terms
 	virtual void ProcessExternalForces() {
 		//right handside part - mass foces
-		for (int i = g.iMin; i <= g.iMax; i++) {
-			for (int j = g.jMin; j <= g.jMax; j++) {
-				for (int k = g.kMin; k <= g.kMax; k++) {
-					int idx = getSerialIndexLocal(i, j, k);
+		for (int i = grid.iMin; i <= grid.iMax; i++) {
+			for (int j = grid.jMin; j <= grid.jMax; j++) {
+				for (int k = grid.kMin; k <= grid.kMax; k++) {
+					int idx = grid.getSerialIndexLocal(i, j, k);
 					//Compute cell volume
-					double volume = g.hx[i] * g.hy[j] * g.hz[k];
+					double volume = grid.hx[i] * grid.hy[j] * grid.hz[k];
 
 					double *V = getCellValues(i, j, k);
 					double u = V[1] / V[0];
@@ -997,12 +957,12 @@ public:
 	};
 	virtual void ProcessExternalAcceleration() {
 		//right handside part - mass foces
-		for (int i = g.iMin; i <= g.iMax; i++) {
-			for (int j = g.jMin; j <= g.jMax; j++) {
-				for (int k = g.kMin; k <= g.kMax; k++) {
-					int idx = getSerialIndexLocal(i, j, k);
+		for (int i = grid.iMin; i <= grid.iMax; i++) {
+			for (int j = grid.jMin; j <= grid.jMax; j++) {
+				for (int k = grid.kMin; k <= grid.kMax; k++) {
+					int idx = grid.getSerialIndexLocal(i, j, k);
 					//Compute cell volume
-					double volume = g.hx[i] * g.hy[j] * g.hz[k];
+					double volume = grid.hx[i] * grid.hy[j] * grid.hz[k];
 					double *V = getCellValues(i, j, k);
 					double u = V[1] / V[0];
 					double v = V[2] / V[0];
@@ -1055,16 +1015,16 @@ public:
 			ofs << std::scientific;
 
 			//Solution
-			for (int i = g.iMin; i <= g.iMax; i++) {
+			for (int i = grid.iMin; i <= grid.iMax; i++) {
 				//Obtain cell data
-				double x = g.CoordinateX[i];
-				double* U = getCellValues(i, g.jMin, g.kMin);
+				double x = grid.CoordinateX[i];
+				double* U = getCellValues(i, grid.jMin, grid.kMin);
 				double ro = U[0];
 				double u = U[1] / ro;
 				double v = U[2] / ro;
 				double w = U[3] / ro;
 				double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
-				double P = (gamma - 1.0) * ro * e;
+				double P = (gas_prop.gamma - 1.0) * ro * e;
 
 				//Write to file
 				ofs << x << " ";
@@ -1111,7 +1071,7 @@ public:
 				ofs << std::endl;
 				ofs << R"(ZONE T=")" << stepInfo.Time << R"(")";
 				ofs << std::endl;
-				ofs << "N=" << (g.nX + 1) * (g.nY + 1) << ", E=" << g.nX * g.nY << ", F=FEBLOCK, ET=QUADRILATERAL";
+				ofs << "N=" << (grid.nX + 1) * (grid.nY + 1) << ", E=" << grid.nX * grid.nY << ", F=FEBLOCK, ET=QUADRILATERAL";
 				ofs << std::endl;
 				ofs << "VARLOCATION = (NODAL, NODAL";
 				ofs << ", CELLCENTERED";
@@ -1124,15 +1084,15 @@ public:
 				ofs << std::endl;
 
 				// Write coordinates
-				for (int j = g.dummyCellLayersY; j <= g.dummyCellLayersY + g.nY; j++) {
-					for (int i = g.dummyCellLayersX; i <= g.dummyCellLayersX + g.nX; i++) {
-						ofs << g.CoordinateX[i] - 0.5 * g.hx[i];
+				for (int j = grid.dummyCellLayersY; j <= grid.dummyCellLayersY + grid.nY; j++) {
+					for (int i = grid.dummyCellLayersX; i <= grid.dummyCellLayersX + grid.nX; i++) {
+						ofs << grid.CoordinateX[i] - 0.5 * grid.hx[i];
 						ofs << std::endl;
 					};
 				};
-				for (int j = g.dummyCellLayersY; j <= g.dummyCellLayersY + g.nY; j++) {
-					for (int i = g.dummyCellLayersX; i <= g.dummyCellLayersX + g.nX; i++) {
-						ofs << g.CoordinateY[j] - 0.5 * g.hy[j];
+				for (int j = grid.dummyCellLayersY; j <= grid.dummyCellLayersY + grid.nY; j++) {
+					for (int i = grid.dummyCellLayersX; i <= grid.dummyCellLayersX + grid.nX; i++) {
+						ofs << grid.CoordinateY[j] - 0.5 * grid.hy[j];
 						ofs << std::endl;
 					};
 				};
@@ -1141,9 +1101,9 @@ public:
 			pManager->Barrier();
 
 			// Compute variables
-			auto idx_first = getSerialIndexLocal(g.iMin, g.jMin, 0);
-			std::valarray<size_t> s{ size_t(g.nlocalY), size_t(g.nlocalX) };
-			std::valarray<size_t> str{ size_t(g.nlocalXAll * nVariables), size_t(nVariables) };
+			auto idx_first = grid.getSerialIndexLocal(grid.iMin, grid.jMin, 0);
+			std::valarray<size_t> s{ size_t(grid.nlocalY), size_t(grid.nlocalX) };
+			std::valarray<size_t> str{ size_t(grid.nlocalXAll * nVariables), size_t(nVariables) };
 
 			// Density
 			std::valarray<double> rho = values[std::gslice(idx_first * nVariables, s, str)];
@@ -1164,10 +1124,10 @@ public:
 			std::valarray<double> e = values[std::gslice(idx_first * nVariables + 4, s, str)];
 			e /= rho;
 			e = e - 0.5 * (u * u + v * v + w * w);
-			std::valarray<double> P = (gamma - 1.0) * (rho * e);
+			std::valarray<double> P = (gas_prop.gamma - 1.0) * (rho * e);
 
 			// Temperature
-			double cond = (gamma - 1.0) * molarMass / universalGasConstant;
+			double cond = (gas_prop.gamma - 1.0) * gas_prop.molarMass / gas_prop.universalGasConstant;
 			std::valarray<double> T = cond * e;
 
 			// write all data
@@ -1186,11 +1146,11 @@ public:
 
 			// write connectivity list
 			int bl, br, ul, ur;		// indexes for left/right top/bottom nodes
-			for (int j = g.jMin; j <= g.jMax; j++) {
-				bl = (g.nX + 1) * (j - g.dummyCellLayersY) + (g.iMin -  g.dummyCellLayersX) + 1;		// indexes starts from 1 in Tecplot format
-				for (int i = g.iMin; i <= g.iMax; i++) {
+			for (int j = grid.jMin; j <= grid.jMax; j++) {
+				bl = (grid.nX + 1) * (j - grid.dummyCellLayersY) + (grid.iMin -  grid.dummyCellLayersX) + 1;		// indexes starts from 1 in Tecplot format
+				for (int i = grid.iMin; i <= grid.iMax; i++) {
 					br = bl + 1;
-					ul = bl + (g.nX + 1);
+					ul = bl + (grid.nX + 1);
 					ur = ul + 1;
 					ofs << bl << ' ';
 					ofs << ul << ' ';
@@ -1229,7 +1189,7 @@ public:
 				ofs << std::endl;
 				ofs << R"(ZONE T=")" << stepInfo.Time << R"(")";
 				ofs << std::endl;
-				ofs << "N=" << (g.nX + 1) * (g.nY + 1) * (g.nZ + 1) << ", E=" << g.nX * g.nY * g.nZ << ", F=FEBLOCK, ET=BRICK";
+				ofs << "N=" << (grid.nX + 1) * (grid.nY + 1) * (grid.nZ + 1) << ", E=" << grid.nX * grid.nY * grid.nZ << ", F=FEBLOCK, ET=BRICK";
 				ofs << std::endl;
 				ofs << "VARLOCATION = (NODAL, NODAL, NODAL";
 				ofs << ", CELLCENTERED";
@@ -1242,26 +1202,26 @@ public:
 				ofs << std::endl;
 
 				// Write coordinates
-				for (int k = g.dummyCellLayersZ; k <= g.dummyCellLayersZ + g.nZ; k++) {
-					for (int j = g.dummyCellLayersY; j <= g.dummyCellLayersY + g.nY; j++) {
-						for (int i = g.dummyCellLayersX; i <= g.dummyCellLayersX + g.nX; i++) {
-							ofs << g.CoordinateX[i] - 0.5 * g.hx[i];
+				for (int k = grid.dummyCellLayersZ; k <= grid.dummyCellLayersZ + grid.nZ; k++) {
+					for (int j = grid.dummyCellLayersY; j <= grid.dummyCellLayersY + grid.nY; j++) {
+						for (int i = grid.dummyCellLayersX; i <= grid.dummyCellLayersX + grid.nX; i++) {
+							ofs << grid.CoordinateX[i] - 0.5 * grid.hx[i];
 							ofs << std::endl;
 						};
 					};
 				};
-				for (int k = g.dummyCellLayersZ; k <= g.dummyCellLayersZ + g.nZ; k++) {
-					for (int j = g.dummyCellLayersY; j <= g.dummyCellLayersY + g.nY; j++) {
-						for (int i = g.dummyCellLayersX; i <= g.dummyCellLayersX + g.nX; i++) {
-							ofs << g.CoordinateY[j] - 0.5 * g.hy[j];
+				for (int k = grid.dummyCellLayersZ; k <= grid.dummyCellLayersZ + grid.nZ; k++) {
+					for (int j = grid.dummyCellLayersY; j <= grid.dummyCellLayersY + grid.nY; j++) {
+						for (int i = grid.dummyCellLayersX; i <= grid.dummyCellLayersX + grid.nX; i++) {
+							ofs << grid.CoordinateY[j] - 0.5 * grid.hy[j];
 							ofs << std::endl;
 						};
 					};
 				};
-				for (int k = g.dummyCellLayersZ; k <= g.dummyCellLayersZ + g.nZ; k++) {
-					for (int j = g.dummyCellLayersY; j <= g.dummyCellLayersY + g.nY; j++) {
-						for (int i = g.dummyCellLayersX; i <= g.dummyCellLayersX + g.nX; i++) {
-							ofs << g.CoordinateZ[k] - 0.5 * g.hz[k];
+				for (int k = grid.dummyCellLayersZ; k <= grid.dummyCellLayersZ + grid.nZ; k++) {
+					for (int j = grid.dummyCellLayersY; j <= grid.dummyCellLayersY + grid.nY; j++) {
+						for (int i = grid.dummyCellLayersX; i <= grid.dummyCellLayersX + grid.nX; i++) {
+							ofs << grid.CoordinateZ[k] - 0.5 * grid.hz[k];
 							ofs << std::endl;
 						};
 					};
@@ -1271,9 +1231,9 @@ public:
 			pManager->Barrier();
 
 			// Compute variables
-			auto idx_first = getSerialIndexLocal(g.iMin, g.jMin, g.kMin);
-			std::valarray<size_t> s{ size_t(g.nlocalZ), size_t(g.nlocalY), size_t(g.nlocalX) };
-			std::valarray<size_t> str{ size_t(g.nlocalYAll * g.nlocalXAll * nVariables), size_t(g.nlocalXAll * nVariables), size_t(nVariables) };
+			auto idx_first = grid.getSerialIndexLocal(grid.iMin, grid.jMin, grid.kMin);
+			std::valarray<size_t> s{ size_t(grid.nlocalZ), size_t(grid.nlocalY), size_t(grid.nlocalX) };
+			std::valarray<size_t> str{ size_t(grid.nlocalYAll * grid.nlocalXAll * nVariables), size_t(grid.nlocalXAll * nVariables), size_t(nVariables) };
 
 			// Density
 			std::valarray<double> rho = values[std::gslice(idx_first * nVariables, s, str)];
@@ -1296,12 +1256,12 @@ public:
 			// Internal Energy and Pressure
 			std::valarray<double> e = values[std::gslice(idx_first * nVariables + 4, s, str)];		// ro * E
 			e = e - k;		// ro * e
-			std::valarray<double> P = (gamma - 1.0) * (e);
+			std::valarray<double> P = (gas_prop.gamma - 1.0) * (e);
 			e /= rho;		// e
 
 
 			// Temperature
-			double cond = (gamma - 1.0) * molarMass / universalGasConstant;
+			double cond = (gas_prop.gamma - 1.0) * gas_prop.molarMass / gas_prop.universalGasConstant;
 			std::valarray<double> T = cond * e;
 
 			// Write all data
@@ -1320,16 +1280,16 @@ public:
 
 			// write connectivity list
 			int fbl, fbr, ful, fur, bbl, bbr, bul, bur;		// indexes for front/back, top/bottom, left/right nodes
-			for (int k = g.kMin; k <= g.kMax; k++) {
-				for (int j = g.jMin; j <= g.jMax; j++) {
-					fbl = (g.nX + 1) * (g.nY + 1) * (k - g.dummyCellLayersZ) + (g.nX + 1) * (j - g.dummyCellLayersY) + (g.iMin - g.dummyCellLayersX) + 1;		// indexes starts from 1 in Tecplot format
-					for (int i = g.iMin; i <= g.iMax; i++) {
+			for (int k = grid.kMin; k <= grid.kMax; k++) {
+				for (int j = grid.jMin; j <= grid.jMax; j++) {
+					fbl = (grid.nX + 1) * (grid.nY + 1) * (k - grid.dummyCellLayersZ) + (grid.nX + 1) * (j - grid.dummyCellLayersY) + (grid.iMin - grid.dummyCellLayersX) + 1;		// indexes starts from 1 in Tecplot format
+					for (int i = grid.iMin; i <= grid.iMax; i++) {
 						fbr = fbl + 1;
-						ful = fbl + (g.nX + 1);
+						ful = fbl + (grid.nX + 1);
 						fur = ful + 1;
-						bbl = fbl + (g.nX + 1) * (g.nY + 1);
+						bbl = fbl + (grid.nX + 1) * (grid.nY + 1);
 						bbr = bbl + 1;
-						bul = bbl + (g.nX + 1);
+						bul = bbl + (grid.nX + 1);
 						bur = bul + 1;
 						ofs << bbr << ' ';
 						ofs << bur << ' ';
@@ -1390,11 +1350,11 @@ public:
 			ofs << "ZONE T=\"1\"";	//zone name
 			ofs << std::endl;
 
-			if (I == -1) ofs << "I=" << g.nX;
+			if (I == -1) ofs << "I=" << grid.nX;
 			else ofs << "I=" << 1;
-			if (J == -1) ofs << "J=" << g.nY;
+			if (J == -1) ofs << "J=" << grid.nY;
 			else ofs << "J=" << 1;
-			if (K == -1) ofs << "K=" << g.nZ;
+			if (K == -1) ofs << "K=" << grid.nZ;
 			else ofs << "K=" << 1;
 			ofs << "F=POINT\n";
 			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
@@ -1409,23 +1369,23 @@ public:
 		};
 
 		//Solution output
-		for (int i = g.iMin; i <= g.iMax; i++) {
+		for (int i = grid.iMin; i <= grid.iMax; i++) {
 			if ((I != -1) && (i != I)) continue;
-			for (int j = g.jMin; j <= g.jMax; j++) {
+			for (int j = grid.jMin; j <= grid.jMax; j++) {
 				if ((J != -1) && (j != J)) continue;
-				for (int k = g.kMin; k <= g.kMax; k++) {
+				for (int k = grid.kMin; k <= grid.kMax; k++) {
 					if ((K != -1) && (k != K)) continue;
 					//Obtain cell data
-					double x = g.CoordinateX[i];
-					double y = g.CoordinateY[j];
-					double z = g.CoordinateZ[k];
+					double x = grid.CoordinateX[i];
+					double y = grid.CoordinateY[j];
+					double z = grid.CoordinateZ[k];
 					double* U = getCellValues(i, j, k);
 					double ro = U[0];
 					double u = U[1] / ro;
 					double v = U[2] / ro;
 					double w = U[3] / ro;
 					double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
-					double P = (gamma - 1.0) * ro * e;
+					double P = (gas_prop.gamma - 1.0) * ro * e;
 
 					//Write to file
 					if (I == -1) ofs << x << " ";
@@ -1493,11 +1453,11 @@ public:
 			ofs << "ZONE T=\"1\"";	//zone name
 			ofs << std::endl;
 
-			if (I == -1) ofs << "I=" << g.nX;
+			if (I == -1) ofs << "I=" << grid.nX;
 			else ofs << "I=" << 1;
-			if (J == -1) ofs << "J=" << g.nY;
+			if (J == -1) ofs << "J=" << grid.nY;
 			else ofs << "J=" << 1;
-			if (K == -1) ofs << "K=" << g.nZ;
+			if (K == -1) ofs << "K=" << grid.nZ;
 			else ofs << "K=" << 1;
 			ofs << "F=POINT\n";
 			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
@@ -1510,24 +1470,24 @@ public:
 		};
 
 		//Solution output
-		for (int i = g.iMin; i <= g.iMax; i++) {
+		for (int i = grid.iMin; i <= grid.iMax; i++) {
 			if ((I != -1) && (i != I)) continue;
-			for (int j = g.jMin; j <= g.jMax; j++) {
+			for (int j = grid.jMin; j <= grid.jMax; j++) {
 				if ((J != -1) && (j != J)) continue;
-				for (int k = g.kMin; k <= g.kMax; k++) {
+				for (int k = grid.kMin; k <= grid.kMax; k++) {
 					if ((K != -1) && (k != K)) continue;
 					//Obtain cell data
-					double x = g.CoordinateX[i];
-					double y = g.CoordinateY[j];
-					double z = g.CoordinateZ[k];
+					double x = grid.CoordinateX[i];
+					double y = grid.CoordinateY[j];
+					double z = grid.CoordinateZ[k];
 					double* U = getCellValues(i, j, k);
 					double ro = U[0];
 					double u = U[1] / ro;
 					double v = U[2] / ro;
 					double w = U[3] / ro;
 					double e = U[4] / ro - 0.5*(u*u + v*v + w*w);
-					double P = (gamma - 1.0) * ro * e;
-					double T = (gamma - 1.0) * molarMass * e / universalGasConstant;
+					double P = (gas_prop.gamma - 1.0) * ro * e;
+					double T = (gas_prop.gamma - 1.0) * gas_prop.molarMass * e / gas_prop.universalGasConstant;
 
 					//Write to file
 					if (I == -1) ofs << x << " ";
@@ -1559,10 +1519,13 @@ public:
 	//Run calculation
 	void Run() {
 		//Calculate snapshot times order of magnitude
-		int snapshotTimePrecision = 0;
-		double SaveTimeInterval = max(SaveSolutionSnapshotTime, SaveSliceSnapshotTime);
-		if (SaveTimeInterval > 0) {
-			snapshotTimePrecision = static_cast<int>(1 - std::floor(std::log10(SaveTimeInterval)));
+		int SolutionTimePrecision = 0;
+		int SliceTimePrecision = 0;
+		if (SaveSolutionTime > 0) {
+			SolutionTimePrecision = static_cast<int>(1 - std::floor(std::log10(SaveSolutionTime)));
+		};
+		if (SaveSliceTime > 0) {
+			SliceTimePrecision = static_cast<int>(1 - std::floor(std::log10(SaveSliceTime)));
 		};
 
 		//Open history file
@@ -1599,21 +1562,21 @@ public:
 		if (!pManager->IsFirstNode()) pManager->Wait(rank - 1);
 		std::cout << "Info for node rank : " << rank << "" << std::endl <<
 			"rankX = " << pManager->rankCart[0] <<
-			", iMin = " << g.iMin <<
-			", iMax = " << g.iMax
+			", iMin = " << grid.iMin <<
+			", iMax = " << grid.iMax
 			<< std::endl;
 		if (nDims > 1) {
 			std::cout <<
 				"rankY = " << pManager->rankCart[1] <<
-				", jMin = " << g.jMin <<
-				", jMax = " << g.jMax
+				", jMin = " << grid.jMin <<
+				", jMax = " << grid.jMax
 				<< std::endl;
 		};
 		if (nDims > 2) {
 			std::cout <<
 				"rankZ = " << pManager->rankCart[2] <<
-				", kMin = " << g.kMin <<
-				", kMax = " << g.kMax
+				", kMin = " << grid.kMin <<
+				", kMax = " << grid.kMax
 				<< std::endl;
 		};
 		if (!pManager->IsLastNode()) pManager->Signal(rank + 1);
@@ -1648,23 +1611,23 @@ public:
 			};
 
 			//Solution and slice snapshots every few iterations
-			if ((SaveSolutionSnapshotIterations != 0) && (stepInfo.Iteration % SaveSolutionSnapshotIterations) == 0) {
+			if ((SaveSolutionIterations != 0) && (stepInfo.Iteration % SaveSolutionIterations) == 0) {
 				//Save snapshot
 				std::stringstream snapshotFileName;
 				snapshotFileName.str(std::string());
-				snapshotFileName << "dataI" << stepInfo.Iteration << ".dat";
+				snapshotFileName << "solution, It = " << stepInfo.Iteration << ".dat";
 				SaveSolution(snapshotFileName.str());
 
 				if (pManager->IsMaster()) {
 					std::cout << "Solution has been written to file \"" << snapshotFileName.str() << "\"" << std::endl;
 				};
 			};
-			if ((SaveSliceSnapshotIterations != 0) && (stepInfo.Iteration % SaveSliceSnapshotIterations) == 0) {
+			if ((SaveSliceIterations != 0) && (stepInfo.Iteration % SaveSliceIterations) == 0) {
 				//Save snapshots
 				for (auto i = 0; i < slices.size(); i++) {
 					std::stringstream snapshotFileName;
 					snapshotFileName.str(std::string());
-					snapshotFileName << "slice" << i << ",I=" << stepInfo.Iteration << ".dat";
+					snapshotFileName << "slice" << i << ", It =" << stepInfo.Iteration << ".dat";
 					SaveSliceToTecplot(snapshotFileName.str(), slices[i]);
 
 					if (pManager->IsMaster()) {
@@ -1674,13 +1637,13 @@ public:
 			};
 			
 			//Every fixed time interval
-			if ((SaveSolutionSnapshotTime > 0) && (stepInfo.NextSnapshotTime == stepInfo.Time)) {
+			if ((SaveSolutionTime > 0) && (stepInfo.NextSolutionSnapshotTime == stepInfo.Time)) {
 				//Save snapshot
 				std::stringstream snapshotFileName;
 				snapshotFileName.str(std::string());
 				snapshotFileName << std::fixed;
-				snapshotFileName.precision(snapshotTimePrecision);
-				snapshotFileName << "dataT" << stepInfo.Time << ".dat";
+				snapshotFileName.precision(SolutionTimePrecision);
+				snapshotFileName << "solution, t = " << stepInfo.Time << ".dat";
 				SaveSolution(snapshotFileName.str());
 
 				if (pManager->IsMaster()) {
@@ -1688,16 +1651,16 @@ public:
 				};
 
 				//Adjust next snapshot time
-				if(SaveSliceSnapshotTime == 0) stepInfo.NextSnapshotTime += SaveSolutionSnapshotTime;
+				stepInfo.NextSolutionSnapshotTime += SaveSolutionTime;
 			};
-			if ((SaveSliceSnapshotTime > 0) && (stepInfo.NextSnapshotTime == stepInfo.Time)) {
+			if ((SaveSliceTime > 0) && (stepInfo.NextSliceSnapshotTime == stepInfo.Time)) {
 				//Save snapshots
 				for (auto i = 0; i < slices.size(); i++) {
 					std::stringstream snapshotFileName;
 					snapshotFileName.str(std::string());
 					snapshotFileName << "slice" << i;
 					snapshotFileName << std::fixed;
-					snapshotFileName.precision(snapshotTimePrecision);
+					snapshotFileName.precision(SliceTimePrecision);
 					snapshotFileName << ",T=" << stepInfo.Time << ".dat";
 					SaveSliceToTecplot(snapshotFileName.str(), slices[i]);
 
@@ -1707,7 +1670,7 @@ public:
 				};
 
 				//Adjust next snapshot time
-				stepInfo.NextSnapshotTime += SaveSliceSnapshotTime;
+				stepInfo.NextSliceSnapshotTime += SaveSliceTime;
 			};
 
 			//Save convergence history		

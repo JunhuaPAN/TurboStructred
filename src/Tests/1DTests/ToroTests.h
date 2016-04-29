@@ -78,8 +78,8 @@ namespace ToroTests
 
 		conf.MaxTime = 0.2;
 		conf.MaxIteration = 1000000;
-		conf.SaveSolutionSnapshotTime = 0;
-		conf.SaveSolutionSnapshotIterations = 0;
+		conf.SaveSolutionTime = 0;
+		conf.SaveSolutionIterations = 0;
 		conf.ResidualOutputIterations = 100;
 
 		return conf;
@@ -455,12 +455,12 @@ namespace ToroTests
 		kernel->Run();
 
 		// Compute exact solution
-		TestsUtility::exact_solution = ComputeExactSolution(Ntest, params, kernel->g, kernel->stepInfo.Time);
+		TestsUtility::exact_solution = ComputeExactSolution(Ntest, params, kernel->grid, kernel->stepInfo.Time);
 
 		// Compute accuracy
-		std::valarray<double> inner_values(&(kernel->values[TestsUtility::nVar * kernel->g.dummyCellLayersX]), kernel->g.nlocalX * kernel->nVariables);
-		std::vector<double> L2 = TestsUtility::ComputeL2Error(inner_values, kernel->g, *(kernel->pManager), conf.nX);
-		std::vector<double> L1 = TestsUtility::ComputeL1Error(inner_values, kernel->g, *(kernel->pManager), conf.nX);
+		std::valarray<double> inner_values(&(kernel->values[TestsUtility::nVar * kernel->grid.dummyCellLayersX]), kernel->grid.nlocalX * kernel->nVariables);
+		std::vector<double> L2 = TestsUtility::ComputeL2Error(inner_values, kernel->grid, *(kernel->pManager), conf.nX);
+		std::vector<double> L1 = TestsUtility::ComputeL1Error(inner_values, kernel->grid, *(kernel->pManager), conf.nX);
 
 		// Write in errors
 		errors = L2;
@@ -485,12 +485,12 @@ namespace ToroTests
 		fname << ".dat";
 		std::string filename = fname.str();
 		kernel->SaveSolution(filename);
-		TestsUtility::SaveExactSolution(filename, kernel->g, *(kernel->pManager));
+		TestsUtility::SaveExactSolution(filename, kernel->grid, *(kernel->pManager));
 
 		// Save the errors
 		std::stringstream fname2;
 		fname2 << "ToroTest_" << Ntest << ".dat";
-		TestsUtility::WriteErrors(fname2.str(), errors, kernel->g, *(kernel->pManager));
+		TestsUtility::WriteErrors(fname2.str(), errors, kernel->grid, *(kernel->pManager));
 
 		// Finalize kernel
 		kernel->Finalize();
@@ -499,7 +499,7 @@ namespace ToroTests
 	};
 	
 	void RunExperiment(int argc, char *argv[]) {
-		int Ntest = 1;	// Toro test number
+		int Ntest = 4;	// Toro test number
 		int Nx = 400;
 
 		//	Reconstruction type

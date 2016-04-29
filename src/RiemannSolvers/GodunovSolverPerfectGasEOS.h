@@ -12,7 +12,6 @@ class GodunovSolverPerfectGasEOS : public RiemannSolver {
 
 	// Required info
 	double _gamma;	//	Specific heat ratio (inherited from gas model)
-	double _operatingPressure; //	Operating pressure (optional, 0 by default)
 
 	// Get Pressure function
 	double GetPressure(const std::valarray<double>& celldata) {
@@ -34,7 +33,7 @@ class GodunovSolverPerfectGasEOS : public RiemannSolver {
 		double vy = U[2] / ro;
 		double vz = U[3] / ro;
 		double roE = U[4];	//ro*e
-		double p = (_gamma - 1.0) * (roE - ro * (vx * vx + vy * vy + vz * vz) / 2.0) - _operatingPressure;
+		double p = (_gamma - 1.0) * (roE - ro * (vx * vx + vy * vy + vz * vz) / 2.0);
 		double vn = vx * n.x + vy * n.y + vz * n.z;
 
 		res[0] = ro * vn;
@@ -270,7 +269,7 @@ class GodunovSolverPerfectGasEOS : public RiemannSolver {
 	
 public:
 	//Constructor
-	GodunovSolverPerfectGasEOS(double gamma, double eps, double opPressure) : _gamma(gamma), _operatingPressure(opPressure) {
+	GodunovSolverPerfectGasEOS(double gamma, double eps) : _gamma(gamma) {
 	};
 
 	//Solve riemann problem

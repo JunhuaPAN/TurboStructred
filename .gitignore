@@ -29,6 +29,7 @@ CMakeFiles/
 x64/
 Run/
 build/
+documentation/
 [Bb]in/
 [Oo]bj/
 
@@ -176,3 +177,5 @@ vorticity_view.mcr
 Run/TurboStructured.exe
 Run/TurboStructured_T.exe
 Run/TurboStructured.exe
+TurboStructured.VC.db
+TurboStructured.VC.VC.opendb

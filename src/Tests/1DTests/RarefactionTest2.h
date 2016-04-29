@@ -84,8 +84,8 @@ namespace RarefactionTest2
 
 		conf.MaxTime = 0.25;
 		conf.MaxIteration = 100000;
-		conf.SaveSolutionSnapshotTime = 0;
-		conf.SaveSolutionSnapshotIterations = 0;
+		conf.SaveSolutionTime = 0;
+		conf.SaveSolutionIterations = 0;
 		conf.ResidualOutputIterations = 100;
 
 		return conf;
@@ -387,11 +387,11 @@ namespace RarefactionTest2
 
 		// Compute exact solution in rarefaction part
 		SetStarValues(params);
-		Grid rarefGrid = GetRarefactionCells(starValues, kernel->g, kernel->stepInfo.Time, params.x0, conf.LX);
+		Grid rarefGrid = GetRarefactionCells(starValues, kernel->grid, kernel->stepInfo.Time, params.x0, conf.LX);
 		TestsUtility::exact_solution = ComputeExactSolution(params, rarefGrid, kernel->stepInfo.Time);
 
 		// Compute accuracy
-		int local_iMin = kernel->g.dummyCellLayersX + rarefGrid.iMin - kernel->g.iMin;
+		int local_iMin = kernel->grid.dummyCellLayersX + rarefGrid.iMin - kernel->grid.iMin;
 		std::valarray<double> inner_values(&(kernel->values[TestsUtility::nVar * local_iMin]), rarefGrid.nlocalX * kernel->nVariables);
 		std::vector<double> L2 = TestsUtility::ComputeL2Error(inner_values, rarefGrid, *(kernel->pManager), subgrid_length);
 		std::vector<double> L1 = TestsUtility::ComputeL1Error(inner_values, rarefGrid, *(kernel->pManager), subgrid_length);
@@ -419,13 +419,13 @@ namespace RarefactionTest2
 		fname << ".dat";
 		std::string filename = fname.str();
 		kernel->SaveSolution(filename);
-		TestsUtility::exact_solution = ComputeExactSolution(params, kernel->g, kernel->stepInfo.Time);
-		TestsUtility::SaveExactSolution(filename, kernel->g, *(kernel->pManager));
+		TestsUtility::exact_solution = ComputeExactSolution(params, kernel->grid, kernel->stepInfo.Time);
+		TestsUtility::SaveExactSolution(filename, kernel->grid, *(kernel->pManager));
 
 		// Save the errors
 		std::stringstream fname2;
 		fname2 << "Rarefaction_test2.dat";
-		TestsUtility::WriteErrors(fname2.str(), errors, kernel->g, *(kernel->pManager));
+		TestsUtility::WriteErrors(fname2.str(), errors, kernel->grid, *(kernel->pManager));
 
 		// Finalize kernel
 		kernel->Finalize();

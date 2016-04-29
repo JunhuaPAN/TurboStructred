@@ -50,10 +50,10 @@ public:
 	//Run parameters
 	int MaxIteration{ 1000 };
 	double MaxTime{ 1.0 };
-	double SaveSolutionSnapshotTime{ 0 };
-	double SaveSliceSnapshotTime{ 0 };
-	int SaveSolutionSnapshotIterations{ 0 };
-	int SaveSliceSnapshotIterations{ 0 };
+	double SaveSolutionTime{ 0 };
+	double SaveSliceTime{ 0 };
+	int SaveSolutionIterations{ 0 };
+	int SaveSliceIterations{ 0 };
 	int ResidualOutputIterations{ 0 };
 	bool DebugOutputEnabled{ false };
 	
@@ -64,6 +64,9 @@ public:
 	BoundaryConditionConfiguration yRightBoundary;
 	BoundaryConditionConfiguration zLeftBoundary;
 	BoundaryConditionConfiguration zRightBoundary;
+
+	// TO DO improve
+	BoundaryConditionConfiguration yLeftSpecialBoundary;
 
 	//External potential forces
 	Vector Sigma{ Vector(0,0,0) };			            //!< Pressure gradient

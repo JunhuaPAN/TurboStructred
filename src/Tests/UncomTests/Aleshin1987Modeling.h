@@ -118,8 +118,8 @@ namespace AleshinExp {
 
 		conf.MaxTime = TotalTime;
 		conf.MaxIteration = 1000000;
-		conf.SaveSolutionSnapshotTime = 4.0e-5;
-		conf.SaveSolutionSnapshotIterations = 0;
+		conf.SaveSolutionTime = 4.0e-5;
+		conf.SaveSolutionIterations = 0;
 		conf.ResidualOutputIterations = 40;
 
 		// init kernel
@@ -199,7 +199,7 @@ namespace AleshinExp {
 		kernel->SaveSensorRecordIterations = 1;
 
 		// create a sensor
-		std::unique_ptr<MValuePosXSensor2> sen1 = std::make_unique<MValuePosXSensor2>("border_pos.dat", *kernel->pManager, kernel->g, GetInEnergy);
+		std::unique_ptr<MValuePosXSensor2> sen1 = std::make_unique<MValuePosXSensor2>("border_pos.dat", *kernel->pManager, kernel->grid, GetInEnergy);
 		sen1->SetSensor((int)(0.5 * conf.nY / modeNumber + 1), 0, kernel->nVariables);
 		kernel->Sensors.push_back(std::move(sen1));
 
@@ -271,8 +271,8 @@ namespace AleshinExp {
 
 		conf.MaxTime = TotalTime;
 		conf.MaxIteration = 1000000;
-		conf.SaveSolutionSnapshotTime = 1.0e-5;
-		conf.SaveSolutionSnapshotIterations = 0;
+		conf.SaveSolutionTime = 1.0e-5;
+		conf.SaveSolutionIterations = 0;
 		conf.ResidualOutputIterations = 10;
 
 		// init kernel
@@ -356,7 +356,7 @@ namespace AleshinExp {
 		};
 		
 		// Create a sensor
-		std::unique_ptr<MValuePosXSensor2> sen1 = std::make_unique<MValuePosXSensor2>("border_pos.dat", *kernel->pManager, kernel->g, GetInEnergy);
+		std::unique_ptr<MValuePosXSensor2> sen1 = std::make_unique<MValuePosXSensor2>("border_pos.dat", *kernel->pManager, kernel->grid, GetInEnergy);
 		sen1->SetSensor((int)(0.5 * conf.nY / modeNumber + 1), (int)(0.5 * conf.nZ + 1), kernel->nVariables);
 		kernel->Sensors.push_back(std::move(sen1));
 

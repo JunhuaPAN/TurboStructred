@@ -10,7 +10,6 @@ class RoeSolverPerfectGasEOS : public RiemannSolver {
 	//Required info
 	double _gamma; //Specific heat ratio (inherited from gas model)
 	double _eps;	//Harten entropy correction coefficient (optional, 0 by default)
-	double _operatingPressure; //Operating pressure (optional, 0 by default)
 
 	//Numerical flux
 	std::vector<double> F(std::valarray<double> &U, Vector n)
@@ -21,7 +20,7 @@ class RoeSolverPerfectGasEOS : public RiemannSolver {
 		double vy = U[2]/ro;
 		double vz = U[3]/ro;
 		double roE = U[4];	//ro*e
-		double p = (_gamma-1.0)*(roE-ro*(vx*vx+vy*vy+vz*vz)/2.0) - _operatingPressure;		
+		double p = (_gamma-1.0)*(roE-ro*(vx*vx+vy*vy+vz*vz)/2.0);		
 		double vn = vx*n.x + vy*n.y + vz*n.z;
 
 		res[0] = ro*vn;
@@ -42,7 +41,7 @@ class RoeSolverPerfectGasEOS : public RiemannSolver {
 
 public:	
 	//Constructor
-	RoeSolverPerfectGasEOS(double gamma, double eps, double opPressure) : _gamma(gamma), _eps(eps), _operatingPressure(opPressure) {
+	RoeSolverPerfectGasEOS(double gamma, double eps) : _gamma(gamma), _eps(eps) {
 	};
 
 	//Solve riemann problem
@@ -130,9 +129,6 @@ public:
 
 		//Estimate for velocity
 		result.Velocity = velocity;
-
-		//Estimate for pressure
-		//result.Pressure = _operatingPressure;
 
 		return result;
 	};
