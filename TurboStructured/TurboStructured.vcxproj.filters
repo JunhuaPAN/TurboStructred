@@ -182,9 +182,6 @@
     <ClInclude Include="..\src\BoundaryConditions\BoundaryConditionConfiguration.h">
       <Filter>Header Files\BoundaryConditions</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\BoundaryConditions\IBoundaryCondition.h">
-      <Filter>Header Files\BoundaryConditions</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\Tests\UncomTests\Aleshin1987Modeling.h">
       <Filter>Header Files\Tests\UncomTests</Filter>
     </ClInclude>
@@ -303,5 +300,6 @@
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
     <None Include="ClassDiagram1.cd" />
+    <None Include="ClassDiagram2.cd" />
   </ItemGroup>
 </Project>

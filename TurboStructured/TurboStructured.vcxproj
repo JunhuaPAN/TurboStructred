@@ -50,7 +50,6 @@
     <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\statistics.h" />
     <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\stdafx.h" />
     <ClInclude Include="..\src\BoundaryConditions\BCGeneral.h" />
-    <ClInclude Include="..\src\BoundaryConditions\IBoundaryCondition.h" />
     <ClInclude Include="..\src\BoundaryConditions\BoundaryConditionConfiguration.h" />
     <ClInclude Include="..\src\EquationsOfState\BarotropicEOS.h" />
     <ClInclude Include="..\src\EquationsOfState\EquationsOfState.h" />

@@ -13,8 +13,7 @@
 #include "Tests/UncomTests/testlist.h"
 #include "RiemannSolvers/RiemannSolversList.h"
 
-#define PI 3.14159265359
-
+/*
 //collect here all tests now
 struct ShockTubeParameters {
 	double gammaL;
@@ -2297,6 +2296,6 @@ void RunPoiseuille3DY(int argc, char *argv[]) {
 	// Finalize kernel
 	kernel->Finalize();
 };
-
+*/
 
 #endif

@@ -362,11 +362,8 @@ public:
 							//Apply left boundary conditions						
 							double *V = getCellValues(iIn, j, k);
 							Vector dGrad;
-							dGrad = xLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityX[idx] = dGrad;
-							dGrad = xLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityY[idx] = dGrad;
-							dGrad = xLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityZ[idx] = dGrad;
 						};
 
@@ -382,11 +379,8 @@ public:
 							//Apply right boundary conditions						
 							double *V = getCellValues(iIn, j, k);
 							Vector dGrad;
-							dGrad = xRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityX[idx] = dGrad;
-							dGrad = xRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityY[idx] = dGrad;
-							dGrad = xRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityZ[idx] = dGrad;
 						};
 					};
@@ -434,19 +428,13 @@ public:
 							double *V = getCellValues(i, jIn, k);
 							Vector dGrad;
 							if (cellCenter.x > 0.5) {
-								dGrad = yLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
 								gradientVelocityX[idx] = dGrad;
-								dGrad = yLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
 								gradientVelocityY[idx] = dGrad;
-								dGrad = yLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
 								gradientVelocityZ[idx] = dGrad;
 							}
 							else {
-								dGrad = yLeftBCspecial->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
 								gradientVelocityX[idx] = dGrad;
-								dGrad = yLeftBCspecial->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
 								gradientVelocityY[idx] = dGrad;
-								dGrad = yLeftBCspecial->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
 								gradientVelocityZ[idx] = dGrad;
 							}
 
@@ -464,11 +452,8 @@ public:
 							//Apply right boundary conditions						
 							double *V = getCellValues(i, jIn, k);
 							Vector dGrad;
-							dGrad = yRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityX[idx] = dGrad;
-							dGrad = yRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityY[idx] = dGrad;
-							dGrad = yRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityZ[idx] = dGrad;
 						};
 					};
@@ -514,11 +499,8 @@ public:
 							//Apply left boundary conditions						
 							double *V = getCellValues(i, j, kIn);
 							Vector dGrad;
-							dGrad = zLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityX[idx] = dGrad;
-							dGrad = zLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityY[idx] = dGrad;
-							dGrad = zLeftBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityZ[idx] = dGrad;
 						};
 
@@ -534,11 +516,8 @@ public:
 							//Apply right boundary conditions						
 							double *V = getCellValues(i, j, kIn);
 							Vector dGrad;
-							dGrad = zRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityX].GetDummyGradient(getu(V), gradientVelocityX[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityX[idx] = dGrad;
-							dGrad = zRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityY].GetDummyGradient(getv(V), gradientVelocityY[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityY[idx] = dGrad;
-							dGrad = zRightBC->boundaryConditions[BoundaryConditions::BoundaryVariableType::VelocityZ].GetDummyGradient(getw(V), gradientVelocityZ[idxIn], faceNormalL, faceCenter, cellCenter);
 							gradientVelocityZ[idx] = dGrad;
 						};
 					};
@@ -1089,12 +1068,14 @@ public:
 					if ((pManager->rankCart[0] == 0) && (i == grid.iMin) && (grid.IsPeriodicX != true))									// Left border
 					{
 						UR = InverseVariablesTransition(reconstructions[1][j - grid.jMin + yLayer][k - grid.kMin + zLayer].SampleSolution(CubeFaces::xL));
-						UL = xLeftBC->getDummyReconstructions(&UR[0], fn);
+						auto bcMarker = xLeftBC.computeMarker(faceCenter);
+						UL = bConditions[bcMarker]->getDummyReconstructions(&UR[0], fn);
 					}
 					else if ((pManager->rankCart[0] == pManager->dimsCart[0] - 1) && (i == grid.iMax + 1) && (grid.IsPeriodicX != true))	// Right border
 					{
 						UL = InverseVariablesTransition(reconstructions[grid.iMax - grid.iMin + 1][j - grid.jMin + yLayer][k - grid.kMin + zLayer].SampleSolution(CubeFaces::xR));
-						UR = xRightBC->getDummyReconstructions(&UL[0], fn);
+						auto bcMarker = xRightBC.computeMarker(faceCenter);
+						UR = bConditions[bcMarker]->getDummyReconstructions(&UL[0], fn);
 					}
 					else
 					{
@@ -1164,13 +1145,14 @@ public:
 						if ((pManager->rankCart[1] == 0) && (j == grid.jMin) && (grid.IsPeriodicY != true))									// Left border
 						{
 							UR = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][1][k - grid.kMin + zLayer].SampleSolution(CubeFaces::yL));
-							UL = yLeftBC->getDummyReconstructions(&UR[0], fn);
-							if (grid.CoordinateX[i] < 0.5) UL = yLeftBCspecial->getDummyReconstructions(&UR[0], fn);		// TO DO improve
+							auto bcMarker = yLeftBC.computeMarker(faceCenter);
+							UL = bConditions[bcMarker]->getDummyReconstructions(&UR[0], fn);
 						}
 						else if ((pManager->rankCart[1] == pManager->dimsCart[1] - 1) && (j == grid.jMax + 1) && (grid.IsPeriodicY != true))	// Right border
 						{
 							UL = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][grid.jMax - grid.jMin + 1][k - grid.kMin + zLayer].SampleSolution(CubeFaces::yR));
-							UR = yRightBC->getDummyReconstructions(&UL[0], fn);
+							auto bcMarker = yRightBC.computeMarker(faceCenter);
+							UL = bConditions[bcMarker]->getDummyReconstructions(&UL[0], fn);
 						}
 						else
 						{
@@ -1240,12 +1222,14 @@ public:
 						if ((pManager->rankCart[2] == 0) && (k == grid.kMin) && (grid.IsPeriodicZ != true))									// Left border
 						{
 							UR = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][1].SampleSolution(CubeFaces::zL));
-							UL = zLeftBC->getDummyReconstructions(&UR[0], fn);
+							auto bcMarker = zLeftBC.computeMarker(faceCenter);
+							UL = bConditions[bcMarker]->getDummyReconstructions(&UR[0], fn);
 						}
 						else if ((pManager->rankCart[2] == pManager->dimsCart[2] - 1) && (k == grid.kMax + 1) && (grid.IsPeriodicZ != true))	// Right border
 						{
 							UL = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][grid.kMax - grid.kMin + 1].SampleSolution(CubeFaces::zR));
-							UR = zRightBC->getDummyReconstructions(&UL[0], fn);
+							auto bcMarker = zRightBC.computeMarker(faceCenter);
+							UL = bConditions[bcMarker]->getDummyReconstructions(&UL[0], fn);
 						}
 						else
 						{

@@ -10,6 +10,7 @@
 #include <cassert>
 #include <fstream>
 #include <valarray>
+#include <memory>
 
 #include "KernelConfiguration.h"
 #include "grid.h"
@@ -73,14 +74,16 @@ public:
 	Vector Sigma; //Potential force like presure gradient
 	Vector UniformAcceleration;	//external uniform acceleration
 
-	// Boundary conditions
-	std::unique_ptr<BoundaryConditions::BCGeneral> xLeftBC;
-	std::unique_ptr<BoundaryConditions::BCGeneral> xRightBC;
-	std::unique_ptr<BoundaryConditions::BCGeneral> yLeftBC;
-	std::unique_ptr<BoundaryConditions::BCGeneral> yLeftBCspecial;
-	std::unique_ptr<BoundaryConditions::BCGeneral> yRightBC;
-	std::unique_ptr<BoundaryConditions::BCGeneral> zLeftBC;
-	std::unique_ptr<BoundaryConditions::BCGeneral> zRightBC;
+	// Boundary conditions TO DO refactor
+	std::map<int, std::unique_ptr<BoundaryConditions::BCGeneral> > bConditions;
+
+	BCinfo xLeftBC;
+	BCinfo xRightBC;
+	BCinfo yLeftBC;
+	BCinfo yLeftBCspecial;
+	BCinfo yRightBC;
+	BCinfo zLeftBC;
+	BCinfo zRightBC;
 
 	// Solution data
 	std::valarray<double> values;
@@ -139,9 +142,6 @@ public:
 					int sBegin = grid.getSerialIndexLocal(i, j, k) * nVariables;
 					std::vector<double> U = initF(Vector(x, y, z));
 					for (int varn = 0; varn < nVariables; varn++) values[sBegin + varn] = U[varn];
-
-        //  std::cout << "rank = " << rank << ", x = " << x << ", i = " << i << std::endl << std::flush; //MPI DebugMessage
-        //  std::cout << "rank = " << rank << ", sBegin = " << sBegin << ", ro = " << values[sBegin] << ", rou = " << values[sBegin + 1] << std::endl << std::flush; //MPI DebugMessage
 				};
 			};
 		};
@@ -285,31 +285,35 @@ public:
 
 	// Initialize boundary conditions
 	virtual void InitBoundaryConditions(KernelConfiguration& config) {
-		// TO DO (COARSE IMPLEMENTATION)
-		if (!grid.IsPeriodicX) {
-			if (config.xLeftBoundary.BCType == BoundaryConditionType::SubsonicInlet) {
-				xLeftBC = std::unique_ptr<BoundaryConditions::SubsonicInletBC>(new BoundaryConditions::SubsonicInletBC());
-			} else xLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-			xRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-
-			xLeftBC->loadConfiguration(config.xLeftBoundary);
-			xRightBC->loadConfiguration(config.xRightBoundary);
+		for (auto r : config.MyConditions) {
+			bConditions[r.first] = BoundaryConditions::CreateBC(r.second);
+			bConditions[r.first]->loadConfiguration(r.second);
 		};
+
+		// Check if periodic condition is used then initialize 
+		if (!grid.IsPeriodicX) {
+			if (config.xLeftBoundary.isComplex) xLeftBC = BCinfo(config.xLeftBoundary.getMarker);		// for complex case transmit the function getMarker
+			else xLeftBC = BCinfo(config.xLeftBoundary.GetMarker());		// for trivial case set marker value
+
+			// Do the same for right side
+			if (config.xLeftBoundary.isComplex) xRightBC = BCinfo(config.xRightBoundary.getMarker);
+			else xRightBC = BCinfo(config.xRightBoundary.GetMarker());
+		};
+
+		// Repeat process for other directions
 		if ((!grid.IsPeriodicY) && (nDims > 1)) {
-			yLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-			yRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-			yLeftBC->loadConfiguration(config.yLeftBoundary);
-			yRightBC->loadConfiguration(config.yRightBoundary);
-			
-			// to do improve (special case)
-			yLeftBCspecial = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-			yLeftBCspecial->loadConfiguration(config.yLeftSpecialBoundary);
+			if (config.yLeftBoundary.isComplex) yLeftBC = BCinfo(config.yLeftBoundary.getMarker);
+			else yLeftBC = BCinfo(config.yLeftBoundary.GetMarker());
+
+			if (config.yLeftBoundary.isComplex) yRightBC = BCinfo(config.yRightBoundary.getMarker);
+			else yRightBC = BCinfo(config.yRightBoundary.GetMarker());
 		};
 		if ((!grid.IsPeriodicZ) && (nDims > 2)) {
-			zLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-			zRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-			zLeftBC->loadConfiguration(config.zLeftBoundary);
-			zRightBC->loadConfiguration(config.zRightBoundary);
+			if (config.zLeftBoundary.isComplex) zLeftBC = BCinfo(config.zLeftBoundary.getMarker);
+			else zLeftBC = BCinfo(config.zLeftBoundary.GetMarker());
+
+			if (config.xLeftBoundary.isComplex) zRightBC = BCinfo(config.zRightBoundary.getMarker);
+			else zRightBC = BCinfo(config.zRightBoundary.GetMarker());
 		};
 	};
 
@@ -736,8 +740,9 @@ public:
 							int idx = grid.getSerialIndexLocal(i, j, k);
 							int idxIn = grid.getSerialIndexLocal(iIn, j, k);
 
-							//Apply left boundary conditions						
-							std::valarray<double> dValues = xLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
+							//Apply left boundary conditions
+							auto bcMarker = xLeftBC.getMarker(faceCenter);
+							auto dValues = bConditions[bcMarker]->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
 							};
@@ -753,7 +758,8 @@ public:
 							int idxIn = grid.getSerialIndexLocal(iIn, j, k);
 
 							//Apply right boundary conditions						
-							std::valarray<double> dValues = xRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
+							auto bcMarker = xRightBC.getMarker(faceCenter);
+							auto dValues = bConditions[bcMarker]->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
 							};
@@ -804,7 +810,8 @@ public:
 							int idxIn = grid.getSerialIndexLocal(i, jIn, k);
 
 							//Apply left boundary conditions						
-							std::valarray<double> dValues = yLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
+							auto bcMarker = yLeftBC.getMarker(faceCenter);
+							auto dValues = bConditions[bcMarker]->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
 							};
@@ -820,7 +827,8 @@ public:
 							int idxIn = grid.getSerialIndexLocal(i, jIn, k);
 
 							//Apply right boundary conditions						
-							std::valarray<double> dValues = yRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
+							auto bcMarker = yRightBC.getMarker(faceCenter);
+							auto dValues = bConditions[bcMarker]->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
 							};
@@ -872,7 +880,8 @@ public:
 							int idxIn = grid.getSerialIndexLocal(i, j, kIn);
 
 							//Apply left boundary conditions						
-							std::valarray<double> dValues = zLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
+							auto bcMarker = zLeftBC.getMarker(faceCenter);
+							auto dValues = bConditions[bcMarker]->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
 							};
@@ -888,7 +897,8 @@ public:
 							int idxIn = grid.getSerialIndexLocal(i, j, kIn);
 
 							//Apply right boundary conditions						
-							std::valarray<double> dValues = zRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
+							auto bcMarker = zRightBC.getMarker(faceCenter);
+							auto dValues = bConditions[bcMarker]->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
 							};

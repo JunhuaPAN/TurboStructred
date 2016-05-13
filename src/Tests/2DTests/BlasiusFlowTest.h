@@ -67,29 +67,37 @@ namespace BlasiusFlowTest {
 		// Compute driven velocity
 		double Udr = ComputeInletVelocity();
 
-		// Boundary conditions Subsonic inlet
-		conf.xLeftBoundary.BCType = BoundaryConditionType::SubsonicInlet;
-		conf.xLeftBoundary.Gamma = par.gamma;
-		conf.xLeftBoundary.Density = par.ro;
-		conf.xLeftBoundary.Pstatic = par.Pin;
-		conf.xLeftBoundary.Velocity = Vector(Udr, 0, 0);
-
+		// Discribe Boundary conditions
+		// Subsonic inlet
+		BoundaryConditionConfiguration Inlet(BoundaryConditionType::SubsonicInlet);
+		Inlet.Density = par.ro;
+		Inlet.Pstatic = par.Pin;
+		Inlet.Velocity = Vector(Udr, 0, 0);
 		// Supersonic outlet
-		conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
-		conf.xRightBoundary.Gamma = par.gamma;
+		BoundaryConditionConfiguration Outlet(BoundaryConditionType::Natural);
+		// Plate condition
+		BoundaryConditionConfiguration Wall(BoundaryConditionType::Wall);
+		// Symmetry sides
+		BoundaryConditionConfiguration Symmetry(BoundaryConditionType::SymmetryY);
 
-		// No-slip condition on the bottom
-		conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
-		conf.yLeftBoundary.Gamma = par.gamma;
+		// Create mapping Marker -> BCondition
+		conf.MyConditions[1] = Inlet;
+		conf.MyConditions[2] = Outlet;
+		conf.MyConditions[3] = Wall;
+		conf.MyConditions[4] = Symmetry;
 
-		// Symmetry or somthing else on the top border
-		conf.yRightBoundary.BCType = BoundaryConditionType::Natural;
-		conf.yRightBoundary.Gamma = par.gamma;
-
-		// Symmetry in front of the plate
-		conf.yLeftSpecialBoundary.BCType = BoundaryConditionType::SymmetryY;
-		conf.yLeftSpecialBoundary.Gamma = par.gamma;
-
+		// Describe conditions on the domain sides
+		conf.xLeftBoundary.SetMarker(1);
+		conf.xRightBoundary.SetMarker(2);
+		conf.yRightBoundary.SetMarker(4);
+		// complex case
+		conf.yLeftBoundary.isComplex = true;
+		auto getMarkerBottom = [](Vector r) {
+			if (r.x < par.Xplate) return 4;
+			return 3;
+		};
+		conf.yLeftBoundary.getMarker = getMarkerBottom;
+		
 		// Method settings
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 		conf.methodConfiguration.CFL = 0.45;

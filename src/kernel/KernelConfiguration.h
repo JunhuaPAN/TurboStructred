@@ -1,6 +1,7 @@
 #ifndef TurboStructured_kernel_KernelConfiguration
 #define TurboStructured_kernel_KernelConfiguration
 
+#include <map>
 #include "Methods/MethodConfiguration.h"
 #include "Vector.h"
 #include "BoundaryConditions/BoundaryConditionConfiguration.h"
@@ -57,16 +58,16 @@ public:
 	int ResidualOutputIterations{ 0 };
 	bool DebugOutputEnabled{ false };
 	
-	//Boundary conditions configuration
-	BoundaryConditionConfiguration xLeftBoundary;
-	BoundaryConditionConfiguration xRightBoundary;
-	BoundaryConditionConfiguration yLeftBoundary;
-	BoundaryConditionConfiguration yRightBoundary;
-	BoundaryConditionConfiguration zLeftBoundary;
-	BoundaryConditionConfiguration zRightBoundary;
+	// Boundary conditions configuration
+	std::map<int, BoundaryConditionConfiguration> MyConditions;
 
-	// TO DO improve
-	BoundaryConditionConfiguration yLeftSpecialBoundary;
+	// By default all sides have just one BC
+	DomainBCinfo xLeftBoundary;		
+	DomainBCinfo xRightBoundary;
+	DomainBCinfo yLeftBoundary;
+	DomainBCinfo yRightBoundary;
+	DomainBCinfo zLeftBoundary;
+	DomainBCinfo zRightBoundary;
 
 	//External potential forces
 	Vector Sigma{ Vector(0,0,0) };			            //!< Pressure gradient
