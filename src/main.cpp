@@ -6,7 +6,8 @@
 // Run the test
 int main(int argc, char *argv[])
 {
-	BlasiusFlowTest::RunExperiment(argc, argv);
+	ToroTests::RunExperiment(argc, argv);
+	//BlasiusFlowTest::RunExperiment(argc, argv);
 	//RunPoiseuille2D(argc, argv);
 	//RunKonuhovMixing(argc, argv);
 	//Price2008KHI::RunExperiment(argc, argv);
@@ -18,7 +19,6 @@ int main(int argc, char *argv[])
 	//RunShearFlow2D(argc, argv);
 	//RunPoiseuille2D(argc, argv);
 	//RunShearFlow3D(argc, argv);
-	//ToroTests::RunExperiment(argc, argv);
 	
 	_getch();
 	return 0;

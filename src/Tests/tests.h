@@ -14,81 +14,6 @@
 #include "RiemannSolvers/RiemannSolversList.h"
 
 /*
-//collect here all tests now
-struct ShockTubeParameters {
-	double gammaL;
-	double roL;
-	double PL;
-	Vector uL;
-	double roR;
-	double PR;
-	Vector uR;
-	double gammaR;
-};
-
-std::vector<double> SODinitialDistribution(Vector r, double R0, ShockTubeParameters params) {
-	std::vector<double> U(5);
-	double ro;
-	double u, v, w;
-	double gamma;
-	double P;
-
-	//Left
-	if (r.x * r.x + r.y * r.y + r.z * r.z <= R0 * R0) {
-		ro = params.roL;
-		u = params.uL.x;
-		v = params.uL.y;
-		w = params.uL.z;
-		P = params.PL;
-		gamma = params.gammaL;
-	}
-	else {
-		ro = params.roR;
-		u = params.uR.x;
-		v = params.uR.y;
-		w = params.uR.z;
-		P = params.PR;
-		gamma = params.gammaR;
-	};
-
-	U[0] = ro;
-	U[1] = u * ro;
-	U[2] = v * ro;
-	U[3] = w * ro;
-	U[4] = P / (gamma - 1.0) + ro * u * u / 2.0;
-
-	return U;
-};
-
-std::vector<double> SODinitialDistributionY(Vector r, double yI, ShockTubeParameters params) {
-	std::vector<double> U(5);
-	double ro;
-	double u;
-	double gamma;
-	double P;
-
-	//Left
-	if (r.y <= yI) {
-		ro = params.roL;
-		u = params.uL.y;
-		P = params.PL;
-		gamma = params.gammaL;
-	}
-	else {
-		ro = params.roR;
-		u = params.uR.y;
-		P = params.PR;
-		gamma = params.gammaR;
-	};
-
-	U[0] = ro;
-	U[1] = 0;
-	U[2] = u * ro;
-	U[3] = 0;
-	U[4] = P / (gamma - 1.0) + ro * u * u / 2.0;
-
-	return U;
-};
 
 //// Tests 1D
 void RunSODTestRoe1D(int argc, char *argv[]) {
@@ -349,14 +274,17 @@ void RunSODYTest(int argc, char *argv[]) {
 	kernel->Init(conf);
 
 	// initial conditions
-	ShockTubeParameters params;
-	params.gammaL = params.gammaR = 1.4;
-	params.roL = 1.0;
-	params.PL = 1.0;
-	params.uL = { 0, 0, 0 };
-	params.roR = 0.125;
-	params.PR = 0.1;
-	params.uR = { 0, 0, 0 };
+	struct ShockTubeParameters {
+		double gammaL = 1.4;
+		double gammaR = 1.4;
+		double roL = 1.0;
+		double PL = 1.0;
+		Vector uL = { 0, 0, 0 };
+		double roR = 0.125;
+		double PR = 0.1;
+		Vector uR = { 0, 0, 0 };
+	} params;
+
 	double y0 = 0.5 * conf.LY;
 	auto init = [&params, &conf, y0](Vector r) {
 		std::vector<double> res(5);
@@ -397,6 +325,7 @@ void RunSODYTest(int argc, char *argv[]) {
 	//finalize kernel
 	kernel->Finalize();
 };
+
 void RunSODInverseYTest(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 2;
@@ -440,14 +369,17 @@ void RunSODInverseYTest(int argc, char *argv[]) {
 	kernel->Init(conf);
 
 	// initial conditions
-	ShockTubeParameters params;
-	params.gammaL = params.gammaR = 1.4;
-	params.roR = 1.0;
-	params.PR = 1.0;
-	params.uR = { 0, 0, 0 };
-	params.roL = 0.125;
-	params.PL = 0.1;
-	params.uL = { 0, 0, 0 };
+	struct ShockTubeParameters {
+		double gammaL = 1.4;
+		double gammaR = 1.4;
+		double roL = 1.0;
+		double PL = 1.0;
+		Vector uL = { 0, 0, 0 };
+		double roR = 0.125;
+		double PR = 0.1;
+		Vector uR = { 0, 0, 0 };
+	} params;
+
 	double y0 = 0.5 * conf.LY;
 	auto init = [&params, &conf, y0](Vector r) {
 		std::vector<double> res(5);

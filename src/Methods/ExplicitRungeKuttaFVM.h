@@ -1068,13 +1068,13 @@ public:
 					if ((pManager->rankCart[0] == 0) && (i == grid.iMin) && (grid.IsPeriodicX != true))									// Left border
 					{
 						UR = InverseVariablesTransition(reconstructions[1][j - grid.jMin + yLayer][k - grid.kMin + zLayer].SampleSolution(CubeFaces::xL));
-						auto bcMarker = xLeftBC.computeMarker(faceCenter);
+						auto bcMarker = xLeftBC.getMarker(faceCenter);
 						UL = bConditions[bcMarker]->getDummyReconstructions(&UR[0], fn);
 					}
 					else if ((pManager->rankCart[0] == pManager->dimsCart[0] - 1) && (i == grid.iMax + 1) && (grid.IsPeriodicX != true))	// Right border
 					{
 						UL = InverseVariablesTransition(reconstructions[grid.iMax - grid.iMin + 1][j - grid.jMin + yLayer][k - grid.kMin + zLayer].SampleSolution(CubeFaces::xR));
-						auto bcMarker = xRightBC.computeMarker(faceCenter);
+						auto bcMarker = xRightBC.getMarker(faceCenter);
 						UR = bConditions[bcMarker]->getDummyReconstructions(&UL[0], fn);
 					}
 					else
@@ -1145,13 +1145,13 @@ public:
 						if ((pManager->rankCart[1] == 0) && (j == grid.jMin) && (grid.IsPeriodicY != true))									// Left border
 						{
 							UR = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][1][k - grid.kMin + zLayer].SampleSolution(CubeFaces::yL));
-							auto bcMarker = yLeftBC.computeMarker(faceCenter);
+							auto bcMarker = yLeftBC.getMarker(faceCenter);
 							UL = bConditions[bcMarker]->getDummyReconstructions(&UR[0], fn);
 						}
 						else if ((pManager->rankCart[1] == pManager->dimsCart[1] - 1) && (j == grid.jMax + 1) && (grid.IsPeriodicY != true))	// Right border
 						{
 							UL = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][grid.jMax - grid.jMin + 1][k - grid.kMin + zLayer].SampleSolution(CubeFaces::yR));
-							auto bcMarker = yRightBC.computeMarker(faceCenter);
+							auto bcMarker = yRightBC.getMarker(faceCenter);
 							UL = bConditions[bcMarker]->getDummyReconstructions(&UL[0], fn);
 						}
 						else
@@ -1222,13 +1222,13 @@ public:
 						if ((pManager->rankCart[2] == 0) && (k == grid.kMin) && (grid.IsPeriodicZ != true))									// Left border
 						{
 							UR = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][1].SampleSolution(CubeFaces::zL));
-							auto bcMarker = zLeftBC.computeMarker(faceCenter);
+							auto bcMarker = zLeftBC.getMarker(faceCenter);
 							UL = bConditions[bcMarker]->getDummyReconstructions(&UR[0], fn);
 						}
 						else if ((pManager->rankCart[2] == pManager->dimsCart[2] - 1) && (k == grid.kMax + 1) && (grid.IsPeriodicZ != true))	// Right border
 						{
 							UL = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][grid.kMax - grid.kMin + 1].SampleSolution(CubeFaces::zR));
-							auto bcMarker = zRightBC.computeMarker(faceCenter);
+							auto bcMarker = zRightBC.getMarker(faceCenter);
 							UL = bConditions[bcMarker]->getDummyReconstructions(&UL[0], fn);
 						}
 						else

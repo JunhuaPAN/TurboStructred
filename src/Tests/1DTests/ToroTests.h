@@ -55,27 +55,24 @@ namespace ToroTests
 
 		// Values by default
 		conf.nDims = 1;
-		conf.nX = 200;
 		conf.LX = 1.0;
 		conf.isPeriodicX = false;
-		conf.isUniformAlongX = true;
-		conf.qx = 1.00;
-		conf.Gamma = TestsUtility::gamma1 + 1;
-
-		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-
 		conf.DummyLayerSize = 1;
+
+		// BC
+		conf.MyConditions[1] = BoundaryConditionConfiguration(BoundaryConditionType::Natural);
+		conf.xLeftBoundary.SetMarker(1);
+		conf.xRightBoundary.SetMarker(1);
+
+		// Method settings
 		conf.methodConfiguration.CFL = 0.45;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.0;
 		conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
 		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
-
-		conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
-		conf.xLeftBoundary.Gamma = 1.4;
-		conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
-		conf.xRightBoundary.Gamma = 1.4;
-
+		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+		
+		// Task settings
 		conf.MaxTime = 0.2;
 		conf.MaxIteration = 1000000;
 		conf.SaveSolutionTime = 0;
@@ -431,6 +428,7 @@ namespace ToroTests
 		kernel->Init(conf);
 
 		// IC
+		NumericQuadrature Integ(3, 3);
 		auto initD = [&conf, &params](Vector r) {
 			double p = params.PL;
 			double u = params.uL;
@@ -449,7 +447,7 @@ namespace ToroTests
 			res[4] = p / TestsUtility::gamma1 + 0.5 * ro * u * u;
 			return res;
 		};
-		kernel->SetInitialConditions(initD);
+		kernel->SetInitialConditions(initD, Integ);
 
 		// Run computation
 		kernel->Run();
@@ -499,7 +497,7 @@ namespace ToroTests
 	};
 	
 	void RunExperiment(int argc, char *argv[]) {
-		int Ntest = 4;	// Toro test number
+		int Ntest = 5;	// Toro test number
 		int Nx = 400;
 
 		//	Reconstruction type

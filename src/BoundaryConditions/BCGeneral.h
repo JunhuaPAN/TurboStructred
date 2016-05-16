@@ -62,10 +62,13 @@ namespace BoundaryConditions {
 //! Basic class for all boundary conditions
 class BCGeneral{
 public:
+	// number of variables
+	const int nVar{ 5 };
+
 	//Gas model parameters
 	std::unique_ptr<GasProperties> gas_prop;
 
-	//! Load configuration
+	//! Load configuration if need
 	virtual void loadConfiguration(const BoundaryConditionConfiguration& config) {};
 
 	//! Get dummy cell values
@@ -75,7 +78,7 @@ public:
 
 	//! Get dummy reconstructions
 	virtual std::valarray<double> getDummyReconstructions(double* values, Vector faceNormal) {
-		return std::valarray<double>{};
+		return std::move(getDummyValues(values, faceNormal, Vector(0, 0, 0), Vector(0, 0, 0)));
 	};
 };
 
@@ -176,8 +179,11 @@ class SubsonicOutlet : public BCGeneral {
 
 };
 
+//! Values in dummy cells and at the face are the same as internal
 class Natural : public BCGeneral {
-
+	std::valarray<double> getDummyValues(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) {
+		return std::valarray<double>(values, nVar);
+	};
 };
 
 class SymmetryY : public BCGeneral {
@@ -195,6 +201,9 @@ std::unique_ptr<BCGeneral> CreateBC(BoundaryConditionConfiguration& myCondition)
 	switch (myCondition.BCType) {
 	case BoundaryConditionType::SubsonicInlet:
 		res = std::make_unique<SubsonicInlet>();
+		break;
+	case BoundaryConditionType::Natural:
+		res = std::make_unique<Natural>();
 		break;
 	default:
 		std::cout << "Can't find appropriate Boundary Condition!" << std::endl;
