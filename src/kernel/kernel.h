@@ -21,6 +21,8 @@
 #include "utility/Timer.h"
 #include "utility/Slices.h"
 #include "utility/NumericQuadrature.h"
+#include "utility/Stencil.h"
+#include "utility/VariablesTransition.h"
 #include "RiemannSolvers/RiemannSolversList.h"
 #include "BoundaryConditions/BCGeneral.h"
 #include "Sensors/Sensors.h"
@@ -58,8 +60,9 @@ public:
 	StepInfo stepInfo;
 
 	// Gas model information
-	int nVariables;			// number of conservative variables
-	GasProperties gas_prop;	// all parameters of the gas
+	int nVariables;				// number of conservative variables
+	GasProperties gas_prop;		// all parameters of the gas
+	ValuesTransition compute;	// functions for computation of primituve values
 
 	bool isViscousFlow;
 	bool isGradientRequired;
@@ -224,6 +227,9 @@ public:
 		gas_prop.molarMass = config.MolarMass;
 		gas_prop.universalGasConstant = config.UniversalGasConstant;
 
+		// Initialize usefull functions
+		compute.BindGasProperties(gas_prop);
+
 		// Set all flags as configuration requires
 		if (config.IsViscousFlow == true) {
 			isViscousFlow = true;
@@ -287,6 +293,7 @@ public:
 	virtual void InitBoundaryConditions(KernelConfiguration& config) {
 		for (auto r : config.MyConditions) {
 			bConditions[r.first] = BoundaryConditions::CreateBC(r.second);
+			bConditions[r.first]->BindGasProperties(gas_prop);
 			bConditions[r.first]->loadConfiguration(r.second);
 		};
 
@@ -1592,7 +1599,7 @@ public:
 		if (!pManager->IsLastNode()) pManager->Signal(rank + 1);
 		pManager->Barrier();
 
-		while (1) {
+		while(true) {
 			//Calculate one time step
 			IterationStep();
 

@@ -5,6 +5,42 @@
 #include <iostream>
 #include <vector>
 #include "utility/Direction.h"
+#include "GasProperties.h"
+
+// Collect usefull functions that computes primitive values
+class ValuesTransition {
+private:
+	//Gas model parameters
+	std::unique_ptr<GasProperties> gas_prop;
+
+public:
+	// lambdas for velocity computing
+	std::function<double(double*)> u{ [](double* U) {
+		return U[1]/U[0];
+	} };
+	std::function<double(double*)> v{ [](double* U) {
+		return U[2] / U[0];
+	} };
+	std::function<double(double*)> w{ [](double* U) {
+		return U[3] / U[0];
+	} };
+
+	// from conservative variables
+	std::function<double(std::valarray<double>)> uc{ [](const std::valarray<double>& U) {
+		return U[1] / U[0];
+	} };
+	std::function<double(std::valarray<double>)> vc{ [](const std::valarray<double>& U) {
+		return U[2] / U[0];
+	} };
+	std::function<double(std::valarray<double>)> wc{ [](const std::valarray<double>& U) {
+		return U[3] / U[0];
+	} };
+
+	// initialise lymbdas that depends on gas properties
+	void BindGasProperties(GasProperties& _gas_prop) {
+		gas_prop = std::make_unique<GasProperties>(_gas_prop);
+	};
+};
 
 // Transition to characteristic variables averaged by Roe procedure
 class RoeLineariser {

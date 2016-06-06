@@ -50,8 +50,8 @@ namespace DrivenCavityTest {
 		// Init config structure
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 40;
-		conf.nY = 40;
+		conf.nX = 80;
+		conf.nY = 80;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
@@ -62,15 +62,15 @@ namespace DrivenCavityTest {
 		//conf.Viscosity = 0;
 
 		// BC
-		conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
-		conf.xLeftBoundary.Gamma = 1.4;
-		conf.xRightBoundary.BCType = BoundaryConditionType::Wall;
-		conf.xRightBoundary.Gamma = 1.4;
-		conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
-		conf.yLeftBoundary.Gamma = 1.4;
-		conf.yRightBoundary.BCType = BoundaryConditionType::MovingWall;
-		conf.yRightBoundary.Gamma = 1.4;
-		conf.yRightBoundary.Velocity = Vector(par.U_dr, 0, 0);
+		BoundaryConditionConfiguration TopPlate(BoundaryConditionType::MovingWall);
+		TopPlate.Velocity = Vector(par.U_dr, 0, 0);
+		conf.MyConditions[1] = BoundaryConditionConfiguration(BoundaryConditionType::Wall);
+		conf.MyConditions[2] = TopPlate; 
+
+		conf.xLeftBoundary.SetMarker(1);
+		conf.xRightBoundary.SetMarker(1);
+		conf.yLeftBoundary.SetMarker(1);
+		conf.yRightBoundary.SetMarker(2);
 
 		// Method settings
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;

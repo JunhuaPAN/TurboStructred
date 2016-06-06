@@ -68,6 +68,11 @@ public:
 	//Gas model parameters
 	std::unique_ptr<GasProperties> gas_prop;
 
+	//! Set gas properties
+	void BindGasProperties(GasProperties& _gas_prop) {
+		gas_prop = std::make_unique<GasProperties>(_gas_prop);
+	};
+
 	//! Load configuration if need
 	virtual void loadConfiguration(const BoundaryConditionConfiguration& config) {};
 
@@ -80,9 +85,18 @@ public:
 	virtual std::valarray<double> getDummyReconstructions(double* values, Vector faceNormal) {
 		return std::move(getDummyValues(values, faceNormal, Vector(0, 0, 0), Vector(0, 0, 0)));
 	};
+
+	//! Get conservative variables on the border
+	virtual std::valarray<double> getFaceValues(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) {
+		auto inVal = std::valarray<double>(values, nVar);
+		auto duVal = getDummyValues(values, faceNormal, faceCenter, cellCenter);
+		return 0.5 * (inVal + duVal);
+	};
 };
 
 //! Describe all boundary conditions
+
+//! Subsonic inlet BC
 class SubsonicInlet : public BCGeneral {
 public:
 	double Pout, Rhout;
@@ -175,6 +189,7 @@ public:
 	};
 };
 
+//! Sunsonic outlet BC
 class SubsonicOutlet : public BCGeneral {
 
 };
@@ -186,12 +201,51 @@ class Natural : public BCGeneral {
 	};
 };
 
+//! Symmetry BC
 class SymmetryY : public BCGeneral {
 
 };
 
+// No slip condition (velocity is zero at the wall)
 class Wall : public BCGeneral {
+	// Dummy values for no slip condition
+	std::valarray<double> getDummyValues(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) {
+		auto res = std::valarray<double>(values, nVar);
+		res[1] *= (-1);
+		res[2] *= (-1);
+		res[3] *= (-1);
+		return res;
+	};
+};
 
+// No slip condition (velocity is constant at the wall)
+class MovingWall : public BCGeneral {
+private:
+	Vector Vb;		// Valocity at the wall
+
+public:
+	void loadConfiguration(const BoundaryConditionConfiguration& config) override {
+		Vb = config.Velocity;
+	};
+
+	// Dummy values for no slip condition
+	std::valarray<double> getDummyValues(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) {
+		std::valarray<double> res(nVar);
+		auto rho = values[0];
+		auto Vin = Vector(values[1], values[2], values[3]) / rho;
+		auto rhoe = values[4] - 0.5 * rho * (Vin * Vin);
+		
+		// Extrapolate velocity
+		Vector Vd = 2.0 * Vb - Vin;
+
+		// Create and return conservative variables
+		res[0] = rho;
+		res[1] = rho * Vd.x;
+		res[2] = rho * Vd.y;
+		res[3] = rho * Vd.z;
+		res[4] = rhoe + 0.5 * rho * (Vd * Vd);
+		return res;
+	};
 };
 
 //! Function that creates pointer to the BCGeneral class
@@ -204,6 +258,12 @@ std::unique_ptr<BCGeneral> CreateBC(BoundaryConditionConfiguration& myCondition)
 		break;
 	case BoundaryConditionType::Natural:
 		res = std::make_unique<Natural>();
+		break;
+	case BoundaryConditionType::Wall:
+		res = std::make_unique<Wall>();
+		break;
+	case BoundaryConditionType::MovingWall:
+		res = std::make_unique<MovingWall>();
 		break;
 	default:
 		std::cout << "Can't find appropriate Boundary Condition!" << std::endl;

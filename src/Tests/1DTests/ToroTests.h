@@ -428,7 +428,7 @@ namespace ToroTests
 		kernel->Init(conf);
 
 		// IC
-		NumericQuadrature Integ(3, 3);
+		NumericQuadrature Integ(3, 1);
 		auto initD = [&conf, &params](Vector r) {
 			double p = params.PL;
 			double u = params.uL;

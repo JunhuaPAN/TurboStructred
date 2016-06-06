@@ -5,6 +5,8 @@
 #include "utility/Vector.h"
 #include "utility/Matrix.h"
 #include "utility/Timer.h"
+#include "utility/GradientComputer.h"
+#include "utility/Stencil.h"
 #include "RiemannSolvers/RiemannSolversList.h"
 #include "kernel.h"
 #include "Reconstruction/ReconstructorsList.h"
@@ -319,28 +321,34 @@ public:
 
 	//Compute gradients inside dummy cells
 	void ComputeDummyCellGradients() {
-		//Index variables
-		int i = 0;
-		int j = 0;
-		int k = 0;
-
 		//Current face and cell information
 		Vector faceNormalL;
 		Vector faceNormalR;
 		Vector faceCenter;
 		Vector cellCenter;
 
-		//Gradients required
-		auto getu = [](double *U) { return U[1] / U[0]; };
-		auto getv = [](double *U) { return U[2] / U[0]; };
-		auto getw = [](double *U) { return U[3] / U[0]; };
+		// accumulate all usefull lyambdas
+		std::vector<std::function<double(double*)> > val_comp;
+		val_comp.push_back(compute.u);
+		val_comp.push_back(compute.v);
+		val_comp.push_back(compute.w);
+		std::vector<std::function< double(std::valarray<double>) > > valc_comp;
+		valc_comp.push_back(compute.uc);
+		valc_comp.push_back(compute.vc);
+		valc_comp.push_back(compute.wc);
+
+		// Create entity for computind gradients by points
+		GradientComputer gradcmp(nDims);
+
+		// object for stencil creation
+		Stencil t_type_stn(nDims, grid);
 
 		////	X direction		/////
 		if (!grid.IsPeriodicX) {
 			faceNormalL = Vector(-1.0, 0.0, 0.0);
 			faceNormalR = Vector(1.0, 0.0, 0.0);
-			for (j = grid.jMin; j <= grid.jMax; j++) {
-				for (k = grid.kMin; k <= grid.kMax; k++) {
+			for (int j = grid.jMin; j <= grid.jMax; j++) {
+				for (int k = grid.kMin; k <= grid.kMax; k++) {
 					//Inner cell
 					cellCenter.y = grid.CoordinateY[j];
 					cellCenter.z = grid.CoordinateZ[k];
@@ -349,40 +357,84 @@ public:
 					faceCenter.y = grid.CoordinateY[j];
 					faceCenter.z = grid.CoordinateZ[k];
 
-					for (int layer = 1; layer <= grid.dummyCellLayersX; layer++) {
-						if (pManager->rankCart[0] == 0) {
-							//Left border
-							i = grid.iMin - layer; // layer index
-							int iIn = grid.iMin + layer - 1; // opposite index
-							cellCenter.x = grid.CoordinateX[iIn];
-							faceCenter.x = (grid.CoordinateX[iIn] + grid.CoordinateX[i]) / 2.0;		// TO DO WRONG for nonuniform grid
-							int idx = grid.getSerialIndexLocal(i, j, k);
-							int idxIn = grid.getSerialIndexLocal(iIn, j, k);
+					//Left border
+					faceCenter.x = (grid.CoordinateX[grid.iMin] - 0.5 * grid.hx[grid.iMin]);
+					cellCenter.x = grid.CoordinateX[grid.iMin];
+					if (pManager->rankCart[0] == 0) {
+						auto i = grid.iMin;
 
-							//Apply left boundary conditions						
-							double *V = getCellValues(iIn, j, k);
-							Vector dGrad;
-							gradientVelocityX[idx] = dGrad;
-							gradientVelocityY[idx] = dGrad;
-							gradientVelocityZ[idx] = dGrad;
+						// compute conservative values at the face
+						auto Vin = getCellValues(i, j, k);
+						auto Vf = bConditions[xLeftBC.getMarker(faceCenter)]->getFaceValues(Vin, faceNormalL, faceCenter, cellCenter);
+							
+						// get all cell indexes for inner area (create stencil in fact)
+						auto cells = t_type_stn.InternalBorderStencil(Direction::XDirection, CellIdx(i, j, k));
+						cells.push_back(CellIdx(i - 1, j, k));	// add dummy one cell
+
+						// write stencil point positions
+						std::vector<Vector> points;				
+						for (auto r : cells) {
+							auto p_stn = Vector(grid.CoordinateX[r.i], grid.CoordinateY[r.j], grid.CoordinateZ[r.k]);
+							points.push_back(p_stn);
 						};
 
-						if (pManager->rankCart[0] == pManager->dimsCart[0] - 1) {
-							//Right border
-							i = grid.iMax + layer; // layer index
-							int iIn = grid.iMax - layer + 1; // opposite index
-							cellCenter.x = grid.CoordinateX[iIn];
-							faceCenter.x = (grid.CoordinateX[iIn] + grid.CoordinateX[i]) / 2.0;	// TO DO wrong for nonuniform grid
-							int idx = grid.getSerialIndexLocal(i, j, k);
-							int idxIn = grid.getSerialIndexLocal(iIn, j, k);
-
-							//Apply right boundary conditions						
-							double *V = getCellValues(iIn, j, k);
-							Vector dGrad;
-							gradientVelocityX[idx] = dGrad;
-							gradientVelocityY[idx] = dGrad;
-							gradientVelocityZ[idx] = dGrad;
+						// compute gradients for all values given by lyambdas
+						std::vector<Vector> grads;
+						for (int d = 0; d < 3; d++) {
+							std::vector<double> values;
+							for (auto r : cells) {
+								auto val_stn = getCellValues(r.i, r.j, r.k);
+								values.push_back(val_comp[d](val_stn));			// set values in stencil cells
+							};
+							grads.push_back(gradcmp.ExecuteByLeastSquares(faceCenter, valc_comp[d](Vf), points, values));
 						};
+
+						// Extrapolate in dummy area and save results
+						int idx = grid.getSerialIndexLocal(i - 1, j, k);
+						int idxIn = grid.getSerialIndexLocal(i, j, k);
+						gradientVelocityX[idx] = 2.0 * grads[0] - gradientVelocityX[idxIn];
+						gradientVelocityY[idx] = 2.0 * grads[1] - gradientVelocityY[idxIn];
+						gradientVelocityZ[idx] = 2.0 * grads[2] - gradientVelocityZ[idxIn];
+					};
+
+					//Right border
+					faceCenter.x = (grid.CoordinateX[grid.iMax] + 0.5 * grid.hx[grid.iMax]);
+					cellCenter.x = grid.CoordinateX[grid.iMax];
+					if (pManager->rankCart[0] == pManager->dimsCart[0] - 1) {
+						auto i = grid.iMax;
+
+						// compute conservative values at the face
+						auto Vin = getCellValues(i, j, k);
+						auto Vf = bConditions[xRightBC.getMarker(faceCenter)]->getFaceValues(Vin, faceNormalR, faceCenter, cellCenter);
+
+						// get all cell indexes for inner area (create stencil in fact)
+						auto cells = t_type_stn.InternalBorderStencil(Direction::XDirection, CellIdx(i, j, k));
+						cells.push_back(CellIdx(i + 1, j, k));	// add dummy one cell
+
+						// write stencil point positions
+						std::vector<Vector> points;
+						for (auto r : cells) {
+							auto p_stn = Vector(grid.CoordinateX[r.i], grid.CoordinateY[r.j], grid.CoordinateZ[r.k]);
+							points.push_back(p_stn);
+						};
+
+						// compute gradients for all values given by lyambdas
+						std::vector<Vector> grads;
+						for (int d = 0; d < 3; d++) {
+							std::vector<double> values;
+							for (auto r : cells) {
+								auto val_stn = getCellValues(r.i, r.j, r.k);
+								values.push_back(val_comp[d](val_stn));			// set values in stencil cells
+							};
+							grads.push_back(gradcmp.ExecuteByLeastSquares(faceCenter, valc_comp[d](Vf), points, values));
+						};
+
+						// Extrapolate in dummy area and save results
+						int idx = grid.getSerialIndexLocal(i + 1, j, k);
+						int idxIn = grid.getSerialIndexLocal(i, j, k);
+						gradientVelocityX[idx] = 2.0 * grads[0] - gradientVelocityX[idxIn];
+						gradientVelocityY[idx] = 2.0 * grads[1] - gradientVelocityY[idxIn];
+						gradientVelocityZ[idx] = 2.0 * grads[2] - gradientVelocityZ[idxIn];
 					};
 				};
 			};
@@ -403,8 +455,8 @@ public:
 			faceNormalR = Vector(0.0, 1.0, 0.0);
 
 			// Obtain top and bottom layers
-			for (i = grid.iMin; i <= grid.iMax; i++) {
-				for (k = grid.kMin; k <= grid.kMax; k++) {
+			for (int i = grid.iMin; i <= grid.iMax; i++) {
+				for (int k = grid.kMin; k <= grid.kMax; k++) {
 					//Inner cell
 					cellCenter.x = grid.CoordinateX[i];
 					cellCenter.z = grid.CoordinateZ[k];
@@ -413,49 +465,85 @@ public:
 					faceCenter.x = grid.CoordinateX[i];
 					faceCenter.z = grid.CoordinateZ[k];
 
-					for (int layer = 1; layer <= grid.dummyCellLayersY; layer++) {
-						if (pManager->rankCart[1] == 0) {
-							//Left border
-							j = grid.jMin - layer; // layer index
-							int jIn = grid.jMin + layer - 1; // opposite index
-							cellCenter.y = grid.CoordinateY[jIn];
-							faceCenter.y = (grid.CoordinateY[jIn] + grid.CoordinateY[j]) / 2.0;		// TO DO wrong for nonuniform grid
-							int idx = grid.getSerialIndexLocal(i, j, k);
-							int idxIn = grid.getSerialIndexLocal(i, jIn, k);
+					//Bottom border
+					faceCenter.y = (grid.CoordinateY[grid.jMin] - 0.5 * grid.hy[grid.jMin]);
+					cellCenter.y = grid.CoordinateY[grid.jMin];
+					if (pManager->rankCart[1] == 0) {
+						auto j = grid.jMin;
 
-							//Apply left boundary conditions
-							// TO DO need to refactore that part for general case
-							double *V = getCellValues(i, jIn, k);
-							Vector dGrad;
-							if (cellCenter.x > 0.5) {
-								gradientVelocityX[idx] = dGrad;
-								gradientVelocityY[idx] = dGrad;
-								gradientVelocityZ[idx] = dGrad;
-							}
-							else {
-								gradientVelocityX[idx] = dGrad;
-								gradientVelocityY[idx] = dGrad;
-								gradientVelocityZ[idx] = dGrad;
-							}
+						// compute conservative values at the face
+						auto Vin = getCellValues(i, j, k);
+						auto Vf = bConditions[yLeftBC.getMarker(faceCenter)]->getFaceValues(Vin, faceNormalL, faceCenter, cellCenter);
 
+						// get all cell indexes for inner area (create stencil in fact)
+						auto cells = t_type_stn.InternalBorderStencil(Direction::YDirection, CellIdx(i, j, k));
+						cells.push_back(CellIdx(i , j - 1, k));	// add one dummy cell
+
+						// write stencil points positions
+						std::vector<Vector> points;
+						for (auto r : cells) {
+							auto p_stn = Vector(grid.CoordinateX[r.i], grid.CoordinateY[r.j], grid.CoordinateZ[r.k]);
+							points.push_back(p_stn);
 						};
 
-						if (pManager->rankCart[1] == pManager->dimsCart[1] - 1.0) {
-							//Right border
-							j = grid.jMax + layer; // layer index
-							int jIn = grid.jMax - layer + 1; // opposite index
-							cellCenter.y = grid.CoordinateY[jIn];
-							faceCenter.y = (grid.CoordinateY[jIn] + grid.CoordinateY[j]) / 2.0;		// TO DO wrong for nonuniform grid
-							int idx = grid.getSerialIndexLocal(i, j, k);
-							int idxIn = grid.getSerialIndexLocal(i, jIn, k);
-
-							//Apply right boundary conditions						
-							double *V = getCellValues(i, jIn, k);
-							Vector dGrad;
-							gradientVelocityX[idx] = dGrad;
-							gradientVelocityY[idx] = dGrad;
-							gradientVelocityZ[idx] = dGrad;
+						// compute gradients for all values given by lyambdas
+						std::vector<Vector> grads;
+						for (int d = 0; d < 3; d++) {
+							std::vector<double> values;
+							for (auto r : cells) {
+								auto val_stn = getCellValues(r.i, r.j, r.k);
+								values.push_back(val_comp[d](val_stn));			// set values in stencil cells
+							};
+							grads.push_back(gradcmp.ExecuteByLeastSquares(faceCenter, valc_comp[d](Vf), points, values));
 						};
+
+						// Extrapolate in dummy area and save results
+						int idx = grid.getSerialIndexLocal(i, j - 1, k);
+						int idxIn = grid.getSerialIndexLocal(i, j, k);
+						gradientVelocityX[idx] = 2.0 * grads[0] - gradientVelocityX[idxIn];
+						gradientVelocityY[idx] = 2.0 * grads[1] - gradientVelocityY[idxIn];
+						gradientVelocityZ[idx] = 2.0 * grads[2] - gradientVelocityZ[idxIn];
+					};
+
+					//Top border
+					faceCenter.y = (grid.CoordinateY[grid.jMax] + 0.5 * grid.hy[grid.jMax]);
+					cellCenter.y = grid.CoordinateY[grid.jMax];
+					if (pManager->rankCart[1] == pManager->dimsCart[1] - 1) {
+						//Right border
+						auto j = grid.jMax;
+
+						// compute conservative values at the face
+						auto Vin = getCellValues(i, j, k);
+						auto Vf = bConditions[yRightBC.getMarker(faceCenter)]->getFaceValues(Vin, faceNormalR, faceCenter, cellCenter);
+
+						// get all cell indexes for inner area (create stencil in fact)
+						auto cells = t_type_stn.InternalBorderStencil(Direction::YDirection, CellIdx(i, j, k));
+						cells.push_back(CellIdx(i, j + 1, k));	// add dummy one cell
+
+						// write stencil point positions
+						std::vector<Vector> points;
+						for (auto r : cells) {
+							auto p_stn = Vector(grid.CoordinateX[r.i], grid.CoordinateY[r.j], grid.CoordinateZ[r.k]);
+							points.push_back(p_stn);
+						};
+
+						// compute gradients for all values given by lyambdas
+						std::vector<Vector> grads;
+						for (int d = 0; d < 3; d++) {
+							std::vector<double> values;
+							for (auto r : cells) {
+								auto val_stn = getCellValues(r.i, r.j, r.k);
+								values.push_back(val_comp[d](val_stn));			// set values in stencil cells
+							};
+							grads.push_back(gradcmp.ExecuteByLeastSquares(faceCenter, valc_comp[d](Vf), points, values));
+						};
+
+						// Extrapolate in dummy area and save results
+						int idx = grid.getSerialIndexLocal(i, j + 1, k);
+						int idxIn = grid.getSerialIndexLocal(i, j, k);
+						gradientVelocityX[idx] = 2.0 * grads[0] - gradientVelocityX[idxIn];
+						gradientVelocityY[idx] = 2.0 * grads[1] - gradientVelocityY[idxIn];
+						gradientVelocityZ[idx] = 2.0 * grads[2] - gradientVelocityZ[idxIn];
 					};
 				};
 			};
@@ -475,55 +563,100 @@ public:
 			faceNormalL = Vector(0.0, 0.0, -1.0);
 			faceNormalR = Vector(0.0, 0.0, 1.0);
 
-			// Obtain back and front layers
-			for (i = grid.iMin; i <= grid.iMax; i++) {
-				for (j = grid.jMin; j <= grid.jMax; j++) {
+			// Obtain top and bottom layers
+			for (int i = grid.iMin; i <= grid.iMax; i++) {
+				for (int j = grid.jMin; j <= grid.jMax; j++) {
 					//Inner cell
 					cellCenter.x = grid.CoordinateX[i];
-					cellCenter.y= grid.CoordinateY[j];
+					cellCenter.y = grid.CoordinateY[j];
 
 					//And face
 					faceCenter.x = grid.CoordinateX[i];
 					faceCenter.y = grid.CoordinateY[j];
 
-					for (int layer = 1; layer <= grid.dummyCellLayersZ; layer++) {
-						if (pManager->rankCart[2] == 0) {
-							//Left border
-							k = grid.kMin - layer; // layer index
-							int kIn = grid.kMin + layer - 1; // opposite index
-							cellCenter.z = grid.CoordinateZ[kIn];
-							faceCenter.z = (grid.CoordinateZ[kIn] + grid.CoordinateZ[k]) / 2.0;		// TO DO wrong for nonuniform grid
-							int idx = grid.getSerialIndexLocal(i, j, k);
-							int idxIn = grid.getSerialIndexLocal(i, j, kIn);
+					//Bottom border
+					faceCenter.z = (grid.CoordinateZ[grid.kMin] - 0.5 * grid.hz[grid.kMin]);
+					cellCenter.z = grid.CoordinateZ[grid.kMin];
+					if (pManager->rankCart[2] == 0) {
+						auto k = grid.kMin;
 
-							//Apply left boundary conditions						
-							double *V = getCellValues(i, j, kIn);
-							Vector dGrad;
-							gradientVelocityX[idx] = dGrad;
-							gradientVelocityY[idx] = dGrad;
-							gradientVelocityZ[idx] = dGrad;
+						// compute conservative values at the face
+						auto Vin = getCellValues(i, j, k);
+						auto Vf = bConditions[zLeftBC.getMarker(faceCenter)]->getFaceValues(Vin, faceNormalL, faceCenter, cellCenter);
+
+						// get all cell indexes for inner area (create stencil in fact)
+						auto cells = t_type_stn.InternalBorderStencil(Direction::ZDirection, CellIdx(i, j, k));
+						cells.push_back(CellIdx(i, j, k - 1));	// add one dummy cell
+
+						// write stencil points positions
+						std::vector<Vector> points;
+						for (auto r : cells) {
+							auto p_stn = Vector(grid.CoordinateX[r.i], grid.CoordinateY[r.j], grid.CoordinateZ[r.k]);
+							points.push_back(p_stn);
 						};
 
-						if (pManager->rankCart[1] == pManager->dimsCart[1] - 1.0) {
-							//Right border
-							k = grid.kMax + layer; // layer index
-							int kIn = grid.kMax - layer + 1; // opposite index
-							cellCenter.z = grid.CoordinateZ[kIn];
-							faceCenter.z = (grid.CoordinateZ[kIn] + grid.CoordinateZ[k]) / 2.0;		// TO DO wrong for nonuniform grid
-							int idx = grid.getSerialIndexLocal(i, j, k);
-							int idxIn = grid.getSerialIndexLocal(i, j, kIn);
-
-							//Apply right boundary conditions						
-							double *V = getCellValues(i, j, kIn);
-							Vector dGrad;
-							gradientVelocityX[idx] = dGrad;
-							gradientVelocityY[idx] = dGrad;
-							gradientVelocityZ[idx] = dGrad;
+						// compute gradients for all values given by lyambdas
+						std::vector<Vector> grads;
+						for (int d = 0; d < 3; d++) {
+							std::vector<double> values;
+							for (auto r : cells) {
+								auto val_stn = getCellValues(r.i, r.j, r.k);
+								values.push_back(val_comp[d](val_stn));			// set values in stencil cells
+							};
+							grads.push_back(gradcmp.ExecuteByLeastSquares(faceCenter, valc_comp[d](Vf), points, values));
 						};
+
+						// Extrapolate in dummy area and save results
+						int idx = grid.getSerialIndexLocal(i, j, k - 1);
+						int idxIn = grid.getSerialIndexLocal(i, j, k);
+						gradientVelocityX[idx] = 2.0 * grads[0] - gradientVelocityX[idxIn];
+						gradientVelocityY[idx] = 2.0 * grads[1] - gradientVelocityY[idxIn];
+						gradientVelocityZ[idx] = 2.0 * grads[2] - gradientVelocityZ[idxIn];
+					};
+
+					//Top border
+					faceCenter.z = grid.CoordinateZ[grid.kMax] + 0.5 * grid.hz[grid.kMax];
+					cellCenter.z = grid.CoordinateZ[grid.kMax];
+					if (pManager->rankCart[2] == pManager->dimsCart[2] - 1) {
+						//Right border
+						auto k = grid.kMax;
+
+						// compute conservative values at the face
+						auto Vin = getCellValues(i, j, k);
+						auto Vf = bConditions[zRightBC.getMarker(faceCenter)]->getFaceValues(Vin, faceNormalR, faceCenter, cellCenter);
+
+						// get all cell indexes for inner area (create stencil in fact)
+						auto cells = t_type_stn.InternalBorderStencil(Direction::ZDirection, CellIdx(i, j, k));
+						cells.push_back(CellIdx(i, j, k + 1));	// add dummy one cell
+						
+						// write stencil point positions
+						std::vector<Vector> points;
+						for (auto r : cells) {
+							auto p_stn = Vector(grid.CoordinateX[r.i], grid.CoordinateY[r.j], grid.CoordinateZ[r.k]);
+							points.push_back(p_stn);
+						};
+
+						// compute gradients for all values given by lyambdas
+						std::vector<Vector> grads;
+						for (int d = 0; d < 3; d++) {
+							std::vector<double> values;
+							for (auto r : cells) {
+								auto val_stn = getCellValues(r.i, r.j, r.k);
+								values.push_back(val_comp[d](val_stn));			// set values in stencil cells
+							};
+							grads.push_back(gradcmp.ExecuteByLeastSquares(faceCenter, valc_comp[d](Vf), points, values));
+						};
+
+						// Extrapolate in dummy area and save results
+						int idx = grid.getSerialIndexLocal(i, j , k + 1);
+						int idxIn = grid.getSerialIndexLocal(i, j, k);
+						gradientVelocityX[idx] = 2.0 * grads[0] - gradientVelocityX[idxIn];
+						gradientVelocityY[idx] = 2.0 * grads[1] - gradientVelocityY[idxIn];
+						gradientVelocityZ[idx] = 2.0 * grads[2] - gradientVelocityZ[idxIn];
 					};
 				};
 			};
-		}; // Y direction
+		}; // Z direction
 
 		if (DebugOutputEnabled) {
 			std::cout << "rank = " << pManager->getRank() << ", Gradients dummy cells Z-direction calculated\n";
@@ -565,7 +698,6 @@ public:
 		for (int k = grid.kMin; k <= grid.kMax; k++) {
 			for (int j = grid.jMin; j <= grid.jMax; j++) {
 				for (int i = grid.iMin; i <= grid.iMax + 1; i++) {
-
 					//Compute vertical faces fluxes (left from cell ijk)
 					//Conservative variables and serial index in left and right cell 
 					double* UL = getCellValues(i - 1, j, k);
@@ -573,28 +705,28 @@ public:
 					int sL = grid.getSerialIndexLocal(i - 1, j, k);
 					int sR = grid.getSerialIndexLocal(i, j, k);
 					double dx = grid.CoordinateX[i] - grid.CoordinateX[i - 1];
+					double l = grid.hx[i - 1] / dx;	//double weights
+					double r = grid.hx[i] / dx;
 
 					//U component derivatives
 					Vector& graduL = gradientVelocityX[sL];
 					Vector& graduR = gradientVelocityX[sR];
-					Vector du = (graduL + graduR) / 2.0;
-					du.x = (getu(UR) - getu(UL)) / dx;
+					Vector du = 0.5 * (r * graduL + l * graduR);
+					du.x = (getu(UR) - getu(UL)) / dx;			// first order for derrivative
 
 					//V component derivatives
 					Vector& gradvL = gradientVelocityY[sL];
 					Vector& gradvR = gradientVelocityY[sR];
-					Vector dv = (gradvL + gradvR) / 2.0;
+					Vector dv = 0.5 * (r * gradvL + l * gradvR);
 					dv.x = (getv(UR) - getv(UL)) / dx;
 
 					//W component derivatives
 					Vector& gradwL = gradientVelocityZ[sL];
 					Vector& gradwR = gradientVelocityZ[sR];
-					Vector dw = (gradwL + gradwR) / 2.0;
+					Vector dw = 0.5 * (r * gradwL + l * gradwR);
 					dw.x = (getw(UR) - getw(UL)) / dx;
 
 					//compute average velocity vector
-					double l = grid.hx[i - 1] / dx;	//weights
-					double r = grid.hx[i] / dx;
 					double u = 0.5 * (l * getu(UR) + r * getu(UL));
 					double v = 0.5 * (l * getv(UR) + r * getv(UL));
 					double w = 0.5 * (l * getw(UR) + r * getw(UL));
@@ -634,28 +766,28 @@ public:
 					int sL = grid.getSerialIndexLocal(i, j - 1, k);
 					int sR = grid.getSerialIndexLocal(i, j, k);
 					double dy = grid.CoordinateY[j] - grid.CoordinateY[j - 1];
+					double l = grid.hy[j - 1] / dy;		// weights
+					double r = grid.hy[j] / dy;
 
 					//U component derivatives
 					Vector& graduL = gradientVelocityX[sL];
 					Vector& graduR = gradientVelocityX[sR];
-					Vector du = (graduL + graduR) / 2.0;
+					Vector du = 0.5 * (r * graduL + l * graduR);
 					du.y = (getu(UR) - getu(UL)) / dy;
-
+					
 					//V component derivatives
 					Vector& gradvL = gradientVelocityY[sL];
 					Vector& gradvR = gradientVelocityY[sR];
-					Vector dv = (gradvL + gradvR) / 2.0;
+					Vector dv = 0.5 * (r * gradvL + l * gradvR);
 					dv.y = (getv(UR) - getv(UL)) / dy;
 
 					//W component derivatives
 					Vector& gradwL = gradientVelocityZ[sL];
 					Vector& gradwR = gradientVelocityZ[sR];
-					Vector dw = (gradwL + gradwR) / 2.0;
+					Vector dw = 0.5 * (r * gradwL + l * gradwR);
 					dw.y = (getw(UR) - getw(UL)) / dy;
 
 					//compute average velocity vector
-					double l = grid.hy[j - 1] / dy;
-					double r = grid.hy[j] / dy;
 					double u = 0.5 * (l * getu(UR) + r * getu(UL));
 					double v = 0.5 * (l * getv(UR) + r * getv(UL));
 					double w = 0.5 * (l * getw(UR) + r * getw(UL));
@@ -695,28 +827,28 @@ public:
 					int sL = grid.getSerialIndexLocal(i, j, k - 1);
 					int sR = grid.getSerialIndexLocal(i, j, k);
 					double dz = grid.CoordinateZ[k] - grid.CoordinateZ[k - 1];
+					double l = grid.hz[k - 1] / dz;		//weights
+					double r = grid.hz[k] / dz;
 
 					//U component derivatives
 					Vector& graduL = gradientVelocityX[sL];
 					Vector& graduR = gradientVelocityX[sR];
-					Vector du = (graduL + graduR) / 2.0;
+					Vector du = 0.5 * (r * graduL + l * graduR);
 					du.z = (getu(UR) - getu(UL)) / dz;
 
 					//V component derivatives
 					Vector& gradvL = gradientVelocityY[sL];
 					Vector& gradvR = gradientVelocityY[sR];
-					Vector dv = (gradvL + gradvR) / 2.0;
+					Vector dv = 0.5 * (r * gradvL + l * gradvR);
 					dv.z = (getv(UR) - getv(UL)) / dz;
 
 					//W component derivatives
 					Vector& gradwL = gradientVelocityZ[sL];
 					Vector& gradwR = gradientVelocityZ[sR];
-					Vector dw = (gradwL + gradwR) / 2.0;
+					Vector dw = 0.5 * (r * gradwL + l * gradwR);
 					dw.z = (getw(UR) - getw(UL)) / dz;
 
 					//compute average velocity vector
-					double l = grid.hz[k - 1] / dz;		//weights
-					double r = grid.hz[k] / dz;
 					double u = 0.5 * (l * getu(UR) + r * getu(UL));
 					double v = 0.5 * (l * getv(UR) + r * getv(UL));
 					double w = 0.5 * (l * getw(UR) + r * getw(UL));

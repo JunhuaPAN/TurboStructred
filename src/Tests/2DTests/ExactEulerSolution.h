@@ -5,7 +5,7 @@
 
 // Test with smooth solution of 2D Euler system of equations
 //
-// from RICHARD LISKA and BURTON WENDROFF 2002 TO DO ACCOMPLISH
+// from RICHARD LISKA and BURTON WENDROFF 2002
 //
 // http://math.unm.edu/~bbw/sisc.pdf
 
@@ -35,11 +35,12 @@ namespace ExactEulerSolution {
 		par.v = -0.5;
 		par.p = 1.0;
 		par.rho = 1.0;
+		par.comp_time = 2.0;
 	};
 
 	// compute total density at the point r 		
 	inline double ComputeDensity(Vector r, double t) {
-		return par.rho + par.amplitude * sin(PI * (r.x + r.y - t * (par.u + par.v) ) );
+		return par.rho + par.amplitude * sin(2.0 * PI * (r.x + r.y - t * (par.u + par.v) ) );
 	};
 
 	// Run one experiment ( parameters is as input data )
@@ -64,7 +65,7 @@ namespace ExactEulerSolution {
 
 		conf.MaxTime = par.comp_time;
 		conf.MaxIteration = 1000000;
-		conf.SaveSolutionTime = 0.1 * par.comp_time;
+		conf.SaveSolutionTime = 0.2 * par.comp_time;
 		conf.ResidualOutputIterations = 20;
 
 		// init kernel
@@ -83,24 +84,25 @@ namespace ExactEulerSolution {
 		};
 		kernel->Init(conf);
 
+		NumericQuadrature In(5, 2);
 		auto initD = [&conf](Vector r) {
-			double rho = ComputeDensity(r, 0);
-			double ro;
-			double p;
-			double u;
+			double ro = ComputeDensity(r, 0);
+			double p = par.p;
+			double u = par.u;
+			double v = par.v;
 
 			// compute ro_e and write conservative variables
 			double roe = p / (par.gamma - 1.0);
 			std::vector<double> res(5);
 			res[0] = ro;
 			res[1] = ro * u;
-			res[2] = 0.0;
+			res[2] = ro * v;
 			res[3] = 0.0;
-			res[4] = roe + 0.5 * ro * u * u;		//total energy equals internal one because a motion is absent
+			res[4] = roe + 0.5 * ro * (u * u + v * v);		//total energy equals internal one because a motion is absent
 
 			return res;
 		};
-		kernel->SetInitialConditions(initD);
+		kernel->SetInitialConditions(initD, In);
 
 		//save solution
 		kernel->SaveSolution("init.dat");

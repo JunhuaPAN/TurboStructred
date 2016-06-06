@@ -93,10 +93,12 @@
     <ClInclude Include="..\src\Tests\UncomTests\Price2008KHI.h" />
     <ClInclude Include="..\src\Tests\UncomTests\testlist.h" />
     <ClInclude Include="..\src\utility\Direction.h" />
+    <ClInclude Include="..\src\utility\GradientComputer.h" />
     <ClInclude Include="..\src\utility\Integration.h" />
     <ClInclude Include="..\src\utility\Matrix.h" />
     <ClInclude Include="..\src\utility\NumericQuadrature.h" />
     <ClInclude Include="..\src\utility\Slices.h" />
+    <ClInclude Include="..\src\utility\Stencil.h" />
     <ClInclude Include="..\src\utility\Timer.h" />
     <ClInclude Include="..\src\utility\VariablesTransition.h" />
     <ClInclude Include="..\src\utility\Vector.h" />
