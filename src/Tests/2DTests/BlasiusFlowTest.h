@@ -54,8 +54,8 @@ namespace BlasiusFlowTest {
 		// Init config structure
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 600;
-		conf.nY = 120;
+		conf.nX = 800;
+		conf.nY = 200;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
@@ -78,7 +78,7 @@ namespace BlasiusFlowTest {
 		// Plate condition
 		BoundaryConditionConfiguration Wall(BoundaryConditionType::Wall);
 		// Symmetry sides
-		BoundaryConditionConfiguration Symmetry(BoundaryConditionType::SymmetryY);
+		BoundaryConditionConfiguration Symmetry(BoundaryConditionType::Symmetry);
 
 		// Create mapping Marker -> BCondition
 		conf.MyConditions[1] = Inlet;
@@ -89,7 +89,7 @@ namespace BlasiusFlowTest {
 		// Describe conditions on the domain sides
 		conf.xLeftBoundary.SetMarker(1);
 		conf.xRightBoundary.SetMarker(2);
-		conf.yRightBoundary.SetMarker(4);
+		conf.yRightBoundary.SetMarker(2);
 		// complex case
 		conf.yLeftBoundary.isComplex = true;
 		auto getMarkerBottom = [](Vector r) {

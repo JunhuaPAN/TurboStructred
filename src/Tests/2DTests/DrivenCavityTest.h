@@ -50,31 +50,32 @@ namespace DrivenCavityTest {
 		// Init config structure
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 80;
-		conf.nY = 80;
+		conf.nX = 40;
+		conf.nY = 40;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
 		conf.isPeriodicY = false;
 		conf.Gamma = 1.4;
-		conf.IsViscousFlow = true;
+		conf.IsViscousFlow = false;
 		conf.Viscosity = ComputeViscosity();
-		//conf.Viscosity = 0;
+		conf.Viscosity = 0;
 
 		// BC
 		BoundaryConditionConfiguration TopPlate(BoundaryConditionType::MovingWall);
 		TopPlate.Velocity = Vector(par.U_dr, 0, 0);
 		conf.MyConditions[1] = BoundaryConditionConfiguration(BoundaryConditionType::Wall);
-		conf.MyConditions[2] = TopPlate; 
+		conf.MyConditions[2] = TopPlate;
+		conf.MyConditions[3] = BoundaryConditionConfiguration(BoundaryConditionType::Natural);
 
 		conf.xLeftBoundary.SetMarker(1);
 		conf.xRightBoundary.SetMarker(1);
-		conf.yLeftBoundary.SetMarker(1);
-		conf.yRightBoundary.SetMarker(2);
+		conf.yLeftBoundary.SetMarker(2);
+		conf.yRightBoundary.SetMarker(1);
 
 		// Method settings
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-		conf.methodConfiguration.CFL = 0.5;
+		conf.methodConfiguration.CFL = 0.45;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
 		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
@@ -106,6 +107,7 @@ namespace DrivenCavityTest {
 		kernel->Init(conf);
 
 		// init distributions
+		NumericQuadrature Int(5, 2);
 		auto init = [&](Vector r) {
 			double roe = par.p / (par.gamma - 1.0);
 			std::vector<double> res(5, 0);
@@ -113,7 +115,15 @@ namespace DrivenCavityTest {
 			res[4] = roe;
 			return res;
 		};
-		kernel->SetInitialConditions(init);
+		auto init_todo_delete = [&](Vector r) {
+			double roe = par.p / (par.gamma - 1.0);
+			std::vector<double> res(5, 0);
+			res[0] = par.rho;
+			res[1] = par.U_dr;
+			res[4] = roe;
+			return res;
+		};
+		kernel->SetInitialConditions(init, Int);
 
 		// Create slices
 		kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, 0));

@@ -103,6 +103,13 @@ public:
 	Vector Vdir;		// unity vector of velocity direction in dummy cell
 	Vector V;			// vector of velosity
 
+	//! Load refference values
+	virtual void loadConfiguration(const BoundaryConditionConfiguration& config) {
+		Pout = config.Pstatic;
+		Rhout = config.Density;
+		V = config.Velocity;
+	};
+
 	//! Get dummy cell values
 	virtual std::valarray<double> getDummyValues2(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) {
 		// Compute dummy values
@@ -191,7 +198,9 @@ public:
 
 //! Sunsonic outlet BC
 class SubsonicOutlet : public BCGeneral {
-
+	virtual std::valarray<double> getDummyValues(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) override {
+		return std::valarray<double>(values, nVar);
+	}
 };
 
 //! Values in dummy cells and at the face are the same as internal
@@ -202,8 +211,18 @@ class Natural : public BCGeneral {
 };
 
 //! Symmetry BC
-class SymmetryY : public BCGeneral {
+class Symmetry : public BCGeneral {
+	virtual std::valarray<double> getDummyValues(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) override {
+		Vector rVin(values[1], values[2], values[3]);	// impulse in inner cell
+		Vector rVinNormal = (faceNormal * rVin) * faceNormal;	// normal part of the inner impulse
 
+		// Apply symmetry
+		std::valarray<double> res(values, nVar);
+		res[1] -= 2.0 * rVinNormal.x;
+		res[2] -= 2.0 * rVinNormal.y;
+		res[3] -= 2.0 * rVinNormal.z;
+		return res;
+	};
 };
 
 // No slip condition (velocity is zero at the wall)
@@ -256,8 +275,14 @@ std::unique_ptr<BCGeneral> CreateBC(BoundaryConditionConfiguration& myCondition)
 	case BoundaryConditionType::SubsonicInlet:
 		res = std::make_unique<SubsonicInlet>();
 		break;
+	case BoundaryConditionType::SubsonicOutlet:
+		res = std::make_unique<SubsonicOutlet>();
+		break;
 	case BoundaryConditionType::Natural:
 		res = std::make_unique<Natural>();
+		break;
+	case BoundaryConditionType::Symmetry:
+		res = std::make_unique<Symmetry>();
 		break;
 	case BoundaryConditionType::Wall:
 		res = std::make_unique<Wall>();

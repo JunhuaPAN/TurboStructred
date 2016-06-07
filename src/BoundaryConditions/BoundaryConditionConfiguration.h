@@ -11,11 +11,10 @@ This file contains enumeration of boundary condition types and configuration com
 /*! Some type of allowed boundary conditions */
 enum class BoundaryConditionType {
 	Wall,			///< no-slip condition
-	SymmetryX,		///< symmetry condition for YZ plane border 
-	SymmetryY,		///< symmetry condition for XZ plane border
-	SymmetryZ,		///< symmetry condition for XY plane border
+	Symmetry,		///< symmetry condition
 	MovingWall,		///< no-clip condition with some constant velocity
 	SubsonicInlet,	///< inlet boundary condition
+	SubsonicOutlet,	///< outlet boundary condition
 	Natural			///< subsonic outflow condition 
 };
 

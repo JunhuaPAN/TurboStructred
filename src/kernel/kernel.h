@@ -303,7 +303,7 @@ public:
 			else xLeftBC = BCinfo(config.xLeftBoundary.GetMarker());		// for trivial case set marker value
 
 			// Do the same for right side
-			if (config.xLeftBoundary.isComplex) xRightBC = BCinfo(config.xRightBoundary.getMarker);
+			if (config.xRightBoundary.isComplex) xRightBC = BCinfo(config.xRightBoundary.getMarker);
 			else xRightBC = BCinfo(config.xRightBoundary.GetMarker());
 		};
 
@@ -312,14 +312,14 @@ public:
 			if (config.yLeftBoundary.isComplex) yLeftBC = BCinfo(config.yLeftBoundary.getMarker);
 			else yLeftBC = BCinfo(config.yLeftBoundary.GetMarker());
 
-			if (config.yLeftBoundary.isComplex) yRightBC = BCinfo(config.yRightBoundary.getMarker);
+			if (config.yRightBoundary.isComplex) yRightBC = BCinfo(config.yRightBoundary.getMarker);
 			else yRightBC = BCinfo(config.yRightBoundary.GetMarker());
 		};
 		if ((!grid.IsPeriodicZ) && (nDims > 2)) {
 			if (config.zLeftBoundary.isComplex) zLeftBC = BCinfo(config.zLeftBoundary.getMarker);
 			else zLeftBC = BCinfo(config.zLeftBoundary.GetMarker());
 
-			if (config.xLeftBoundary.isComplex) zRightBC = BCinfo(config.zRightBoundary.getMarker);
+			if (config.zRightBoundary.isComplex) zRightBC = BCinfo(config.zRightBoundary.getMarker);
 			else zRightBC = BCinfo(config.zRightBoundary.GetMarker());
 		};
 	};
