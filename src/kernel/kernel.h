@@ -101,10 +101,7 @@ public:
 
 	// Transition beatween variables (trivial by default)
 	inline std::valarray<double> ForvardVariablesTransition(double* vals) {
-		std::valarray<double> res(nVariables);
-		for (int i = 0; i < nVariables; i++) res[i] = vals[i];
-
-		return std::move(res);
+		return std::valarray<double>(vals, nVariables);
 	};
 
 	// Inverse transition

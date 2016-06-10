@@ -57,21 +57,18 @@ namespace DrivenCavityTest {
 		conf.isPeriodicX = false;
 		conf.isPeriodicY = false;
 		conf.Gamma = 1.4;
-		conf.IsViscousFlow = false;
+		conf.IsViscousFlow = true;
 		conf.Viscosity = ComputeViscosity();
-		conf.Viscosity = 0;
 
 		// BC
 		BoundaryConditionConfiguration TopPlate(BoundaryConditionType::MovingWall);
 		TopPlate.Velocity = Vector(par.U_dr, 0, 0);
 		conf.MyConditions[1] = BoundaryConditionConfiguration(BoundaryConditionType::Wall);
 		conf.MyConditions[2] = TopPlate;
-		conf.MyConditions[3] = BoundaryConditionConfiguration(BoundaryConditionType::Natural);
-
 		conf.xLeftBoundary.SetMarker(1);
 		conf.xRightBoundary.SetMarker(1);
-		conf.yLeftBoundary.SetMarker(2);
-		conf.yRightBoundary.SetMarker(1);
+		conf.yLeftBoundary.SetMarker(1);
+		conf.yRightBoundary.SetMarker(2);
 
 		// Method settings
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
@@ -85,9 +82,8 @@ namespace DrivenCavityTest {
 		// Computational settings
 		conf.MaxTime = 100.0;
 		conf.MaxIteration = 10000000;
-		conf.SaveSolutionTime = 0.01;
-		conf.SaveSolutionIterations = 0;
-		conf.SaveSliceTime = 0.01;
+		conf.SaveSolutionTime = 0.1;
+		conf.SaveSliceTime = 0.1;
 		conf.ResidualOutputIterations = 100;
 		
 		// init kernel
@@ -112,14 +108,6 @@ namespace DrivenCavityTest {
 			double roe = par.p / (par.gamma - 1.0);
 			std::vector<double> res(5, 0);
 			res[0] = par.rho;
-			res[4] = roe;
-			return res;
-		};
-		auto init_todo_delete = [&](Vector r) {
-			double roe = par.p / (par.gamma - 1.0);
-			std::vector<double> res(5, 0);
-			res[0] = par.rho;
-			res[1] = par.U_dr;
 			res[4] = roe;
 			return res;
 		};

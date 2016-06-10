@@ -1284,7 +1284,7 @@ public:
 						{
 							UL = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][grid.jMax - grid.jMin + 1][k - grid.kMin + zLayer].SampleSolution(CubeFaces::yR));
 							auto bcMarker = yRightBC.getMarker(faceCenter);
-							UL = bConditions[bcMarker]->getDummyReconstructions(&UL[0], fn);
+							UR = bConditions[bcMarker]->getDummyReconstructions(&UL[0], fn);
 						}
 						else
 						{

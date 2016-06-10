@@ -251,7 +251,7 @@ public:
 	std::valarray<double> getDummyValues(double* values, Vector faceNormal, Vector faceCenter, Vector cellCenter) {
 		std::valarray<double> res(nVar);
 		auto rho = values[0];
-		auto Vin = Vector(values[1], values[2], values[3]) / rho;
+		auto Vin = Vector(values[1]/rho, values[2]/rho, values[3]/rho);
 		auto rhoe = values[4] - 0.5 * rho * (Vin * Vin);
 		
 		// Extrapolate velocity

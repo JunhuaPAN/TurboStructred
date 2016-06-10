@@ -6,11 +6,10 @@
 // Run the test
 int main(int argc, char *argv[])
 {
-	BlasiusFlowTest::RunExperiment(argc, argv);
+	//BlasiusFlowTest::RunExperiment(argc, argv);
 	//ExactEulerSolution::RunExperiment(argc, argv);
 	//ToroTests::RunExperiment(argc, argv);
-	//DrivenCavityTest::RunExperiment(argc, argv);
-	//BlasiusFlowTest::RunExperiment(argc, argv);
+	DrivenCavityTest::RunExperiment(argc, argv);
 	//RunPoiseuille2D(argc, argv);
 	//RunKonuhovMixing(argc, argv);
 	//Price2008KHI::RunExperiment(argc, argv);
