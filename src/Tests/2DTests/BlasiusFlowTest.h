@@ -32,14 +32,14 @@ namespace BlasiusFlowTest {
 	// Default parameters
 	void DefaultSettings() {
 		par.gamma = 1.4;
-		par.Lx = 1.5;
-		par.Ly = 0.25;
-		par.Xplate = 0.5;
-		par.M = 0.06;
-		par.Pin = 1.0e5;
+		par.Lx = 1.2;
+		par.Ly = 0.5;
+		par.Xplate = 0.2;
+		par.Pin = 101579;
 		par.Pout = par.Pin;
-		par.ro = 1.0;
-		par.viscosity = 1.0e-4;
+		par.ro = par.Pin * par.gamma / (1006.43 * 300.214 * (par.gamma - 1));
+		par.viscosity = 1.7894e-03;
+		par.M = 10.0 / sqrt(par.gamma * par.Pin / par.ro);		// Udriven = 10
 	};
 
 	// compute viscosity value
@@ -54,8 +54,8 @@ namespace BlasiusFlowTest {
 		// Init config structure
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 800;
-		conf.nY = 200;
+		conf.nX = 60;
+		conf.nY = 30;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
@@ -110,7 +110,7 @@ namespace BlasiusFlowTest {
 		// Computational settings
 		conf.MaxTime = 10 * par.Lx / Udr;
 		conf.MaxIteration = 10000000;
-		conf.SaveSolutionTime = 0.01;
+		conf.SaveSolutionTime = 0.02;
 		conf.SaveSliceTime = par.Lx / Udr;
 		conf.ResidualOutputIterations = 100;
 		
@@ -172,7 +172,7 @@ namespace BlasiusFlowTest {
 			res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
 			return res;
 		};
-		kernel->SetInitialConditions(InitLinearBL, Integ);
+		kernel->SetInitialConditions(InitDriven, Integ);
 
 		// Create slices
 		kernel->slices.push_back(Slice((int)(0.9 * conf.nX), -1, 0));
