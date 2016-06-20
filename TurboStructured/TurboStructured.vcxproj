@@ -63,8 +63,8 @@
     <ClInclude Include="..\src\kernel\ParallelManager.h" />
     <ClInclude Include="..\src\Methods\ExplicitRungeKuttaFVM.h" />
     <ClInclude Include="..\src\Methods\MethodConfiguration.h" />
-    <ClInclude Include="..\src\Reconstruction\ENO2CharactVars.h" />
     <ClInclude Include="..\src\Reconstruction\IReconstruction.h" />
+    <ClInclude Include="..\src\Reconstruction\Linear2PointsStencil.h" />
     <ClInclude Include="..\src\Reconstruction\PiecewiseConstant.h" />
     <ClInclude Include="..\src\Reconstruction\ReconstructorsList.h" />
     <ClInclude Include="..\src\Reconstruction\ENO2PointsStencil.h" />

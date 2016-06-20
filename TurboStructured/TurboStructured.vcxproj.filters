@@ -290,9 +290,6 @@
     <ClInclude Include="..\src\kernel\GasProperties.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Reconstruction\ENO2CharactVars.h">
-      <Filter>Header Files\Reconstruction</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\Tests\2DTests\BlasiusFlowTest.h">
       <Filter>Header Files\Tests\2DTests</Filter>
     </ClInclude>
@@ -301,6 +298,9 @@
     </ClInclude>
     <ClInclude Include="..\src\utility\Stencil.h">
       <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Reconstruction\Linear2PointsStencil.h">
+      <Filter>Header Files\Reconstruction</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

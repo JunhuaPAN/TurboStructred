@@ -5,7 +5,7 @@
 #include "PiecewiseConstant.h"
 #include "ENO2PointsStencil.h"
 #include "WENO2PointsStencil.h"
-#include "ENO2CharactVars.h"
+
 
 
 #endif

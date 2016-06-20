@@ -76,12 +76,6 @@ namespace ExactEulerSolution {
 		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
-		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2CharactVars) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2CharactVars>(&argc, &argv));
-		};
 		kernel->Init(conf);
 
 		NumericQuadrature In(5, 2);

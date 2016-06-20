@@ -114,13 +114,9 @@ namespace ContactDisTest
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 			fname << "PWConstant";
 		};
-		if ((conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) || (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2CharactVars)) {
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 			fname << "ENO2";
-		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
-			fname << "WENO2";
 		};
 
 		kernel->Init(conf);

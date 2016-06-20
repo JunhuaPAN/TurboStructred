@@ -351,14 +351,6 @@ namespace RarefactionTest2
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 			fname << "ENO2";
 		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
-			fname << "WENO2";
-		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2CharactVars) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2CharactVars>(&argc, &argv));
-			fname << "ENO2";
-		};
 		kernel->Init(conf);
 
 		// IC
@@ -438,10 +430,8 @@ namespace RarefactionTest2
 
 		// Reconstruction type
 		// Reconstruction RecType{ Reconstruction::PiecewiseConstant };
-		// Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
-		// Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
-		Reconstruction RecType{ Reconstruction::ENO2CharactVars };
-
+		Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
+		
 		// RP solver
 		RPSolver rSolver{ RPSolver::GodunovSolver };
 		// RPSolver rSolver{};

@@ -21,9 +21,9 @@ struct CellReconstruction {
 
 enum class Reconstruction {
 	PiecewiseConstant,
+	Linear2PointsStencil,
 	ENO2PointsStencil,
 	WENO2PointsStencil,
-	ENO2CharactVars
 };
 
 //Basic class for all reconstruction classes
@@ -56,7 +56,7 @@ public:
 		};
 		std::cerr << "can't recognize reconstruction direction";
 		std::cout << std::endl;
-		return{};
+		return {};
 	};
 
 	// Default constructor
@@ -73,6 +73,7 @@ public:
 	static std::size_t GetBufferLenght(int nD, int nV) {
 		return nV * nD * 2;
 	};
+
 	virtual std::valarray<double> Serialize()  {
 		std::vector<double> res(0);
 		for (auto& r : recons.xL) res.push_back(r);
@@ -106,7 +107,6 @@ public:
 
 template<typename T>
 T ComputeReconstruction(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim, double gamma) {
-	//static_assert(false, "We dont have required function.");
 	throw std::runtime_error("We dont have required function.");
 };
 
