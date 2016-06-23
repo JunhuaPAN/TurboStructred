@@ -68,7 +68,6 @@
     <ClInclude Include="..\src\Reconstruction\PiecewiseConstant.h" />
     <ClInclude Include="..\src\Reconstruction\ReconstructorsList.h" />
     <ClInclude Include="..\src\Reconstruction\ENO2PointsStencil.h" />
-    <ClInclude Include="..\src\Reconstruction\WENO2PointsStencil.h" />
     <ClInclude Include="..\src\RiemannSolvers\GodunovSolverPerfectGasEOS.h" />
     <ClInclude Include="..\src\RiemannSolvers\RiemannSolversList.h" />
     <ClInclude Include="..\src\RiemannSolvers\RoeSolverPerfectGasEOS.h" />
@@ -95,7 +94,6 @@
     <ClInclude Include="..\src\utility\Direction.h" />
     <ClInclude Include="..\src\utility\GradientComputer.h" />
     <ClInclude Include="..\src\utility\Integration.h" />
-    <ClInclude Include="..\src\utility\Matrix.h" />
     <ClInclude Include="..\src\utility\NumericQuadrature.h" />
     <ClInclude Include="..\src\utility\Slices.h" />
     <ClInclude Include="..\src\utility\Stencil.h" />

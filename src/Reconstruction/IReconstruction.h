@@ -23,7 +23,6 @@ enum class Reconstruction {
 	PiecewiseConstant,
 	Linear2PointsStencil,
 	ENO2PointsStencil,
-	WENO2PointsStencil,
 };
 
 //Basic class for all reconstruction classes
@@ -33,6 +32,8 @@ public:
 	int nDims;
 	CellReconstruction recons;
 
+	// Sample solution or get reconstruction at point
+	virtual inline std::valarray<double> SampleSolution(Vector const& point) { return{}; }
 	virtual inline std::valarray<double> SampleSolution(CubeFaces const& point) {
 		switch (point) {
 		case CubeFaces::xL:
@@ -58,15 +59,19 @@ public:
 		std::cout << std::endl;
 		return {};
 	};
-
+	
 	// Default constructor
-	IReconstruction() {
-		nValues = 0;
-	};
+	IReconstruction() {};
 	IReconstruction(CellReconstruction& _recons, int _nDims, int _nValues) :
 		recons(_recons),
 		nDims(_nDims),
 		nValues(_nValues) { };
+
+	// Aditional inner initialization for derived classes
+	virtual void Init(int _nValues, int _nDims) {
+		nValues = _nValues;
+		nDims = _nDims;
+	};
 
 	//! Return required
 	// Serrialization
@@ -106,7 +111,7 @@ public:
 };
 
 template<typename T>
-T ComputeReconstruction(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim, double gamma) {
+T ComputeReconstruction(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
 	throw std::runtime_error("We dont have required function.");
 };
 

@@ -110,9 +110,6 @@
     <ClInclude Include="..\src\utility\Vector.h">
       <Filter>Header Files\Utility</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\utility\Matrix.h">
-      <Filter>Header Files\Utility</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\utility\Timer.h">
       <Filter>Header Files\Utility</Filter>
     </ClInclude>
@@ -174,9 +171,6 @@
       <Filter>Header Files\Reconstruction</Filter>
     </ClInclude>
     <ClInclude Include="..\src\Reconstruction\ENO2PointsStencil.h">
-      <Filter>Header Files\Reconstruction</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\Reconstruction\WENO2PointsStencil.h">
       <Filter>Header Files\Reconstruction</Filter>
     </ClInclude>
     <ClInclude Include="..\src\BoundaryConditions\BoundaryConditionConfiguration.h">

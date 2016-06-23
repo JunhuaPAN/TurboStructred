@@ -57,7 +57,7 @@ namespace ExactEulerSolution {
 
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
-		conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
+		conf.methodConfiguration.ReconstructionType = Reconstruction::Linear2PointsStencil;
 		conf.methodConfiguration.CFL = 0.4;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
@@ -75,6 +75,9 @@ namespace ExactEulerSolution {
 		};
 		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+		};
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2PointsStencil) {
+				kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<Linear2PointsStencil>(&argc, &argv));
 		};
 		kernel->Init(conf);
 

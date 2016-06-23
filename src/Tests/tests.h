@@ -50,7 +50,6 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
 		if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
 	};
 	kernel->Init(conf);
 
@@ -109,7 +108,6 @@ void RunSODTestReconstruction(int argc, char *argv[]) {
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
 	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
 		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 	};
 	kernel->Init(conf);

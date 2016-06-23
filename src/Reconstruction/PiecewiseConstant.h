@@ -13,6 +13,10 @@ protected:
 	std::valarray<double> values_{0};
 public:
 	//Piecewise reconstruction
+	virtual inline std::valarray<double> SampleSolution(Vector const& point) {
+		return values_;
+	};
+	// to do delete
 	virtual inline std::valarray<double> SampleSolution(CubeFaces const& point) {
 		return values_;
 	};
@@ -37,7 +41,7 @@ public:
 
 
 template<>
-PiecewiseConstant ComputeReconstruction<PiecewiseConstant>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim, double gamma) {
+PiecewiseConstant ComputeReconstruction<PiecewiseConstant>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
 	return std::move(PiecewiseConstant(value, value.size()));
 };
 

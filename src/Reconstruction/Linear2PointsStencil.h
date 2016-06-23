@@ -7,74 +7,101 @@
 #include <Reconstruction/IReconstruction.h>
 
 
-//Reconstruction by ENO interpolation procedure for 2 points stencil
+// Reconstruction by ENO interpolation procedure for 2 points stencil
 class Linear2PointsStencil : public IReconstruction {
 public:
+	std::vector<Vector> grads;
+	std::valarray<double> vals;
 
-	//constructor
-	Linear2PointsStencil() { };
+	//constructor (to do delete)
+	Linear2PointsStencil() {};
 	Linear2PointsStencil(CellReconstruction& _recons, int _nDims, int _nValues) :
-		IReconstruction(_recons, _nDims, _nValues) {};
+		IReconstruction(_recons, _nDims, _nValues) {
+		grads.resize(_nValues);
+	};
+	// new constructor
+	Linear2PointsStencil(CellReconstruction& _recons, int _nDims, int _nValues, std::vector<Vector> _grads, std::valarray<double> _vals) :
+		IReconstruction(_recons, _nDims, _nValues), grads(_grads), vals(_vals) {};
 
+	// Initialization
+	virtual void Init(int _nValues, int _nDims) {
+		IReconstruction::Init(_nValues, _nDims);
+		grads.resize(_nValues);
+	};
+
+	virtual std::valarray<double> SampleSolution(Vector const& point) override {
+		std::valarray<double> res(nValues);
+		for(int i = 0; i < nValues; i++) res[i] = vals[i] + grads[i] * point;
+		return res;
+	};
+
+	// Serrialization part
+	static std::size_t GetBufferLenght(int nD, int nV) {
+		return (1 + nD) * nV ;
+	};
+	virtual std::valarray<double> Serialize() override {
+		std::valarray<double> res(GetBufferLenght(nDims, nValues));
+		res[std::slice(0, nValues, 1)] = vals;	// first write values
+
+		// then gradients are writen
+		auto ibuf = nValues;
+		for (int i = 0; i < nValues; i++) res[ibuf + i] = grads[i].x;
+		ibuf += nValues;
+		if (nDims > 1) for (int i = 0; i < nValues; i++) res[ibuf + i] = grads[i].y;
+		ibuf += nValues;
+		if (nDims > 2) for (int i = 0; i < nValues; i++) res[ibuf + i] = grads[i].z;
+
+		return res;
+	};
+	virtual void Deserialize(const std::valarray<double>& _values) override {
+		vals = _values[std::slice(0, nValues, 1)]; // catch the values first
+
+		// then read the gradients
+		auto ibuf = nValues;
+		for (int i = 0; i < nValues; i++) grads[i].x = _values[ibuf + i];
+		ibuf += nValues;
+		if (nDims > 1) for (int i = 0; i < nValues; i++) grads[i].y = _values[ibuf + i];
+		ibuf += nValues;
+		if (nDims > 2) for (int i = 0; i < nValues; i++) grads[i].z = _values[ibuf + i];
+
+		return;
+	};
 };
 
 template<>
-Linear2PointsStencil ComputeReconstruction<Linear2PointsStencil>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim, double gamma) {
+Linear2PointsStencil ComputeReconstruction<Linear2PointsStencil>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
 	// compute Gradients
 	size_t size = value.size();
-	std::valarray< Vector > gradients(size);
-	CellReconstruction recons;
+	std::vector<Vector> gradients(size);
+	CellReconstruction recons;	// to do delete
 
-	//1D case
-	recons.xR.resize(size);
-	recons.xL.resize(size);
-	auto dx = points[1].x - points[0].x;
-	auto dxr = points[1].x - point.x;
-	std::valarray<double> grad = (values[1] - values[0]) / dx;
-	recons.xR = value + grad;
-
-	// ENO procedure
-	for (auto i = 0; i < size; i++) {
-		recons.xR[i] = value[i] + grad * delta_x;
-		recons.xL[i] = value[i] - grad * delta_x;
+	// 1D case
+	std::valarray<double> pds;	// partial derivatives of reconstructed variables
+	pds = (values[1] - values[0]) / (points[1].x - points[0].x);
+	for (int i = 0; i < size; i++) {
+		gradients[i].x = pds[i];
 	};
 
 	//2D case
 	if (nDim > 1) {
-		recons.yR.resize(size);
-		recons.yL.resize(size);
-		double deltaL = point.y - points[2].y;
-		double deltaR = points[3].y - point.y;
-		double delta_y = deltaL * deltaR / (deltaL + deltaR);
-
-		for (auto i = 0; i < size; i++) {
-			grad_l = (value[i] - values[2][i]) / deltaL;
-			grad_r = (values[3][i] - value[i]) / deltaR;
-			if (std::abs(grad_l) < std::abs(grad_r)) grad = grad_l;
-			else grad = grad_r;
-			recons.yR[i] = value[i] + grad * delta_y;
-			recons.yL[i] = value[i] - grad * delta_y;
+		auto dy = points[3].y - points[2].y;
+		pds = (values[3] - values[2]) / dy;
+		for (int i = 0; i < size; i++) {
+			gradients[i].y = pds[i];
 		};
 	};
 
 	//3D case
 	if (nDim > 2) {
-		recons.zR.resize(size);
-		recons.zL.resize(size);
-		double deltaL = point.z - points[4].z;
-		double deltaR = points[5].z - point.z;
-		double delta_z = deltaL * deltaR / (deltaL + deltaR);
+		auto dz = points[5].z - points[4].z;
+		pds = (values[5] - values[4]) / dz;
 		for (int i = 0; i < size; i++) {
-			grad_l = (value[i] - values[4][i]) / deltaL;
-			grad_r = (values[5][i] - value[i]) / deltaR;
-			if (std::abs(grad_l) < std::abs(grad_r)) grad = grad_l;
-			else grad = grad_r;
-			recons.zR[i] = value[i] + grad * delta_z;
-			recons.zL[i] = value[i] - grad * delta_z;
+			gradients[i].z = pds[i];
 		};
 	};
 
-	return std::move(Linear2PointsStencil(recons, nDim, size));
+	// Create reconstruction
+	return std::move(Linear2PointsStencil(recons, nDim, size, gradients, value));
 };
 
 

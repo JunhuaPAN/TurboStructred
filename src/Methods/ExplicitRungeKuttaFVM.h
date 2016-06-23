@@ -3,7 +3,6 @@
 
 #include "KernelConfiguration.h"
 #include "utility/Vector.h"
-#include "utility/Matrix.h"
 #include "utility/Timer.h"
 #include "utility/GradientComputer.h"
 #include "utility/Stencil.h"
@@ -68,10 +67,7 @@ public:
 				size_t sz = grid.nlocalZ + 2 * min(1, grid.dummyCellLayersZ);
 				reconstructions[i][j].resize(sz);
 
-				for (auto k = 0; k < sz; k++) {
-					reconstructions[i][j][k].nValues = nVariables;
-					reconstructions[i][j][k].nDims = nDims;
-				};
+				for (auto k = 0; k < sz; k++) reconstructions[i][j][k].Init(nVariables, nDims);
 			};
 		};
 
@@ -893,32 +889,32 @@ public:
 				for (int k = grid.kMin; k <= grid.kMax; k++) {
 					std::vector<std::valarray<double> > stencil_values;		// vector of stencil values
 					std::vector<Vector> points;								// vector of stencil points
-					std::valarray<double> cell_values(std::move(ForvardVariablesTransition(getCellValues(i, j, k))));	// primitive variables in our cell
+					std::valarray<double> cell_values = std::valarray<double>(getCellValues(i, j, k), nVariables);	// primitive variables in our cell
 					Vector cell_center = Vector(grid.CoordinateX[i], grid.CoordinateY[j], grid.CoordinateZ[k]);
 
 					// X direction stencil
 					for (int iStencil = -grid.dummyCellLayersX; iStencil <= grid.dummyCellLayersX; iStencil++) {
 						if (iStencil == 0) continue;
-						stencil_values.push_back(std::move(ForvardVariablesTransition(getCellValues(i + iStencil, j, k))));
+						stencil_values.push_back(std::valarray<double>(getCellValues(i + iStencil, j, k), nVariables));
 						points.push_back(std::move(Vector(grid.CoordinateX[i + iStencil], grid.CoordinateY[j], grid.CoordinateZ[k])));
 					};
 
 					//Y direction stencil
 					for (int jStencil = -grid.dummyCellLayersY; jStencil <= grid.dummyCellLayersY; jStencil++) {
 						if (jStencil == 0) continue;
-						stencil_values.push_back(std::move(ForvardVariablesTransition(getCellValues(i, j + jStencil, k))));
+						stencil_values.push_back(std::valarray<double>(getCellValues(i, j + jStencil, k), nVariables));
 						points.push_back(std::move(Vector(grid.CoordinateX[i], grid.CoordinateY[j + jStencil], grid.CoordinateZ[k])));
 					};
 
 					//Z direction stencil
 					for (int kStencil = -grid.dummyCellLayersZ; kStencil <= grid.dummyCellLayersZ; kStencil++) {
 						if (kStencil == 0) continue;
-						stencil_values.push_back(std::move(ForvardVariablesTransition(getCellValues(i, j, k + kStencil))));
+						stencil_values.push_back(std::valarray<double>(getCellValues(i, j, k + kStencil), nVariables));
 						points.push_back(std::move(Vector(grid.CoordinateX[i], grid.CoordinateY[j], grid.CoordinateZ[k + kStencil])));
 					};
 
 					//we have only one or no external layer of cells reconstructions
-					reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][k - grid.kMin + zLayer] = ComputeReconstruction<ReconstructionType>(stencil_values, points, cell_values, cell_center, nDims, gas_prop.gamma);
+					reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][k - grid.kMin + zLayer] = ComputeReconstruction<ReconstructionType>(stencil_values, points, cell_values, cell_center, nDims);
 				};
 			};
 		};
@@ -1192,27 +1188,27 @@ public:
 				if (nDims == 3) fS = grid.hy[j] * grid.hz[k];
 
 				for (int i = grid.iMin; i <= grid.iMax + 1; i++) {
-
-					// Set Riemann Problem arguments
-					Vector faceCenter = Vector(grid.CoordinateX[i] - 0.5 * grid.hx[i], grid.CoordinateY[j], grid.CoordinateZ[k]);
+					auto faceCenter = Vector(grid.CoordinateX[i] - 0.5 * grid.hx[i], grid.CoordinateY[j], grid.CoordinateZ[k]);
+					auto hl = 0.5 * grid.hx[i - 1];	// distance from the L cell center to the face 
+					auto hr = -0.5 * grid.hx[i];		// distance from the R cell center to the face 
 
 					// Apply boundary conditions
 					if ((pManager->rankCart[0] == 0) && (i == grid.iMin) && (grid.IsPeriodicX != true))									// Left border
 					{
-						UR = InverseVariablesTransition(reconstructions[1][j - grid.jMin + yLayer][k - grid.kMin + zLayer].SampleSolution(CubeFaces::xL));
+						UR = reconstructions[1][j - grid.jMin + yLayer][k - grid.kMin + zLayer].SampleSolution({ hr,0,0 });
 						auto bcMarker = xLeftBC.getMarker(faceCenter);
 						UL = bConditions[bcMarker]->getDummyReconstructions(&UR[0], fn);
 					}
 					else if ((pManager->rankCart[0] == pManager->dimsCart[0] - 1) && (i == grid.iMax + 1) && (grid.IsPeriodicX != true))	// Right border
 					{
-						UL = InverseVariablesTransition(reconstructions[grid.iMax - grid.iMin + 1][j - grid.jMin + yLayer][k - grid.kMin + zLayer].SampleSolution(CubeFaces::xR));
+						UL = reconstructions[grid.iMax - grid.iMin + 1][j - grid.jMin + yLayer][k - grid.kMin + zLayer].SampleSolution({ hl,0,0 });
 						auto bcMarker = xRightBC.getMarker(faceCenter);
 						UR = bConditions[bcMarker]->getDummyReconstructions(&UL[0], fn);
 					}
 					else
 					{
-						UL = InverseVariablesTransition(reconstructions[i - grid.iMin][j - grid.jMin + yLayer][k - grid.kMin + zLayer].SampleSolution(CubeFaces::xR));
-						UR = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][k - grid.kMin + zLayer].SampleSolution(CubeFaces::xL));
+						UL = reconstructions[i - grid.iMin][j - grid.jMin + yLayer][k - grid.kMin + zLayer].SampleSolution({ hl,0,0 });
+						UR = reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][k - grid.kMin + zLayer].SampleSolution({ hr,0,0 });
 					};
 
 					// Compute convective flux
@@ -1269,27 +1265,28 @@ public:
 					if (nDims == 3) fS = grid.hx[i] * grid.hz[k];
 
 					for (int j = grid.jMin; j <= grid.jMax + 1; j++) {
-
-						// Set Riemann Problem arguments
-						Vector faceCenter = Vector(grid.CoordinateX[i], grid.CoordinateY[j] - 0.5 * grid.hy[j], grid.CoordinateZ[k]);
+						// Set geometric properties
+						auto faceCenter = Vector(grid.CoordinateX[i], grid.CoordinateY[j] - 0.5 * grid.hy[j], grid.CoordinateZ[k]);
+						auto hl = 0.5 * grid.hy[j - 1];		// distance from the L cell center to the face 
+						auto hr = -0.5 * grid.hy[j];		// distance from the R cell center to the face 
 
 						// Apply boundary conditions
 						if ((pManager->rankCart[1] == 0) && (j == grid.jMin) && (grid.IsPeriodicY != true))									// Left border
 						{
-							UR = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][1][k - grid.kMin + zLayer].SampleSolution(CubeFaces::yL));
+							UR = reconstructions[i - grid.iMin + 1][1][k - grid.kMin + zLayer].SampleSolution({ hr,0,0 });
 							auto bcMarker = yLeftBC.getMarker(faceCenter);
 							UL = bConditions[bcMarker]->getDummyReconstructions(&UR[0], fn);
 						}
 						else if ((pManager->rankCart[1] == pManager->dimsCart[1] - 1) && (j == grid.jMax + 1) && (grid.IsPeriodicY != true))	// Right border
 						{
-							UL = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][grid.jMax - grid.jMin + 1][k - grid.kMin + zLayer].SampleSolution(CubeFaces::yR));
+							UL = reconstructions[i - grid.iMin + 1][grid.jMax - grid.jMin + 1][k - grid.kMin + zLayer].SampleSolution({ hl,0,0 });
 							auto bcMarker = yRightBC.getMarker(faceCenter);
 							UR = bConditions[bcMarker]->getDummyReconstructions(&UL[0], fn);
 						}
 						else
 						{
-							UL = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][j - grid.jMin][k - grid.kMin + zLayer].SampleSolution(CubeFaces::yR));
-							UR = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][j - grid.jMin + 1][k - grid.kMin + zLayer].SampleSolution(CubeFaces::yL));
+							UL = reconstructions[i - grid.iMin + 1][j - grid.jMin][k - grid.kMin + zLayer].SampleSolution({ hl,0,0 });
+							UR = reconstructions[i - grid.iMin + 1][j - grid.jMin + 1][k - grid.kMin + zLayer].SampleSolution({ hr,0,0 });
 						};
 
 						// Compute convective flux
@@ -1353,20 +1350,20 @@ public:
 						// Apply boundary conditions
 						if ((pManager->rankCart[2] == 0) && (k == grid.kMin) && (grid.IsPeriodicZ != true))									// Left border
 						{
-							UR = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][1].SampleSolution(CubeFaces::zL));
+							UR = reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][1].SampleSolution(faceCenter);
 							auto bcMarker = zLeftBC.getMarker(faceCenter);
 							UL = bConditions[bcMarker]->getDummyReconstructions(&UR[0], fn);
 						}
 						else if ((pManager->rankCart[2] == pManager->dimsCart[2] - 1) && (k == grid.kMax + 1) && (grid.IsPeriodicZ != true))	// Right border
 						{
-							UL = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][grid.kMax - grid.kMin + 1].SampleSolution(CubeFaces::zR));
+							UL = reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][grid.kMax - grid.kMin + 1].SampleSolution(faceCenter);
 							auto bcMarker = zRightBC.getMarker(faceCenter);
 							UL = bConditions[bcMarker]->getDummyReconstructions(&UL[0], fn);
 						}
 						else
 						{
-							UL = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][k - grid.kMin].SampleSolution(CubeFaces::zR));
-							UR = InverseVariablesTransition(reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][k - grid.kMin + 1].SampleSolution(CubeFaces::zL));
+							UL = reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][k - grid.kMin].SampleSolution(faceCenter);
+							UR = reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][k - grid.kMin + 1].SampleSolution(faceCenter);
 						};
 
 						// Compute convective flux

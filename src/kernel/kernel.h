@@ -17,7 +17,6 @@
 #include "GasProperties.h"
 #include "ParallelManager.h"
 #include "utility/Vector.h"
-#include "utility/Matrix.h"
 #include "utility/Timer.h"
 #include "utility/Slices.h"
 #include "utility/NumericQuadrature.h"
@@ -97,16 +96,6 @@ public:
 	inline double* getCellValues(int i, int j, int k) {
 		int sBegin = grid.getSerialIndexLocal(i, j, k) * nVariables;
 		return &values[sBegin];
-	};
-
-	// Transition beatween variables (trivial by default)
-	inline std::valarray<double> ForvardVariablesTransition(double* vals) {
-		return std::valarray<double>(vals, nVariables);
-	};
-
-	// Inverse transition
-	inline std::valarray<double> InverseVariablesTransition(std::valarray<double> &vals) {
-		return vals;
 	};
 
 	// Calculation parameters	

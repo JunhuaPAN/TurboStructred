@@ -417,10 +417,6 @@ namespace ToroTests
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 			fname << "ENO2";
 		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
-			fname << "WENO2";
-		};
 		kernel->Init(conf);
 
 		// IC
@@ -498,7 +494,6 @@ namespace ToroTests
 
 		//	Reconstruction type
 		//	Reconstruction RecType{ Reconstruction::PiecewiseConstant };
-		//	Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
 			Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
 
 		// RP solver

@@ -25,7 +25,7 @@ public:
 	Stencil(int _nDims, Grid& _grid) : nDims(_nDims), grid(&_grid) {};
 
 	// create some type stencils
-	auto InternalBorderStencil(Direction dir, CellIdx& cell) {
+	std::vector<CellIdx> InternalBorderStencil(Direction dir, CellIdx& cell) {
 		std::vector<CellIdx> stn;
 		stn.push_back(cell);	// first add the input cell
 
