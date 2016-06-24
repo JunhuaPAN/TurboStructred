@@ -7,21 +7,15 @@
 #include <Reconstruction/IReconstruction.h>
 
 
-// Reconstruction by ENO interpolation procedure for 2 points stencil
+// Linear reconstruction by 2 x 2 x 2 points stencil (i+-1) (j+-1) (k+-1)
 class Linear2PointsStencil : public IReconstruction {
 public:
-	std::vector<Vector> grads;
-	std::valarray<double> vals;
+	std::vector<Vector> grads;		// gradients of conservative variables at point (0, 0, 0)
 
-	//constructor (to do delete)
+	//constructors
 	Linear2PointsStencil() {};
-	Linear2PointsStencil(CellReconstruction& _recons, int _nDims, int _nValues) :
-		IReconstruction(_recons, _nDims, _nValues) {
-		grads.resize(_nValues);
-	};
-	// new constructor
-	Linear2PointsStencil(CellReconstruction& _recons, int _nDims, int _nValues, std::vector<Vector> _grads, std::valarray<double> _vals) :
-		IReconstruction(_recons, _nDims, _nValues), grads(_grads), vals(_vals) {};
+	Linear2PointsStencil(std::valarray<double> _vals, int _nDims, int _nValues, std::vector<Vector> _grads) :
+		IReconstruction(_vals, _nDims, _nValues), grads(_grads) {};
 
 	// Initialization
 	virtual void Init(int _nValues, int _nDims) {
@@ -70,10 +64,8 @@ public:
 
 template<>
 Linear2PointsStencil ComputeReconstruction<Linear2PointsStencil>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
-	// compute Gradients
 	size_t size = value.size();
 	std::vector<Vector> gradients(size);
-	CellReconstruction recons;	// to do delete
 
 	// 1D case
 	std::valarray<double> pds;	// partial derivatives of reconstructed variables
@@ -101,7 +93,7 @@ Linear2PointsStencil ComputeReconstruction<Linear2PointsStencil>(std::vector<std
 	};
 
 	// Create reconstruction
-	return std::move(Linear2PointsStencil(recons, nDim, size, gradients, value));
+	return std::move(Linear2PointsStencil(value, nDim, size, gradients));
 };
 
 

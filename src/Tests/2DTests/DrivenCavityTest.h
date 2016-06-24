@@ -56,7 +56,7 @@ namespace DrivenCavityTest {
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
 		conf.isPeriodicY = false;
-		conf.Gamma = 1.4;
+		conf.Gamma = par.gamma;
 		conf.IsViscousFlow = true;
 		conf.Viscosity = ComputeViscosity();
 

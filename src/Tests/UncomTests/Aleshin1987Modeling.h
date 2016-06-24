@@ -54,33 +54,6 @@ namespace AleshinExp {
 		ro = par.roR * D / (D - u);
 		p = par.p0 + ro * u * (D - u);
 
-		// TO DO DELETE
-		// Test for permutations of states 
-		
-		// Rankine - Hugoniot conditions cheking
-		/*double ro0 = par.roR;
-		double p0 = par.p0;
-		double u0 = 0;
-		double g1 = g - 1.0;
-		
-		double dU1 = ro0 - ro;
-		double dF1 = ro0 * u0 - ro * u;
-		dU1 *= D;
-		
-		double dU2 = ro0 * u0 - ro * u;
-		double dF2 = p0 - p + ro0 * u0 * u0 - p - ro * u * u;
-		dF2 /= D;
-
-		double roe0 = p0 / g1;
-		double roE0 = roe0 + 0.5 * ro0 * u0 * u0;
-		double FE0 = u0 * (roE0 + p0);
-		double roe = p / g1;
-		double roE = roe + 0.5 * ro * u * u;
-		double FE = u * (roE + p);
-		double dU3 = roE0 - roE;
-		double dF3 = FE0 - FE;
-		dF3 /= D;*/
-
 		return;
 	};
 
@@ -88,30 +61,29 @@ namespace AleshinExp {
 	void RunSingleExperiment(int modeNumber, double TotalTime, Parameters& par, int argc, char *argv[]) {
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 400;
-		conf.nY = 400;
+		conf.nX = 200;
+		conf.nY = 200;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
 		conf.isPeriodicY = false;
 		conf.isUniformAlongX = true;
 		conf.isUniformAlongY = true;
-
 		conf.Gamma = par.gamma;
 
-		conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
-		conf.xLeftBoundary.Gamma = conf.Gamma;
-		conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
-		conf.xRightBoundary.Gamma = conf.Gamma;
-		conf.yLeftBoundary.BCType = BoundaryConditionType::SymmetryY;
-		conf.yLeftBoundary.Gamma = conf.Gamma;
-		conf.yRightBoundary.BCType = BoundaryConditionType::SymmetryY;
-		conf.yRightBoundary.Gamma = conf.Gamma;
+		// BC
+		conf.MyConditions[1] = BoundaryConditionConfiguration(BoundaryConditionType::Natural);
+		conf.MyConditions[2] = BoundaryConditionConfiguration(BoundaryConditionType::Symmetry);
+		conf.xLeftBoundary.SetMarker(1);
+		conf.xRightBoundary.SetMarker(1);
+		conf.yLeftBoundary.SetMarker(2);
+		conf.yRightBoundary.SetMarker(2);
 
+		// Method configuration
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
-		conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
-		conf.methodConfiguration.CFL = 0.9;
+		conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
+		conf.methodConfiguration.CFL = 0.5;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
 		conf.DummyLayerSize = 1;
@@ -130,11 +102,8 @@ namespace AleshinExp {
 		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
-		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2CharactVars) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2CharactVars>(&argc, &argv));
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2PointsStencil) {
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<Linear2PointsStencil>(&argc, &argv));
 		};
 		kernel->Init(conf);
 
@@ -230,7 +199,7 @@ namespace AleshinExp {
 
 	// Additional part - 3D case
 	// Run one experiment ( parameters is as input data)
-	void Run3DExperiment(int argc, char *argv[]) {
+	/*void Run3DExperiment(int argc, char *argv[]) {
 		// experiment parameters
 		int modeNumber = 1;			// initial perturbation modes number
 		double TotalTime = 2.0e-4;
@@ -369,7 +338,7 @@ namespace AleshinExp {
 		//end of experiments
 		std::cout << "Aleshin's experiment 3D simulation is completed";
 		std::cout << std::endl;
-	};
+	};*/
 }
 
 

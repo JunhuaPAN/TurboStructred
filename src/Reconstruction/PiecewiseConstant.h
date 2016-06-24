@@ -9,40 +9,31 @@
 
 //Reconstruction by piecewise constant approximation
 class PiecewiseConstant : public IReconstruction {
-protected:
-	std::valarray<double> values_{0};
 public:
-	//Piecewise reconstruction
-	virtual inline std::valarray<double> SampleSolution(Vector const& point) {
-		return values_;
-	};
-	// to do delete
-	virtual inline std::valarray<double> SampleSolution(CubeFaces const& point) {
-		return values_;
-	};
 
-	//constructor
+	//Piecewise reconstruction
+	virtual inline std::valarray<double> SampleSolution(Vector const& point) override { return vals; }
+
+	// Constructors
 	PiecewiseConstant() { };
-	PiecewiseConstant(std::valarray<double>& _values, int _nValues) : values_ (_values) {
-		nValues = _nValues;
-	};
+	PiecewiseConstant(std::valarray<double>& _values, int _nValues, int _nDim) : IReconstruction(_values, _nDim, _nValues) {};
 
 	// Serrialization
 	static std::size_t GetBufferLenght(int nD, int nV) {
 		return nV;
 	};
 	virtual std::valarray<double> Serialize() override {
-		return values_;
+		return vals;
 	};
 	virtual void Deserialize(const std::valarray<double>& _values) override {
-		values_ = _values;
+		vals = _values;
 	};
 };
 
 
 template<>
 PiecewiseConstant ComputeReconstruction<PiecewiseConstant>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
-	return std::move(PiecewiseConstant(value, value.size()));
+	return std::move(PiecewiseConstant(value, value.size(), nDim));
 };
 
 #endif

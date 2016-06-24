@@ -417,6 +417,10 @@ namespace ToroTests
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 			fname << "ENO2";
 		};
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2PointsStencil) {
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<Linear2PointsStencil>(&argc, &argv));
+			fname << "ENO2";
+		};
 		kernel->Init(conf);
 
 		// IC
@@ -489,8 +493,8 @@ namespace ToroTests
 	};
 	
 	void RunExperiment(int argc, char *argv[]) {
-		int Ntest = 5;	// Toro test number
-		int Nx = 400;
+		int Ntest = 1;	// Toro test number
+		int Nx = 200;
 
 		//	Reconstruction type
 		//	Reconstruction RecType{ Reconstruction::PiecewiseConstant };
