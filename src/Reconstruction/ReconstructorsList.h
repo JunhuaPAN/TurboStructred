@@ -5,6 +5,7 @@
 #include "PiecewiseConstant.h"
 #include "ENO2PointsStencil.h"
 #include "Linear2PointsStencil.h"
+#include "Linear2psLim.h"
 
 
 

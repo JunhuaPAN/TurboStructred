@@ -296,6 +296,9 @@
     <ClInclude Include="..\src\Reconstruction\Linear2PointsStencil.h">
       <Filter>Header Files\Reconstruction</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\Reconstruction\Linear2psLim.h">
+      <Filter>Header Files\Reconstruction</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />

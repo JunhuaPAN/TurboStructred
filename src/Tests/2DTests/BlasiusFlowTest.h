@@ -104,7 +104,7 @@ namespace BlasiusFlowTest {
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
 		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
-		conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
+		conf.methodConfiguration.ReconstructionType = Reconstruction::Linear2psLim;
 		conf.DummyLayerSize = 1;
 
 		// Computational settings
@@ -121,6 +121,9 @@ namespace BlasiusFlowTest {
 		};
 		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+		};
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2psLim) {
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<double> >(&argc, &argv));
 		};
 		kernel->Init(conf);
 

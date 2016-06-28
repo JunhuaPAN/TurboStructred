@@ -10,6 +10,7 @@ enum class Reconstruction {
 	PiecewiseConstant,
 	Linear2PointsStencil,
 	ENO2PointsStencil,
+	Linear2psLim
 };
 
 // Basic class for all reconstruction classes

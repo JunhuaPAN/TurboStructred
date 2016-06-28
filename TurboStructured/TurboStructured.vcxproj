@@ -65,6 +65,7 @@
     <ClInclude Include="..\src\Methods\MethodConfiguration.h" />
     <ClInclude Include="..\src\Reconstruction\IReconstruction.h" />
     <ClInclude Include="..\src\Reconstruction\Linear2PointsStencil.h" />
+    <ClInclude Include="..\src\Reconstruction\Linear2psLim.h" />
     <ClInclude Include="..\src\Reconstruction\PiecewiseConstant.h" />
     <ClInclude Include="..\src\Reconstruction\ReconstructorsList.h" />
     <ClInclude Include="..\src\Reconstruction\ENO2PointsStencil.h" />
