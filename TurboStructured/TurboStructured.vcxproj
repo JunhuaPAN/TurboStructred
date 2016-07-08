@@ -95,6 +95,7 @@
     <ClInclude Include="..\src\utility\Direction.h" />
     <ClInclude Include="..\src\utility\GradientComputer.h" />
     <ClInclude Include="..\src\utility\Integration.h" />
+    <ClInclude Include="..\src\utility\Limiters.h" />
     <ClInclude Include="..\src\utility\NumericQuadrature.h" />
     <ClInclude Include="..\src\utility\Slices.h" />
     <ClInclude Include="..\src\utility\Stencil.h" />

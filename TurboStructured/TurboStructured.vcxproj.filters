@@ -299,6 +299,9 @@
     <ClInclude Include="..\src\Reconstruction\Linear2psLim.h">
       <Filter>Header Files\Reconstruction</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\utility\Limiters.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />

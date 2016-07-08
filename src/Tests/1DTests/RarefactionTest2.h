@@ -127,7 +127,7 @@ namespace RarefactionTest2
 		subgrid_length = g.CoordinateX[iMax] - g.CoordinateX[iMin] + 0.5 * (g.hx[iMax] + g.hx[iMin]);
 
 		// create subgrid for each processors
-		res = CreateSubGrid(iMin, iMax, g.jMin, g.jMax, g.kMin, g.kMax, g);
+		res = g.CreateSubGrid(iMin, iMax, g.jMin, g.jMax, g.kMin, g.kMax);
 		return std::move(res);
 	};
 

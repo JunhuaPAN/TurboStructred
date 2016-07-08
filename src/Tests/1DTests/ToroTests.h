@@ -230,7 +230,7 @@ namespace ToroTests
 		};
 	};
 
-	// compute exact solution in Cell
+	// Compute exact solution in Cell
 	std::vector<double> ComputeExactSolutionInCell(ShockTubeParameters& pars, double x, double t) {
 		//Compute flux (Toro p. 219) 
 		//Sample exact solution at S = x/t
@@ -355,7 +355,7 @@ namespace ToroTests
 		return result;
 	};
 
-	// Comput exact solution for test N
+	// Compute exact solution for test N
 	std::valarray<double> ComputeExactSolution(int Nexp, ShockTubeParameters& pars, Grid& g, double t) {
 		// init result valarray
 		std::valarray<double> res(g.nlocalX * TestsUtility::nVar);
@@ -417,9 +417,9 @@ namespace ToroTests
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 			fname << "ENO2";
 		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2PointsStencil) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<Linear2PointsStencil>(&argc, &argv));
-			fname << "ENO2";
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2psLim) {
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limBarsJespersen> >(&argc, &argv));
+			fname << "LinearBJlim";
 		};
 		kernel->Init(conf);
 
@@ -493,16 +493,16 @@ namespace ToroTests
 	};
 	
 	void RunExperiment(int argc, char *argv[]) {
-		int Ntest = 1;	// Toro test number
-		int Nx = 200;
+		int Ntest = 3;	// Toro test number
+		int Nx = 800;
 
 		//	Reconstruction type
 		//	Reconstruction RecType{ Reconstruction::PiecewiseConstant };
-			Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
+		//	Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
+		Reconstruction RecType{ Reconstruction::Linear2psLim };
 
 		// RP solver
 		RPSolver rSolver{ RPSolver::RoePikeSolver };
-		//RPSolver rSolver{};
 
 		// collect all errors in file
 		std::vector<double> err;

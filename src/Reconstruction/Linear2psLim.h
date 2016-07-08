@@ -4,74 +4,61 @@
 #include <valarray>
 #include <vector>
 #include "utility/Vector.h"
+#include "utility/Limiters.h"
 #include <Reconstruction/Linear2PointsStencil.h>
 
 
 // Linear reconstruction for 2 points stencil with a limiter
-template<typename LimiterType> class Linear2psLim : public Linear2PointsStencil {
-private:
-	LimiterType lim;
+template<typename limiterType> class Linear2psLim : public Linear2PointsStencil {
 public:
+	limiterType lim;
 
 	// reconstruction at the point
 	virtual std::valarray<double> SampleSolution(Vector const& point) override {
 		std::valarray<double> res(nValues);
-		for (int i = 0; i < nValues; i++) res[i] = vals[i] + lim * (grads[i] * point);
+		for (int i = 0; i < nValues; i++) res[i] = vals[i] + lim[i] * (grads[i] * point);
 		return res;
 	};
 
 	//constructor
 	Linear2psLim() { };
+	Linear2psLim(Linear2PointsStencil& base) : Linear2PointsStencil(base) { };
 	Linear2psLim(std::valarray<double> _vals, int _nDims, int _nValues, std::vector<Vector> _grads) :
 		Linear2PointsStencil(_vals, _nDims, _nValues, _grads) {};
 
-	// Set limiter
-	void SetLimiter(LimiterType _lim) {
-		lim = _lim;
-	};
 };
 
 template<>
-Linear2psLim<double> ComputeReconstruction< Linear2psLim<double> >(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
+Linear2psLim<limBarsJespersen> ComputeReconstruction< Linear2psLim<limBarsJespersen> >(std::vector<std::valarray<double> >& values, std::vector<CellInfo>& cells, std::valarray<double>& value, CellInfo& cell, int nDim) {
 	size_t size = value.size();
-	std::vector< Vector > gradients(size);
-	double grad_l, grad_r, grad;		// spatial derivatives computed by two neighbour stencils
 
-	// ENO procedure for X direction
-	for (auto i = 0; i < size; i++) {
-		grad_l = (value[i] - values[0][i]) / (point.x - points[0].x);
-		grad_r = (values[1][i] - value[i]) / (points[1].x - point.x);
-		if (std::abs(grad_l) < std::abs(grad_r)) grad = grad_l;
-		else grad = grad_r;
-		gradients[i].x = grad;
-	};
+	// First compute linear part
+	auto linear_rec = ComputeReconstruction<Linear2PointsStencil>(values, cells, value, cell, nDim);
+
+	// Call constructor of the reconstruction
+	auto res = Linear2psLim<limBarsJespersen>(linear_rec);
+
+	// Compute reconstructions at all face centers
+	std::vector<valarray<double> > projs;
+
+	// 1D case
+	projs.push_back(linear_rec.SampleSolution({ -0.5 * cell.hx, 0, 0 }) - linear_rec.vals);
+	projs.push_back(linear_rec.SampleSolution({ 0.5 * cell.hx, 0, 0 }) - linear_rec.vals);
 
 	// 2D case
 	if (nDim > 1) {
-		for (auto i = 0; i < size; i++) {
-			grad_l = (value[i] - values[2][i]) / (point.y - points[2].y);
-			grad_r = (values[3][i] - value[i]) / (points[3].y - point.y);
-			if (std::abs(grad_l) < std::abs(grad_r)) grad = grad_l;
-			else grad = grad_r;
-			gradients[i].y = grad;
-		};
+		projs.push_back(linear_rec.SampleSolution({ 0, -0.5 * cell.hy, 0 }) - linear_rec.vals);
+		projs.push_back(linear_rec.SampleSolution({ 0, 0.5 * cell.hy, 0 }) - linear_rec.vals);
 	};
 
 	// 3D case
 	if (nDim > 2) {
-		for (int i = 0; i < size; i++) {
-			grad_l = (value[i] - values[4][i]) / (point.z - points[4].z);
-			grad_r = (values[5][i] - value[i]) / (points[5].z - point.z);
-			if (std::abs(grad_l) < std::abs(grad_r)) grad = grad_l;
-			else grad = grad_r;
-			gradients[i].z = grad;
-		};
+		projs.push_back(linear_rec.SampleSolution({ 0, 0, -0.5 * cell.hz }) - linear_rec.vals);
+		projs.push_back(linear_rec.SampleSolution({ 0, 0, 0.5 * cell.hz }) - linear_rec.vals);
 	};
 
-	// Create reconstruction with limiter
-	auto res = Linear2psLim<double>(value, nDim, size, gradients);
-	double lim = 0;	// just first order
-	res.SetLimiter(lim);
+	// Compute limiter values 
+	res.lim.ComputeLimiterValues(values, value, projs, nDim);
 
 	return std::move(res);
 };

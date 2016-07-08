@@ -3,15 +3,7 @@
 
 #include <valarray>
 #include "utility/Vector.h"
-#include "utility/VariablesTransition.h"
-
-// Enumerate all tupes of reconstruction here
-enum class Reconstruction {
-	PiecewiseConstant,
-	Linear2PointsStencil,
-	ENO2PointsStencil,
-	Linear2psLim
-};
+#include "grid.h"
 
 // Basic class for all reconstruction classes
 class IReconstruction {
@@ -43,7 +35,7 @@ public:
 };
 
 template<typename T>
-T ComputeReconstruction(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
+T ComputeReconstruction(std::vector<std::valarray<double> >& values, std::vector<CellInfo>& cells, std::valarray<double>& value, CellInfo& cell, int nDim) {
 	throw std::runtime_error("We dont have required function.");
 };
 

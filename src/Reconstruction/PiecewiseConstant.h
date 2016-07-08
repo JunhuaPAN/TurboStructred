@@ -32,7 +32,7 @@ public:
 
 
 template<>
-PiecewiseConstant ComputeReconstruction<PiecewiseConstant>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
+PiecewiseConstant ComputeReconstruction<PiecewiseConstant>(std::vector<std::valarray<double> >& values, std::vector<CellInfo>& cells, std::valarray<double>& value, CellInfo& cell, int nDim) {
 	return std::move(PiecewiseConstant(value, value.size(), nDim));
 };
 

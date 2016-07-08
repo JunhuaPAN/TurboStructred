@@ -63,20 +63,20 @@ public:
 };
 
 template<>
-Linear2PointsStencil ComputeReconstruction<Linear2PointsStencil>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
+Linear2PointsStencil ComputeReconstruction<Linear2PointsStencil>(std::vector<std::valarray<double> >& values, std::vector<CellInfo>& cells, std::valarray<double>& value, CellInfo& cell, int nDim) {
 	size_t size = value.size();
 	std::vector<Vector> gradients(size);
 
 	// 1D case
 	std::valarray<double> pds;	// partial derivatives of reconstructed variables
-	pds = (values[1] - values[0]) / (points[1].x - points[0].x);
+	pds = (values[1] - values[0]) / (cells[1].x - cells[0].x);
 	for (int i = 0; i < size; i++) {
 		gradients[i].x = pds[i];
 	};
 
 	//2D case
 	if (nDim > 1) {
-		auto dy = points[3].y - points[2].y;
+		auto dy = cells[3].y - cells[2].y;
 		pds = (values[3] - values[2]) / dy;
 		for (int i = 0; i < size; i++) {
 			gradients[i].y = pds[i];
@@ -85,7 +85,7 @@ Linear2PointsStencil ComputeReconstruction<Linear2PointsStencil>(std::vector<std
 
 	//3D case
 	if (nDim > 2) {
-		auto dz = points[5].z - points[4].z;
+		auto dz = cells[5].z - cells[4].z;
 		pds = (values[5] - values[4]) / dz;
 		for (int i = 0; i < size; i++) {
 			gradients[i].z = pds[i];

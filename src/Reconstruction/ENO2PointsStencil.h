@@ -18,15 +18,15 @@ public:
 };
 
 template<>
-ENO2PointsStencil ComputeReconstruction<ENO2PointsStencil>(std::vector<std::valarray<double> > values, std::vector<Vector> points, std::valarray<double> value, Vector& point, int nDim) {
+ENO2PointsStencil ComputeReconstruction<ENO2PointsStencil>(std::vector<std::valarray<double> >& values, std::vector<CellInfo>& cells, std::valarray<double>& value, CellInfo& cell, int nDim) {
 	size_t size = value.size();
 	std::vector< Vector > gradients(size);
 	double grad_l, grad_r, grad;		// spatial derivatives computed by two neighbour stencils
 
 	// ENO procedure for X direction
 	for (auto i = 0; i < size; i++) {
-		grad_l = (value[i] - values[0][i]) / (point.x - points[0].x);
-		grad_r = (values[1][i] - value[i]) / (points[1].x - point.x);
+		grad_l = (value[i] - values[0][i]) / (cell.x - cells[0].x);
+		grad_r = (values[1][i] - value[i]) / (cells[1].x - cell.x);
 		if (std::abs(grad_l) < std::abs(grad_r)) grad = grad_l;
 		else grad = grad_r;
 		gradients[i].x = grad;
@@ -35,8 +35,8 @@ ENO2PointsStencil ComputeReconstruction<ENO2PointsStencil>(std::vector<std::vala
 	//2D case
 	if (nDim > 1) {
 		for (auto i = 0; i < size; i++) {
-			grad_l = (value[i] - values[2][i]) / (point.y - points[2].y);
-			grad_r = (values[3][i] - value[i]) / (points[3].y - point.y);
+			grad_l = (value[i] - values[2][i]) / (cell.y - cells[2].y);
+			grad_r = (values[3][i] - value[i]) / (cells[3].y - cell.y);
 			if (std::abs(grad_l) < std::abs(grad_r)) grad = grad_l;
 			else grad = grad_r;
 			gradients[i].y = grad;
@@ -46,8 +46,8 @@ ENO2PointsStencil ComputeReconstruction<ENO2PointsStencil>(std::vector<std::vala
 	//3D case
 	if (nDim > 2) {
 		for (int i = 0; i < size; i++) {
-			grad_l = (value[i] - values[4][i]) / (point.z - points[4].z);
-			grad_r = (values[5][i] - value[i]) / (points[5].z - point.z);
+			grad_l = (value[i] - values[4][i]) / (cell.z - cells[4].z);
+			grad_r = (values[5][i] - value[i]) / (cells[5].z - cell.z);
 			if (std::abs(grad_l) < std::abs(grad_r)) grad = grad_l;
 			else grad = grad_r;
 			gradients[i].z = grad;

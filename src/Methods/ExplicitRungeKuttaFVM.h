@@ -883,38 +883,40 @@ public:
 		if (nDims > 1) yLayer = 1;
 		if (nDims > 2) zLayer = 1;
 
-		// Obtain all inner cells
+		// Obtain all inner cells			// TO DO rewrite that part using Stencil structure
 		for (int i = grid.iMin; i <= grid.iMax; i++) {
 			for (int j = grid.jMin; j <= grid.jMax; j++) {
 				for (int k = grid.kMin; k <= grid.kMax; k++) {
-					std::vector<std::valarray<double> > stencil_values;		// vector of stencil values
-					std::vector<Vector> points;								// vector of stencil points
+					std::vector<std::valarray<double> > st_values;		// vector of stencil values
+					std::vector<CellInfo> st_cells;						// vector of cells in stencil 
+
+					// Create structures concerning central cell 
 					std::valarray<double> cell_values = std::valarray<double>(getCellValues(i, j, k), nVariables);	// primitive variables in our cell
-					Vector cell_center = Vector(grid.CoordinateX[i], grid.CoordinateY[j], grid.CoordinateZ[k]);
+					CellInfo cell = grid.CreateCell(i, j, k);
 
 					// X direction stencil
 					for (int iStencil = -grid.dummyCellLayersX; iStencil <= grid.dummyCellLayersX; iStencil++) {
 						if (iStencil == 0) continue;
-						stencil_values.push_back(std::valarray<double>(getCellValues(i + iStencil, j, k), nVariables));
-						points.push_back(std::move(Vector(grid.CoordinateX[i + iStencil], grid.CoordinateY[j], grid.CoordinateZ[k])));
+						st_values.push_back(std::valarray<double>(getCellValues(i + iStencil, j, k), nVariables));
+						st_cells.push_back(grid.CreateCell(i + iStencil, j, k));
 					};
 
 					//Y direction stencil
 					for (int jStencil = -grid.dummyCellLayersY; jStencil <= grid.dummyCellLayersY; jStencil++) {
 						if (jStencil == 0) continue;
-						stencil_values.push_back(std::valarray<double>(getCellValues(i, j + jStencil, k), nVariables));
-						points.push_back(std::move(Vector(grid.CoordinateX[i], grid.CoordinateY[j + jStencil], grid.CoordinateZ[k])));
+						st_values.push_back(std::valarray<double>(getCellValues(i, j + jStencil, k), nVariables));
+						st_cells.push_back(grid.CreateCell(i, j + jStencil, k));
 					};
 
 					//Z direction stencil
 					for (int kStencil = -grid.dummyCellLayersZ; kStencil <= grid.dummyCellLayersZ; kStencil++) {
 						if (kStencil == 0) continue;
-						stencil_values.push_back(std::valarray<double>(getCellValues(i, j, k + kStencil), nVariables));
-						points.push_back(std::move(Vector(grid.CoordinateX[i], grid.CoordinateY[j], grid.CoordinateZ[k + kStencil])));
+						st_values.push_back(std::valarray<double>(getCellValues(i, j, k + kStencil), nVariables));
+						st_cells.push_back(grid.CreateCell(i, j, k + kStencil));
 					};
 
 					//we have only one or no external layer of cells reconstructions
-					reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][k - grid.kMin + zLayer] = ComputeReconstruction<ReconstructionType>(stencil_values, points, cell_values, cell_center, nDims);
+					reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][k - grid.kMin + zLayer] = ComputeReconstruction<ReconstructionType>(st_values, st_cells, cell_values, cell, nDims);
 				};
 			};
 		};
