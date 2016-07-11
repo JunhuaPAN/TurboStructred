@@ -58,6 +58,7 @@ namespace ToroTests
 		conf.LX = 1.0;
 		conf.isPeriodicX = false;
 		conf.DummyLayerSize = 1;
+		conf.Gamma = TestsUtility::gamma1 + 1.0;
 
 		// BC
 		conf.MyConditions[1] = BoundaryConditionConfiguration(BoundaryConditionType::Natural);
@@ -70,7 +71,6 @@ namespace ToroTests
 		conf.methodConfiguration.Eps = 0.0;
 		conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
 		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
-		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 		
 		// Task settings
 		conf.MaxTime = 0.2;
@@ -84,7 +84,7 @@ namespace ToroTests
 
 	ShockTubeParameters DefaultState(int Nexp) {
 		ShockTubeParameters params;
-		params.gamma = TestsUtility::gamma1 + 1;
+		params.gamma = TestsUtility::gamma1 + 1.0;
 		switch (Nexp) {
 		case 1:
 			params.roL = 1.0;
@@ -391,7 +391,7 @@ namespace ToroTests
 		return res;
 	};
 
-	// Collision of two media
+	// Run one computational experiment
 	std::vector<double> RunSingleExperiment(int argc, char *argv[], int Ntest, int Nx, Reconstruction RecType, RPSolver _RPsolver) {
 		// Result
 		std::vector<double> errors;
@@ -493,8 +493,8 @@ namespace ToroTests
 	};
 	
 	void RunExperiment(int argc, char *argv[]) {
-		int Ntest = 3;	// Toro test number
-		int Nx = 800;
+		int Ntest = 1;	// Toro test number
+		int Nx = 400;
 
 		//	Reconstruction type
 		//	Reconstruction RecType{ Reconstruction::PiecewiseConstant };

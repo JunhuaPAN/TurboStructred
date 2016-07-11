@@ -13,56 +13,84 @@
 #include "Tests/UncomTests/testlist.h"
 #include "RiemannSolvers/RiemannSolversList.h"
 
-/*
-
 //// Tests 1D
 void RunSODTestRoe1D(int argc, char *argv[]) {
+	
+	// Make configuration file for SOD test
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 200;
-	conf.LX = 2.0;
+	conf.LX = 1.0;
+	conf.nX = 100;
 	conf.isPeriodicX = false;
-	conf.isUniformAlongX = true;
-	conf.qx = 1.00;
-
-	conf.Gamma = 1.4;
-
-	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
-	conf.xLeftBoundary.Gamma = 1.4;
-	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
-	conf.xRightBoundary.Gamma = 1.4;
-
-	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-	conf.methodConfiguration.CFL = 0.5;
-	conf.methodConfiguration.RungeKuttaOrder = 1;
-	conf.methodConfiguration.Eps = 0.05;
-	conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
-	conf.methodConfiguration.RiemannProblemSolver = RPSolver::GodunovSolver;
 	conf.DummyLayerSize = 1;
 
+	// BC
+	conf.MyConditions[1] = BoundaryConditionConfiguration(BoundaryConditionType::Natural);
+	conf.xLeftBoundary.SetMarker(1);
+	conf.xRightBoundary.SetMarker(1);
+
+	// Model settings
+	conf.Gamma = 1.4;
+	conf.IsViscousFlow = false;
+
+	// Method settings
+	conf.methodConfiguration.CFL = 0.45;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.0;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::Linear2psLim;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+
+	// Task settings
 	conf.MaxTime = 0.25;
 	conf.MaxIteration = 1000000;
-	conf.SaveSolutionTime = 0.1;
-	conf.ResidualOutputIterations = 10;
+	conf.SaveSolutionTime = 0.25;
+	conf.SaveSolutionIterations = 1;
+	conf.ResidualOutputIterations = 100;
 
-	//init kernel
+	// Init kernel
 	std::unique_ptr<Kernel> kernel;
-	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2psLim) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limBarsJespersen> >(&argc, &argv));
 	};
 	kernel->Init(conf);
 
-	// initial conditions
-	ShockTubeParameters params;
-	params.gammaL = params.gammaR = 1.4;
-	params.roL = 1.0;
-	params.PL = 1.0;
-	params.uL = { 0, 0, 0 };
-	params.roR = 0.125;
-	params.PR = 0.1;
-	params.uR = { 0, 0, 0 };
-	auto initD = std::bind(SODinitialDistribution, std::placeholders::_1, 0.5, params);
+	// Initial conditions
+	struct ShockTubeParameters {
+		double roL{ 1.0 };
+		double PL{ 1.0 };
+		double uL{ 0 };
+		double roR{ 0.125 };
+		double PR{ 0.1 };
+		double uR{ 0 };
+		double x0{ 0.5 };
+	} params;
+	auto initD = [&params, &conf](Vector r) {
+		double ro, u, p;
+		if (r.x < params.x0) {
+			ro = params.roL;
+			u = params.uL;
+			p = params.PL;
+		}
+		else {
+			ro = params.roR;
+			u = params.uR;
+			p = params.PR;
+		};
+
+		std::vector<double> res(5);
+		res[0] = ro;
+		res[1] = ro * u;
+		res[2] = 0;
+		res[3] = 0;
+		res[4] = p / (conf.Gamma - 1.0) + 0.5 * ro * u * u;
+		return res;
+	};
 	kernel->SetInitialConditions(initD);
 
 	//save solution
@@ -74,6 +102,10 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	//finalize kernel
 	kernel->Finalize();
 };
+
+/*
+
+
 void RunSODTestReconstruction(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
