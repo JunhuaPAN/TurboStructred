@@ -7,11 +7,12 @@
 int main(int argc, char *argv[])
 {
 	RunSODTestRoe1D(argc, argv);
+	//RunContactDisconTest1D(argc, argv);
 	//ToroTests::RunExperiment(argc, argv);
 	//AleshinExp::RunExperiment(argc, argv);
 	//BlasiusFlowTest::RunExperiment(argc, argv);
 	//ExactEulerSolution::RunExperiment(argc, argv);
 	
-	_getch();
+	system("pause");
 	return 0;
 };

@@ -1617,7 +1617,7 @@ public:
 			if ((SaveSolutionIterations != 0) && (stepInfo.Iteration % SaveSolutionIterations) == 0) {
 				//Save snapshot
 				std::stringstream snapshotFileName;
-				snapshotFileName.str(std::string());
+				//snapshotFileName.str(std::string());
 				snapshotFileName << "solution, It = " << stepInfo.Iteration << ".dat";
 				SaveSolution(snapshotFileName.str());
 
@@ -1629,7 +1629,7 @@ public:
 				//Save snapshots
 				for (auto i = 0; i < slices.size(); i++) {
 					std::stringstream snapshotFileName;
-					snapshotFileName.str(std::string());
+					//snapshotFileName.str(std::string());
 					snapshotFileName << "slice" << i << ", It =" << stepInfo.Iteration << ".dat";
 					SaveSliceToTecplot(snapshotFileName.str(), slices[i]);
 
@@ -1643,7 +1643,7 @@ public:
 			if ((SaveSolutionTime > 0) && (stepInfo.NextSolutionSnapshotTime == stepInfo.Time)) {
 				//Save snapshot
 				std::stringstream snapshotFileName;
-				snapshotFileName.str(std::string());
+				//snapshotFileName.str(std::string());
 				snapshotFileName << std::fixed;
 				snapshotFileName.precision(SolutionTimePrecision);
 				snapshotFileName << "solution, t = " << stepInfo.Time << ".dat";
@@ -1660,7 +1660,7 @@ public:
 				//Save snapshots
 				for (auto i = 0; i < slices.size(); i++) {
 					std::stringstream snapshotFileName;
-					snapshotFileName.str(std::string());
+					//snapshotFileName.str(std::string());
 					snapshotFileName << "slice" << i;
 					snapshotFileName << std::fixed;
 					snapshotFileName.precision(SliceTimePrecision);

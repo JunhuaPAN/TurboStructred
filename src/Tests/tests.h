@@ -20,7 +20,7 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
 	conf.LX = 1.0;
-	conf.nX = 100;
+	conf.nX = 200;
 	conf.isPeriodicX = false;
 	conf.DummyLayerSize = 1;
 
@@ -34,7 +34,7 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	conf.IsViscousFlow = false;
 
 	// Method settings
-	conf.methodConfiguration.CFL = 0.45;
+	conf.methodConfiguration.CFL = 0.5 * 0.45;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.0;
 	conf.methodConfiguration.ReconstructionType = Reconstruction::Linear2psLim;
@@ -44,7 +44,7 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	conf.MaxTime = 0.25;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionTime = 0.25;
-	conf.SaveSolutionIterations = 1;
+	conf.SaveSolutionIterations = 0;
 	conf.ResidualOutputIterations = 100;
 
 	// Init kernel
@@ -103,140 +103,68 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	kernel->Finalize();
 };
 
-/*
-
-
-void RunSODTestReconstruction(int argc, char *argv[]) {
+void RunContactDisconTest1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 2;
-	//conf.nY = 10;
+	conf.nX = 10;
 	conf.LX = 1.0;
-	//conf.LY = 1.0;
 	conf.isPeriodicX = false;
-	//conf.isPeriodicY = false;
-	conf.isUniformAlongX = true;
-	conf.qx = 1.00;
-
 	conf.Gamma = 1.4;
 
-	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
-	conf.xLeftBoundary.Gamma = 1.4;
-	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
-	conf.xRightBoundary.Gamma = 1.4;
-
-	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-	conf.methodConfiguration.CFL = 0.5;
+	// Method settings
+	conf.DummyLayerSize = 1;
+	conf.methodConfiguration.CFL = 0.5 * 0.45;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
-	conf.DummyLayerSize = 1;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::Linear2psLim;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 
+	// BC
+	conf.MyConditions[1] = BoundaryConditionConfiguration(BoundaryConditionType::Natural);
+	conf.xLeftBoundary.SetMarker(1);
+	conf.xRightBoundary.SetMarker(1);
+
+	// Computation parameters
 	conf.MaxTime = 0.2;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionTime = 0.1;
 	conf.SaveSolutionIterations = 0;
-	conf.ResidualOutputIterations = 10;
+	conf.ResidualOutputIterations = 50;
 
-	//init kernel
+	// Init kernel
 	std::unique_ptr<Kernel> kernel;
-	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2psLim) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limBarsJespersen> >(&argc, &argv));
 	};
 	kernel->Init(conf);
 
-	// Initial Conditions
-	auto initD = [&conf](Vector r) {
+	// Initial conditions
+	struct ShockTubeParameters {
+		double roL{ 1.0 };
+		double PL{ 1.0 };
+		double uL{ 1.0 };
+		double roR{ 0.125 };
+		double PR{ 1.0 };
+		double uR{ 1.0 };
+		double x0{ 0.2 };
+	} params;
+
+	auto initD = [&params, &conf](Vector r) {
 		double ro, u, p;
-		if (r.x < 0.5 * conf.LX) {
-			ro = 1.0;
-			u = 1.0;
-		}
-		else {
-			ro = 2 * r.x;
-			u = 2.0;
-		};
-		p = 1.0;
-
-		std::vector<double> res(5);
-		res[0] = ro;
-		res[1] = ro * u;
-		res[2] = 0;
-		res[3] = 0;
-		res[4] = p / (conf.Gamma - 1.0) + 0.5 * ro * u * u;
-		return res;
-	};
-	kernel->SetInitialConditions(initD);
-
-	//save solution
-	kernel->SaveSolution("init.dat");
-
-	//run computation
-	kernel->Run();
-
-	//finalize kernel
-	kernel->Finalize();
-};
-
-void RunContactDisconTest1D(int argc, char *argv[]) {
-	KernelConfiguration conf;
-	conf.nDims = 1;
-	conf.nX = 400;
-	conf.LX = 1.0;
-	conf.isPeriodicX = false;
-	conf.isUniformAlongX = true;
-	conf.qx = 1.00;
-
-	conf.Gamma = 1.4;
-
-	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-	conf.DummyLayerSize = 1;
-	conf.methodConfiguration.CFL = 0.35;
-	conf.methodConfiguration.RungeKuttaOrder = 1;
-	conf.methodConfiguration.Eps = 0.05;
-	conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
-	conf.methodConfiguration.RiemannProblemSolver = RPSolver::GodunovSolver;
-
-	conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
-	conf.xLeftBoundary.Gamma = 1.4;
-	conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
-	conf.xRightBoundary.Gamma = 1.4;
-
-	conf.MaxTime = 0.3;
-	conf.MaxIteration = 1000000;
-	conf.SaveSolutionTime = 0.1;
-	conf.SaveSolutionIterations = 0;
-	conf.ResidualOutputIterations = 10;
-
-	//init kernel
-	std::unique_ptr<Kernel> kernel;
-	if (conf.SolutionMethod == KernelConfiguration::Method::ExplicitRungeKuttaFVM) {
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
-	};
-	kernel->Init(conf);
-
-	// initial conditions
-	ShockTubeParameters params;
-	params.gammaL = params.gammaR = 1.4;
-	params.roL = 1.0;
-	params.PL = 1.0;
-	params.uL = { 1, 0, 0 };
-	params.roR = 0.125;
-	params.PR = params.PL;
-	params.uR = params.uL;
-	// Initial Conditions
-	auto initD = [&conf, &params](Vector r) {
-		double ro, u, p;
-
-		if (r.x < 0.5 * conf.LX) {
+		if (r.x < params.x0) {
 			ro = params.roL;
-			u = params.uL.x;
+			u = params.uL;
 			p = params.PL;
 		}
 		else {
 			ro = params.roR;
-			u = params.uR.x;
+			u = params.uR;
 			p = params.PR;
 		};
 
@@ -250,15 +178,19 @@ void RunContactDisconTest1D(int argc, char *argv[]) {
 	};
 	kernel->SetInitialConditions(initD);
 
-	//save solution
+	// Save solution
 	kernel->SaveSolution("init.dat");
 
-	//run computation
+	// Run computation
 	kernel->Run();
 
-	//finalize kernel
+	// Finalize kernel
 	kernel->Finalize();
 };
+
+
+/*
+
 
 // Y direction test
 void RunSODYTest(int argc, char *argv[]) {

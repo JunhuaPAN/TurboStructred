@@ -17,7 +17,7 @@ public:
 	std::valarray<double> lim_values;
 
 	// get limiters value vor i-th variable
-	int inline operator[] (int i) {
+	double inline operator[] (int i) {
 		return lim_values[i];
 	};
 
