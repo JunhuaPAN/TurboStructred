@@ -418,7 +418,7 @@ namespace ToroTests
 			fname << "ENO2";
 		};
 		if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2psLim) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limBarsJespersen> >(&argc, &argv));
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limVenkatar> >(&argc, &argv));
 			fname << "LinearBJlim";
 		};
 		kernel->Init(conf);
@@ -493,13 +493,13 @@ namespace ToroTests
 	};
 	
 	void RunExperiment(int argc, char *argv[]) {
-		int Ntest = 1;	// Toro test number
+		int Ntest = 5;	// Toro test number
 		int Nx = 400;
 
 		//	Reconstruction type
 		//	Reconstruction RecType{ Reconstruction::PiecewiseConstant };
 		//	Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
-		Reconstruction RecType{ Reconstruction::Linear2psLim };
+			Reconstruction RecType{ Reconstruction::Linear2psLim };
 
 		// RP solver
 		RPSolver rSolver{ RPSolver::RoePikeSolver };

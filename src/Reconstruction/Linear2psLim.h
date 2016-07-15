@@ -63,5 +63,40 @@ Linear2psLim<limBarsJespersen> ComputeReconstruction< Linear2psLim<limBarsJesper
 	return std::move(res);
 };
 
+template<>
+Linear2psLim<limVenkatar> ComputeReconstruction< Linear2psLim<limVenkatar> >(std::vector<std::valarray<double> >& values, std::vector<CellInfo>& cells, std::valarray<double>& value, CellInfo& cell, int nDim) {
+	size_t size = value.size();
+
+	// First compute linear part
+	auto linear_rec = ComputeReconstruction<Linear2PointsStencil>(values, cells, value, cell, nDim);
+
+	// Call constructor of the reconstruction
+	auto res = Linear2psLim<limVenkatar>(linear_rec);
+
+	// Compute reconstructions at all face centers
+	std::vector<valarray<double> > projs;
+
+	// 1D case
+	projs.push_back(linear_rec.SampleSolution({ -0.5 * cell.hx, 0, 0 }) - linear_rec.vals);
+	projs.push_back(linear_rec.SampleSolution({ 0.5 * cell.hx, 0, 0 }) - linear_rec.vals);
+
+	// 2D case
+	if (nDim > 1) {
+		projs.push_back(linear_rec.SampleSolution({ 0, -0.5 * cell.hy, 0 }) - linear_rec.vals);
+		projs.push_back(linear_rec.SampleSolution({ 0, 0.5 * cell.hy, 0 }) - linear_rec.vals);
+	};
+
+	// 3D case
+	if (nDim > 2) {
+		projs.push_back(linear_rec.SampleSolution({ 0, 0, -0.5 * cell.hz }) - linear_rec.vals);
+		projs.push_back(linear_rec.SampleSolution({ 0, 0, 0.5 * cell.hz }) - linear_rec.vals);
+	};
+
+	// Compute limiter values
+	res.lim.SendCellInfo(cell, nDim);
+	res.lim.ComputeLimiterValues(values, value, projs, nDim);
+
+	return std::move(res);
+};
 
 #endif

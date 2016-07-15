@@ -123,7 +123,7 @@ namespace BlasiusFlowTest {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 		};
 		if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2psLim) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limBarsJespersen> >(&argc, &argv));
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limVenkatar> >(&argc, &argv));
 		};
 		kernel->Init(conf);
 
@@ -175,7 +175,7 @@ namespace BlasiusFlowTest {
 			res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
 			return res;
 		};
-		kernel->SetInitialConditions(InitDriven, Integ);
+		kernel->SetInitialConditions(InitLinearBL, Integ);
 
 		// Create slices
 		kernel->slices.push_back(Slice((int)(0.9 * conf.nX), -1, 0));

@@ -92,7 +92,7 @@ namespace AleshinExp {
 		conf.MaxIteration = 1000000;
 		conf.SaveSolutionTime = 4.0e-5;
 		conf.SaveSolutionIterations = 0;
-		conf.ResidualOutputIterations = 40;
+		conf.ResidualOutputIterations = 10;
 
 		// init kernel
 		std::unique_ptr<Kernel> kernel;
@@ -103,7 +103,7 @@ namespace AleshinExp {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 		};
 		if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2psLim) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limBarsJespersen> >(&argc, &argv));
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limVenkatar> >(&argc, &argv));
 		};
 		kernel->Init(conf);
 

@@ -20,7 +20,7 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
 	conf.LX = 1.0;
-	conf.nX = 200;
+	conf.nX = 400;
 	conf.isPeriodicX = false;
 	conf.DummyLayerSize = 1;
 
@@ -34,10 +34,10 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	conf.IsViscousFlow = false;
 
 	// Method settings
-	conf.methodConfiguration.CFL = 0.5 * 0.45;
+	conf.methodConfiguration.CFL = 0.3;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.0;
-	conf.methodConfiguration.ReconstructionType = Reconstruction::Linear2psLim;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
 	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 
 	// Task settings
@@ -56,7 +56,7 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 	};
 	if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2psLim) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limBarsJespersen> >(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limVenkatar> >(&argc, &argv));
 	};
 	kernel->Init(conf);
 
@@ -106,14 +106,14 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 void RunContactDisconTest1D(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
-	conf.nX = 10;
+	conf.nX = 400;
 	conf.LX = 1.0;
 	conf.isPeriodicX = false;
 	conf.Gamma = 1.4;
 
 	// Method settings
 	conf.DummyLayerSize = 1;
-	conf.methodConfiguration.CFL = 0.5 * 0.45;
+	conf.methodConfiguration.CFL = 0.45;
 	conf.methodConfiguration.RungeKuttaOrder = 1;
 	conf.methodConfiguration.Eps = 0.05;
 	conf.methodConfiguration.ReconstructionType = Reconstruction::Linear2psLim;
@@ -140,7 +140,8 @@ void RunContactDisconTest1D(int argc, char *argv[]) {
 		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 	};
 	if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2psLim) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limBarsJespersen> >(&argc, &argv));
+		//kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limBarsJespersen> >(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limVenkatar> >(&argc, &argv));
 	};
 	kernel->Init(conf);
 

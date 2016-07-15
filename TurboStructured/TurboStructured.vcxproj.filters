@@ -302,6 +302,9 @@
     <ClInclude Include="..\src\utility\Limiters.h">
       <Filter>Header Files\Utility</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\utility\Constants.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
