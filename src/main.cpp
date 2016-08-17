@@ -6,7 +6,7 @@
 // Run the test
 int main(int argc, char *argv[])
 {
-	BlasiusFlowTest::RunExperiment(argc, argv);
+	BlasiusFlowTestDebug::RunExperiment(argc, argv);
 	//ContactDisTest::RunExperiment(argc, argv);
 	//RunSODTestRoe1D(argc, argv);
 	//RunContactDisconTest1D(argc, argv);

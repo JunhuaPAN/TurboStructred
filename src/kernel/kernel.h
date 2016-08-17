@@ -208,10 +208,10 @@ public:
 
 		//Initialize gas model parameters and Riemann solver
 		gas_prop.gamma = config.Gamma;
-		gas_prop.viscosity = config.Viscosity;
 		gas_prop.thermalConductivity = config.ThermalConductivity;
 		gas_prop.molarMass = config.MolarMass;
 		gas_prop.universalGasConstant = config.UniversalGasConstant;
+		gas_prop.viscosity = config.Viscosity;
 
 		// Initialize usefull functions
 		compute.BindGasProperties(gas_prop);

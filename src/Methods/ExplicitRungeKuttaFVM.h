@@ -1218,31 +1218,33 @@ public:
 					fr = result.Fluxes;
 
 					// Compute viscous flux
-					int sL = grid.getSerialIndexLocal(i - 1, j, k);
-					int sR = grid.getSerialIndexLocal(i, j, k);
 					if (isViscousFlow == true) fvisc = vfluxesX[faceInd];
 					for (int nv = 0; nv<nVariables; nv++) fr[nv] -= fvisc[nv];
 
-					// Update residuals
+					// Correct spectral radius value from left face
+					spectralRadius[ grid.getSerialIndexLocal(i, j, k) ] += fS * result.MaxEigenvalue;
+					
+					// Update residuals and compute timestep parameters
 					if (i > grid.iMin)
 					{
 						// Fluxes difference equals residual
 						int idx = grid.getSerialIndexLocal(i - 1, j, k);
-						for (int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += -(fr[nv] - fl[nv]) * fS;
+						for (int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] -= (fr[nv] - fl[nv]) * fS;
+						
+						// Correct spectral radius from right face
+						spectralRadius[idx] += fS * result.MaxEigenvalue;
 
-						// Compute volume of cell
-						double volume = fS * grid.hx[i - 1];
+						// TO DO check that part
+						// Prepare to compute viscous timestep part
+						double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
+						double visc_Face = gas_prop.viscosity;
+						double PrandtlNumberFace = 1.0;
 
 						// Add up spectral radius estimate
-						spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
-						double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
-						double gammaFace = gas_prop.gamma;
-						double vsr = std::max(4.0 / (3.0 * roFace), gammaFace / roFace);
-						double viscosityFace = gas_prop.viscosity;
-						double PrandtlNumberFace = 1.0;
-						vsr *= viscosityFace / PrandtlNumberFace;
-						vsr *= fS*fS;
-						vsr /= volume;
+						double vsr = std::max(4.0 / (3.0 * roFace), gas_prop.gamma / roFace);
+						vsr *= visc_Face / PrandtlNumberFace;
+						vsr *= fS * fS;
+						vsr /= grid.volumes[idx];
 						spectralRadius[idx] += vsr;
 					};
 
@@ -1275,20 +1277,20 @@ public:
 						// Apply boundary conditions
 						if ((pManager->rankCart[1] == 0) && (j == grid.jMin) && (grid.IsPeriodicY != true))									// Left border
 						{
-							UR = reconstructions[i - grid.iMin + 1][1][k - grid.kMin + zLayer].SampleSolution({ hr,0,0 });
+							UR = reconstructions[i - grid.iMin + 1][1][k - grid.kMin + zLayer].SampleSolution({ 0,hr,0 });
 							auto bcMarker = yLeftBC.getMarker(faceCenter);
 							UL = bConditions[bcMarker]->getDummyReconstructions(&UR[0], fn);
 						}
 						else if ((pManager->rankCart[1] == pManager->dimsCart[1] - 1) && (j == grid.jMax + 1) && (grid.IsPeriodicY != true))	// Right border
 						{
-							UL = reconstructions[i - grid.iMin + 1][grid.jMax - grid.jMin + 1][k - grid.kMin + zLayer].SampleSolution({ hl,0,0 });
+							UL = reconstructions[i - grid.iMin + 1][grid.jMax - grid.jMin + 1][k - grid.kMin + zLayer].SampleSolution({ 0,hl,0 });
 							auto bcMarker = yRightBC.getMarker(faceCenter);
 							UR = bConditions[bcMarker]->getDummyReconstructions(&UL[0], fn);
 						}
 						else
 						{
-							UL = reconstructions[i - grid.iMin + 1][j - grid.jMin][k - grid.kMin + zLayer].SampleSolution({ hl,0,0 });
-							UR = reconstructions[i - grid.iMin + 1][j - grid.jMin + 1][k - grid.kMin + zLayer].SampleSolution({ hr,0,0 });
+							UL = reconstructions[i - grid.iMin + 1][j - grid.jMin][k - grid.kMin + zLayer].SampleSolution({ 0,hl,0 });
+							UR = reconstructions[i - grid.iMin + 1][j - grid.jMin + 1][k - grid.kMin + zLayer].SampleSolution({ 0,hr,0 });
 						};
 
 						// Compute convective flux
@@ -1296,31 +1298,33 @@ public:
 						fr = result.Fluxes;
 
 						// Compute viscous flux
-						int sL = grid.getSerialIndexLocal(i, j - 1, k);
-						int sR = grid.getSerialIndexLocal(i, j, k);
 						if (isViscousFlow == true) fvisc = vfluxesY[faceInd];
 						for (int nv = 0; nv < nVariables; nv++) fr[nv] -= fvisc[nv];
 
-						// Update residuals
+						// Correct spectral radius value from left face
+						spectralRadius[grid.getSerialIndexLocal(i, j, k)] += fS * result.MaxEigenvalue;
+
+						// Update residuals and compute timestep parameters
 						if (j > grid.jMin)
 						{
 							// Fluxes difference equals residual
 							int idx = grid.getSerialIndexLocal(i, j - 1, k);
-							for (int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += -(fr[nv] - fl[nv]) * fS;
+							for (int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] -= (fr[nv] - fl[nv]) * fS;
 
-							// Compute volume of cell
-							double volume = fS * grid.hy[j - 1];
+							// Correct spectral radius from right face
+							spectralRadius[idx] += fS * result.MaxEigenvalue;
+
+							// TO DO check that part
+							// Prepare to compute viscous timestep part
+							double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
+							double visc_Face = gas_prop.viscosity;
+							double PrandtlNumberFace = 1.0;
 
 							// Add up spectral radius estimate
-							spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
-							double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
-							double gammaFace = gas_prop.gamma;
-							double vsr = std::max(4.0 / (3.0 * roFace), gammaFace / roFace);
-							double viscosityFace = gas_prop.viscosity;
-							double PrandtlNumberFace = 1.0;
-							vsr *= viscosityFace / PrandtlNumberFace;
-							vsr *= fS*fS;
-							vsr /= volume;
+							double vsr = std::max(4.0 / (3.0 * roFace), gas_prop.gamma / roFace);
+							vsr *= visc_Face / PrandtlNumberFace;
+							vsr *= fS * fS;
+							vsr /= grid.volumes[idx];
 							spectralRadius[idx] += vsr;
 						};
 
@@ -1334,7 +1338,7 @@ public:
 			};
 		};
 
-		// K step
+		// K step		// TO DO modify like parts above
 		if (nDims > 2)
 		{
 			faceInd = 0;
@@ -1373,31 +1377,33 @@ public:
 						fr = result.Fluxes;
 
 						// Compute viscous flux
-						int sL = grid.getSerialIndexLocal(i, j, k - 1);
-						int sR = grid.getSerialIndexLocal(i, j, k);
 						if (isViscousFlow == true) fvisc = vfluxesZ[faceInd];
 						for (int nv = 0; nv < nVariables; nv++) fr[nv] -= fvisc[nv];
 
-						// Update residuals
+						// Correct spectral radius value from left face
+						spectralRadius[grid.getSerialIndexLocal(i, j, k)] += fS * result.MaxEigenvalue;
+
+						// Update residuals and compute timestep parameters
 						if (k > grid.kMin)
 						{
 							// Fluxes difference equals residual
 							int idx = grid.getSerialIndexLocal(i, j, k - 1);
-							for (int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] += -(fr[nv] - fl[nv]) * fS;
+							for (int nv = 0; nv < nVariables; nv++) residual[idx * nVariables + nv] -= (fr[nv] - fl[nv]) * fS;
 
-							// Compute volume of cell
-							double volume = fS * grid.hz[k - 1];
+							// Correct spectral radius from right face
+							spectralRadius[idx] += fS * result.MaxEigenvalue;
+
+							// TO DO check that part
+							// Prepare to compute viscous timestep part
+							double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
+							double visc_Face = gas_prop.viscosity;
+							double PrandtlNumberFace = 1.0;
 
 							// Add up spectral radius estimate
-							spectralRadius[idx] += fS * result.MaxEigenvalue; //Convective part
-							double roFace = sqrt(UL[0] * UR[0]); // (Roe averaged) density
-							double gammaFace = gas_prop.gamma;
-							double vsr = std::max(4.0 / (3.0 * roFace), gammaFace / roFace);
-							double viscosityFace = gas_prop.viscosity;
-							double PrandtlNumberFace = 1.0;
-							vsr *= viscosityFace / PrandtlNumberFace;
-							vsr *= fS*fS;
-							vsr /= volume;
+							double vsr = std::max(4.0 / (3.0 * roFace), gas_prop.gamma / roFace);
+							vsr *= visc_Face / PrandtlNumberFace;
+							vsr *= fS * fS;
+							vsr /= grid.volumes[idx];
 							spectralRadius[idx] += vsr;
 						};
 
