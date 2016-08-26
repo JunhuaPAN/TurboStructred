@@ -12,6 +12,7 @@ public:
 	int j;
 	int k;
 
+	Slice() {};
 	Slice(int _i, int _j, int _k) : i(_i), j(_j), k(_k) {
 		nDims = 0;
 		if (i == -1) ++nDims;

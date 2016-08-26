@@ -79,11 +79,10 @@
     <ClInclude Include="..\src\Sensors\Sensor.h" />
     <ClInclude Include="..\src\Sensors\Sensors.h" />
     <ClInclude Include="..\src\Tests\1DTests\ContactDisTest.h" />
-    <ClInclude Include="..\src\Tests\1DTests\RarefactionTest1.h" />
-    <ClInclude Include="..\src\Tests\1DTests\RarefactionTest2.h" />
     <ClInclude Include="..\src\Tests\1DTests\testlist.h" />
     <ClInclude Include="..\src\Tests\1DTests\TestsUtility.h" />
     <ClInclude Include="..\src\Tests\1DTests\ToroTests.h" />
+    <ClInclude Include="..\src\Tests\1DTests\xyzTest.h" />
     <ClInclude Include="..\src\Tests\2DTests\BlasiusFlowTest.h" />
     <ClInclude Include="..\src\Tests\2DTests\DrivenCavityTest.h" />
     <ClInclude Include="..\src\Tests\2DTests\ExactEulerSolution.h" />

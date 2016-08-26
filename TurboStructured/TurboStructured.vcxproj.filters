@@ -251,12 +251,6 @@
     <ClInclude Include="..\src\utility\Integration.h">
       <Filter>Header Files\Utility</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Tests\1DTests\RarefactionTest1.h">
-      <Filter>Header Files\Tests\1DTests</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\Tests\1DTests\RarefactionTest2.h">
-      <Filter>Header Files\Tests\1DTests</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\utility\Direction.h">
       <Filter>Header Files\Utility</Filter>
     </ClInclude>
@@ -304,6 +298,9 @@
     </ClInclude>
     <ClInclude Include="..\src\utility\Constants.h">
       <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\1DTests\xyzTest.h">
+      <Filter>Header Files\Tests\1DTests</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

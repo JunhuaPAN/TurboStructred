@@ -198,7 +198,7 @@ void RunContactDisconTest1D(int argc, char *argv[]) {
 	kernel->Finalize();
 };
 
-// Y direction test
+// YZ direction test
 void RunSODXTest(int argc, char *argv[]) {
 	KernelConfiguration conf;
 	conf.nDims = 1;
@@ -210,7 +210,7 @@ void RunSODXTest(int argc, char *argv[]) {
 	// Describe grid compression here
 	BlockNode nleft, ncenter;
 	nleft.N_cells = conf.nX / 2;
-	nleft.q_com = 1.0;// / 1.05;
+	nleft.q_com = 1.0 / 1.05;
 	ncenter.pos = 0.5 * conf.LX;
 	ncenter.N_cells = conf.nX - nleft.N_cells;
 	ncenter.q_com = 1.0 / nleft.q_com;
@@ -249,7 +249,7 @@ void RunSODXTest(int argc, char *argv[]) {
 		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 	};
 	if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2psLim) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limVenkatar> >(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limBarsJespersen> >(&argc, &argv));
 	};
 	kernel->Init(conf);
 
@@ -302,7 +302,7 @@ void RunSODXTest(int argc, char *argv[]) {
 };
 void RunSODYTest(int argc, char *argv[]) {
 	KernelConfiguration conf;
-	conf.nDims = 2;
+	conf.nDims = 3;
 	conf.nX = 1;
 	conf.nY = 100;
 	conf.LX = 1.0;
@@ -312,7 +312,7 @@ void RunSODYTest(int argc, char *argv[]) {
 	// Describe grid compression here
 	BlockNode nleft, ncenter;
 	nleft.N_cells = conf.nY / 2;
-	nleft.q_com = 1.0;// / 1.05;
+	nleft.q_com = 1.0 / 1.05;
 	ncenter.pos = 0.5 * conf.LY;
 	ncenter.N_cells = conf.nY - nleft.N_cells;
 	ncenter.q_com = 1.0 / nleft.q_com;
@@ -351,7 +351,7 @@ void RunSODYTest(int argc, char *argv[]) {
 		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 	};
 	if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2psLim) {
-		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limVenkatar> >(&argc, &argv));
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limBarsJespersen> >(&argc, &argv));
 	};
 	kernel->Init(conf);
 
@@ -403,7 +403,111 @@ void RunSODYTest(int argc, char *argv[]) {
 	//finalize kernel
 	kernel->Finalize();
 };
+void RunSODZTest(int argc, char *argv[]) {
+	KernelConfiguration conf;
+	conf.nDims = 3;
+	conf.nX = 1;
+	conf.nY = 1;
+	conf.nZ = 100;
+	conf.LX = 1.0;
+	conf.LY = 1.0;
+	conf.LZ = 1.0;
+	conf.isPeriodicZ = false;
 
+	// Describe grid compression here
+	BlockNode nleft, ncenter;
+	nleft.N_cells = conf.nZ / 2;
+	nleft.q_com = 1.0 / 1.05;
+	ncenter.pos = 0.5 * conf.LZ;
+	ncenter.N_cells = conf.nZ - nleft.N_cells;
+	ncenter.q_com = 1.0 / nleft.q_com;
+	conf.CompressionZ[0] = nleft;
+	conf.CompressionZ.push_back(ncenter);
+
+	// BC
+	conf.MyConditions[1] = BoundaryConditionConfiguration(BoundaryConditionType::Natural);
+	conf.zLeftBoundary.SetMarker(1);
+	conf.zRightBoundary.SetMarker(1);
+
+	// Method parameters
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::Linear2psLim;
+	conf.DummyLayerSize = 1;
+	conf.methodConfiguration.CFL = 0.3;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.05;
+
+	// Model
+	conf.Gamma = 1.4;
+
+	// Task and output settings
+	conf.MaxTime = 0.25;
+	conf.MaxIteration = 1000000;
+	//conf.SaveSolutionTime = 0.1;
+	conf.SaveSliceTime = 0.25;
+	conf.ResidualOutputIterations = 100;
+
+	// Init kernel
+	std::unique_ptr<Kernel> kernel;
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2psLim) {
+		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limBarsJespersen> >(&argc, &argv));
+	};
+	kernel->Init(conf);
+
+	// initial conditions
+	struct ShockTubeParameters {
+		double roL = 1.0;
+		double PL = 1.0;
+		Vector uL = { 0, 0, 0 };
+		double roR = 0.125;
+		double PR = 0.1;
+		Vector uR = { 0, 0, 0 };
+	} params;
+
+	double z0 = 0.5 * conf.LZ;
+	auto init = [&params, &conf, z0](Vector r) {
+		std::vector<double> res(5);
+		double rho, p;
+		double gamma = conf.Gamma;
+		Vector V;
+		if (r.z < z0) {
+			rho = params.roL;
+			p = params.PL;
+			V = params.uL;
+		}
+		else {
+			rho = params.roR;
+			p = params.PR;
+			V = params.uR;
+		};
+
+		res[0] = rho;
+		res[1] = rho * V.x;
+		res[2] = rho * V.y;
+		res[3] = rho * V.z;
+		res[4] = p / (gamma - 1) + 0.5 * rho * (V.x * V.x + V.y * V.y + V.z * V.z);
+
+		return res;
+	};
+	kernel->SetInitialConditions(init);
+
+
+	// Init the slice and save initial solution
+	kernel->slices.push_back(Slice(1, 1, -1));
+	kernel->SaveSliceToTecplot("init_slice.dat", kernel->slices[0]);
+
+	//run computation
+	kernel->Run();
+
+	//finalize kernel
+	kernel->Finalize();
+};
 
 
 //// Test 2D

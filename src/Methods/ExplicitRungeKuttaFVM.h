@@ -1338,7 +1338,7 @@ public:
 			};
 		};
 
-		// K step		// TO DO modify like parts above
+		// K step		
 		if (nDims > 2)
 		{
 			faceInd = 0;
@@ -1349,27 +1349,28 @@ public:
 					double fS = grid.hx[i] * grid.hy[j];
 
 					for (int k = grid.kMin; k <= grid.kMax + 1; k++) {
+						// Set geometric properties
+						auto faceCenter = Vector(grid.CoordinateX[i], grid.CoordinateY[j], grid.CoordinateZ[k] - 0.5 * grid.hz[k]);
+						auto hl = 0.5 * grid.hz[k - 1];		// distance from the L cell center to the face 
+						auto hr = -0.5 * grid.hz[k];		// distance from the R cell center to the face 
 
-						// Set Riemann Problem arguments
-						Vector faceCenter = Vector(grid.CoordinateX[i], grid.CoordinateY[j], grid.CoordinateZ[k] - 0.5 * grid.hz[k]);
-
-						// Apply boundary conditions
+															// Apply boundary conditions
 						if ((pManager->rankCart[2] == 0) && (k == grid.kMin) && (grid.IsPeriodicZ != true))									// Left border
 						{
-							UR = reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][1].SampleSolution(faceCenter);
+							UR = reconstructions[i - grid.iMin + 1][j - grid.jMin + 1][1].SampleSolution({ 0,0,hr });
 							auto bcMarker = zLeftBC.getMarker(faceCenter);
 							UL = bConditions[bcMarker]->getDummyReconstructions(&UR[0], fn);
 						}
 						else if ((pManager->rankCart[2] == pManager->dimsCart[2] - 1) && (k == grid.kMax + 1) && (grid.IsPeriodicZ != true))	// Right border
 						{
-							UL = reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][grid.kMax - grid.kMin + 1].SampleSolution(faceCenter);
+							UL = reconstructions[i - grid.iMin + 1][j - grid.jMin + 1][grid.kMax - grid.kMin + 1].SampleSolution({ 0,0,hl });
 							auto bcMarker = zRightBC.getMarker(faceCenter);
-							UL = bConditions[bcMarker]->getDummyReconstructions(&UL[0], fn);
+							UR = bConditions[bcMarker]->getDummyReconstructions(&UL[0], fn);
 						}
 						else
 						{
-							UL = reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][k - grid.kMin].SampleSolution(faceCenter);
-							UR = reconstructions[i - grid.iMin + 1][j - grid.jMin + yLayer][k - grid.kMin + 1].SampleSolution(faceCenter);
+							UL = reconstructions[i - grid.iMin + 1][j - grid.jMin + 1][k - grid.kMin].SampleSolution({ 0,0,hl });
+							UR = reconstructions[i - grid.iMin + 1][j - grid.jMin + 1][k - grid.kMin + 1].SampleSolution({ 0,0,hr });
 						};
 
 						// Compute convective flux
