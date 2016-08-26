@@ -110,7 +110,7 @@ namespace BlasiusFlowTest {
 		// Computational settings
 		conf.MaxTime = 10 * par.Lx / Udr;
 		conf.MaxIteration = 10000000;
-		conf.SaveSolutionTime = 0.05;
+		conf.SaveSolutionTime = 0.1;
 		conf.SaveSliceTime = par.Lx / Udr;
 		conf.ResidualOutputIterations = 50;
 		
@@ -208,8 +208,8 @@ namespace BlasiusFlowTest {
 	};
 };
 
-// TO DO DELETE
-namespace BlasiusFlowTestDebug {
+// Try to run blasius flow test on not uniform grid
+namespace BlasiusFlowTest_nUniform {
 
 	// struct for main parameters of the test
 	struct Parameters {
@@ -226,17 +226,15 @@ namespace BlasiusFlowTestDebug {
 
 	// Default parameters
 	void DefaultSettings() {
-		auto Udr = 10.0;
-
 		par.gamma = 1.4;
-		par.Lx = 0.4;
+		par.Lx = 1.2;
 		par.Ly = 0.5;
 		par.Xplate = 0.2;
 		par.Pin = 101579;
 		par.Pout = par.Pin;
 		par.ro = par.Pin * par.gamma / (1006.43 * 300.214 * (par.gamma - 1));
 		par.viscosity = 1.7894e-03;
-		par.M = Udr / sqrt(par.gamma * par.Pin / par.ro);		// Udriven = 10
+		par.M = 10.0 / sqrt(par.gamma * par.Pin / par.ro);		// Udriven = 10
 	};
 
 	// compute viscosity value
@@ -251,17 +249,17 @@ namespace BlasiusFlowTestDebug {
 		// Init config structure
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 4;
-		conf.nY = 2;
+		conf.nX = 100;
+		conf.nY = 40;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
 		conf.isPeriodicY = false;
 		conf.Gamma = par.gamma;
 		conf.IsViscousFlow = false;		// TO DO change
-		//conf.Viscosity = par.viscosity;
+										//conf.Viscosity = par.viscosity;
 
-		// Compute driven velocity
+										// Compute driven velocity
 		double Udr = ComputeInletVelocity();
 
 		// Discribe Boundary conditions
@@ -306,10 +304,10 @@ namespace BlasiusFlowTestDebug {
 
 		// Computational settings
 		conf.MaxTime = 10 * par.Lx / Udr;
-		conf.MaxIteration = 20;
-		conf.SaveSolutionTime = 0.02;
-		conf.SaveSolutionIterations = 1;
-		conf.ResidualOutputIterations = 1;
+		conf.MaxIteration = 10000000;
+		conf.SaveSolutionTime = 0.1;
+		conf.SaveSliceTime = par.Lx / Udr;
+		conf.ResidualOutputIterations = 50;
 
 		// init kernel
 		std::unique_ptr<Kernel> kernel;
@@ -326,7 +324,7 @@ namespace BlasiusFlowTestDebug {
 
 		// init distributions
 		NumericQuadrature Integ(3, 2);
-		auto Init = [Udr](Vector r) {
+		auto InitDriven = [Udr](Vector r) {
 			// Density
 			double rho = par.ro;
 
@@ -347,7 +345,36 @@ namespace BlasiusFlowTestDebug {
 			res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
 			return res;
 		};
-		kernel->SetInitialConditions(Init, Integ);
+		auto InitLinearBL = [Udr](Vector r) {
+			// Compute laminar layer height
+			double h = 4.91 * sqrt(par.viscosity * (r.x - par.Xplate) / (Udr * par.ro));
+
+			// Density
+			double rho = par.ro;
+
+			// Velocity
+			double u = Udr;
+			if (r.y < h) u *= r.y / h;
+			double v = 0;
+			double w = 0;
+
+			// Energy
+			double roe = par.Pin / (par.gamma - 1.0);
+
+			// Compute local initial values
+			std::vector<double> res(5, 0);
+			res[0] = rho;
+			res[1] = rho * u;
+			res[2] = rho * v;
+			res[3] = rho * w;
+			res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
+			return res;
+		};
+		kernel->SetInitialConditions(InitLinearBL, Integ);
+
+		// Create slices
+		kernel->slices.push_back(Slice((int)(0.9 * conf.nX), -1, 0));
+		//kernel->SaveSliceToTecplot("ySlice_init.dat", kernel->slices[0]);
 
 		//save init solution and run the test
 		kernel->SaveSolution("init.dat");

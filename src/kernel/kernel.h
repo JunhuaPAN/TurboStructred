@@ -27,8 +27,6 @@
 #include "Sensors/Sensors.h"
 
 
-// #include "cgnslib.h"
-
 // Step info
 class StepInfo {
 public:
@@ -186,7 +184,7 @@ public:
 		// Initialize cartezian topology
 		pManager->InitCartesianTopology(grid);
 
-		// Compute local gris sizes and initialize local grid
+		// Compute local grid sizes and initialize local grid
 		grid.nlocalX = grid.nX / pManager->dimsCart[0];
 		grid.nlocalY = grid.nY / pManager->dimsCart[1];
 		grid.nlocalZ = grid.nZ / pManager->dimsCart[2];
@@ -196,14 +194,14 @@ public:
 		grid.jMax = (pManager->rankCart[1] + 1) * grid.nlocalY + grid.dummyCellLayersY - 1;
 		grid.kMin = pManager->rankCart[2] * grid.nlocalZ + grid.dummyCellLayersZ;
 		grid.kMax = (pManager->rankCart[2] + 1) * grid.nlocalZ + grid.dummyCellLayersZ - 1;
-		grid.InitLocal(config);
+		grid.InitLocal(config);		// end of grid initialization
+
+		//Sync
 		if (DebugOutputEnabled) {
 			std::cout << "rank = " << pManager->_rankCart << ", iMin = " << grid.iMin << ", iMax = " << grid.iMax << "\n";
 			std::cout << "rank = " << pManager->_rankCart << ", jMin = " << grid.jMin << ", jMax = " << grid.jMax << "\n";
 			std::cout << "rank = " << pManager->_rankCart << ", kMin = " << grid.kMin << ", kMax = " << grid.kMax << "\n";
 		};
-		
-		//Sync
 		pManager->Barrier();
 
 		//Initialize gas model parameters and Riemann solver
@@ -212,8 +210,6 @@ public:
 		gas_prop.molarMass = config.MolarMass;
 		gas_prop.universalGasConstant = config.UniversalGasConstant;
 		gas_prop.viscosity = config.Viscosity;
-
-		// Initialize usefull functions
 		compute.BindGasProperties(gas_prop);
 
 		// Set all flags as configuration requires

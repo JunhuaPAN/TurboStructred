@@ -13,11 +13,19 @@
 class Limiter {
 public:
 	std::valarray<double> lim_values;
-	double umax, umin;			// use that vars while comulting lim_values
+	double umax, umin;			// use these vars computing lim_values
 
 	// get limiters value vor i-th variable
 	double inline operator[] (int i) {
 		return lim_values[i];
+	};
+	double& operator() (int i) {
+		return lim_values[i];
+	};
+
+	// resize function
+	void inline resize(int nV) {
+		lim_values.resize(nV);
 	};
 
 	// compute limiter values
