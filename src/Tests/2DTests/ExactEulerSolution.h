@@ -43,21 +43,49 @@ namespace ExactEulerSolution {
 		return par.rho + par.amplitude * sin(2.0 * PI * (r.x + r.y - t * (par.u + par.v) ) );
 	};
 
+	// apply compression to the center with coeff q
+	void ApplyCompression(KernelConfiguration& conf, double q) {
+		BlockNode nleft, ncenter;
+
+		// X direction first
+		nleft.N_cells = conf.nX / 2;
+		nleft.q_com = q;
+		ncenter.pos = 0.5 * conf.LX;
+		ncenter.N_cells = conf.nX - nleft.N_cells;
+		ncenter.q_com = 1.0 / nleft.q_com;
+		conf.CompressionX[0] = nleft;
+		conf.CompressionX.push_back(ncenter);
+
+		// Y direction now
+		nleft.N_cells = conf.nY / 2;
+		nleft.q_com = q;
+		ncenter.pos = 0.5 * conf.LY;
+		ncenter.N_cells = conf.nY - nleft.N_cells;
+		ncenter.q_com = 1.0 / nleft.q_com;
+		conf.CompressionY[0] = nleft;
+		conf.CompressionY.push_back(ncenter);
+
+		return;
+	}
+
 	// Run one experiment ( parameters is as input data )
 	void RunSingleExperiment(int argc, char *argv[]) {
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 80;
-		conf.nY = 80;
+		conf.nX = 40;
+		conf.nY = 40;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = true;
 		conf.isPeriodicY = true;
 		conf.Gamma = par.gamma;
 
+		// apply grid compression to the center
+		ApplyCompression(conf, 0.95);
+
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
-		conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
+		conf.methodConfiguration.ReconstructionType = Reconstruction::Linear2PointsStencil;
 		conf.methodConfiguration.CFL = 0.4;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
@@ -66,6 +94,7 @@ namespace ExactEulerSolution {
 		conf.MaxTime = par.comp_time;
 		conf.MaxIteration = 1000000;
 		conf.SaveSolutionTime = 0.2 * par.comp_time;
+		conf.SaveSliceTime = par.comp_time;
 		conf.ResidualOutputIterations = 20;
 
 		// init kernel
@@ -101,17 +130,12 @@ namespace ExactEulerSolution {
 		};
 		kernel->SetInitialConditions(initD, In);
 
+		// Add slice
+		kernel->slices.push_back(Slice(-1, conf.nY / 2, 0));
+
 		//save solution
 		kernel->SaveSolution("init.dat");
-
-		// Set sensors if needed
-		auto GetInEnergy = [](std::valarray<double> vals) {
-			double roe = vals[4] - 0.5 * (vals[1] * vals[1] + vals[2] * vals[2]) / vals[0];
-			return roe / vals[0];
-		};
-
-		kernel->isSensorEnable = true;
-		kernel->SaveSensorRecordIterations = 1;
+		kernel->SaveSliceToTecplot("slice_init.dat", kernel->slices[0]);
 
 		//run computation
 		kernel->Run();
@@ -129,7 +153,7 @@ namespace ExactEulerSolution {
 		RunSingleExperiment(argc, argv);
 
 		//end of experiments
-		std::cout << "Smooth Solution Test is completed";
+		std::cout << "Smooth Solution Test is complited";
 		std::cout << std::endl;
 		return;
 	};

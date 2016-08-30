@@ -203,9 +203,10 @@ void Grid::InitLocal(KernelConfiguration& config) {
 			auto new_Nc = config.CompressionX[b].N_cells;
 			auto new_q = config.CompressionX[b].q_com;
 
-			// compute first space step for new block
+			// compute first space step for new block and first cell position
 			if (new_q == 1.0) x_stp = new_bl_len / new_Nc;
 			else x_stp = new_bl_len * (1.0 - new_q) / (1.0 - pow(new_q, new_Nc));
+			xc = config.CompressionX[b].pos + 0.5 * x_stp;
 		}
 	};
 
@@ -232,7 +233,7 @@ void Grid::InitLocal(KernelConfiguration& config) {
 			auto bl_len = config.CompressionY[1].pos - first_n.pos;
 			auto Nc = first_n.N_cells;		// number of cells in first block
 
-											// compute first space step
+			// compute first space step
 			if (first_n.q_com == 1.0) y_stp = bl_len / Nc;
 			else y_stp = bl_len * (1.0 - first_n.q_com) / (1.0 - pow(first_n.q_com, Nc));		// first term of geometric progression
 		};
@@ -266,6 +267,7 @@ void Grid::InitLocal(KernelConfiguration& config) {
 				// compute first space step for new block
 				if (new_q == 1.0) y_stp = new_bl_len / new_Nc;
 				else y_stp = new_bl_len * (1.0 - new_q) / (1.0 - pow(new_q, new_Nc));
+				yc = config.CompressionY[b].pos + 0.5 * y_stp;
 			}
 		};
 
@@ -325,6 +327,7 @@ void Grid::InitLocal(KernelConfiguration& config) {
 				// compute first space step for new block
 				if (new_q == 1.0) z_stp = new_bl_len / new_Nc;
 				else z_stp = new_bl_len * (1.0 - new_q) / (1.0 - pow(new_q, new_Nc));
+				zc = config.CompressionZ[b].pos + 0.5 * z_stp;
 			}
 		};
 

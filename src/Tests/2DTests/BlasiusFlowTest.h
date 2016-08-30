@@ -54,7 +54,7 @@ namespace BlasiusFlowTest {
 		// Init config structure
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 100;
+		conf.nX = 120;
 		conf.nY = 40;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
@@ -64,11 +64,32 @@ namespace BlasiusFlowTest {
 		conf.IsViscousFlow = false;		// TO DO change
 		//conf.Viscosity = par.viscosity;
 
-		// Compute driven velocity
-		double Udr = ComputeInletVelocity();
+		// Describe grid compression
+		BlockNode beforePlate, startPlate, endPlate, bottomNode;
 
-		// Discribe Boundary conditions
+		// X direction first
+		beforePlate.N_cells = 0.15 * conf.nX;
+		beforePlate.q_com = 0.95;
+		conf.CompressionX[0] = beforePlate;
+
+		startPlate.pos = par.Xplate;
+		startPlate.q_com = 1.0 / beforePlate.q_com;
+		startPlate.N_cells = beforePlate.N_cells;
+
+		endPlate.pos = 2.0 * par.Xplate;
+		endPlate.N_cells = conf.nX - 2 * beforePlate.N_cells;
+
+		// Y
+		bottomNode.q_com = 1.05;
+		bottomNode.N_cells = conf.nY;
+
+		conf.CompressionX.push_back(startPlate);
+		conf.CompressionX.push_back(endPlate);
+		conf.CompressionY[0] = bottomNode;
+
+		// Describe boundary conditions
 		// Subsonic inlet
+		auto Udr = ComputeInletVelocity();
 		BoundaryConditionConfiguration Inlet(BoundaryConditionType::SubsonicInlet);
 		Inlet.Density = par.ro;
 		Inlet.Pstatic = par.Pin;
@@ -111,8 +132,9 @@ namespace BlasiusFlowTest {
 		conf.MaxTime = 10 * par.Lx / Udr;
 		conf.MaxIteration = 10000000;
 		conf.SaveSolutionTime = 0.1;
+		conf.SaveSolutionIterations = 0;
 		conf.SaveSliceTime = par.Lx / Udr;
-		conf.ResidualOutputIterations = 50;
+		conf.ResidualOutputIterations = 500;
 		
 		// init kernel
 		std::unique_ptr<Kernel> kernel;
@@ -179,7 +201,7 @@ namespace BlasiusFlowTest {
 
 		// Create slices
 		kernel->slices.push_back(Slice((int)(0.9 * conf.nX), -1, 0));
-		//kernel->SaveSliceToTecplot("ySlice_init.dat", kernel->slices[0]);
+		kernel->SaveSliceToTecplot("ySlice_init.dat", kernel->slices[0]);
 
 		//save init solution and run the test
 		kernel->SaveSolution("init.dat");
@@ -257,9 +279,9 @@ namespace BlasiusFlowTest_nUniform {
 		conf.isPeriodicY = false;
 		conf.Gamma = par.gamma;
 		conf.IsViscousFlow = false;		// TO DO change
-										//conf.Viscosity = par.viscosity;
+		//conf.Viscosity = par.viscosity;
 
-										// Compute driven velocity
+		// Compute driven velocity
 		double Udr = ComputeInletVelocity();
 
 		// Discribe Boundary conditions
