@@ -563,10 +563,29 @@ namespace BlasiusFlowTestDebug {
 		conf.isPeriodicY = false;
 		conf.Gamma = par.gamma;
 		conf.IsViscousFlow = false;		// TO DO change
-										//conf.Viscosity = par.viscosity;
+		//conf.Viscosity = par.viscosity;
 
-										// Compute driven velocity
+		// Describe grid compression
+		BlockNode beforePlate, startPlate, bottomNode;
+
+		// X direction first
+		beforePlate.N_cells = 2;
+		beforePlate.q_com = 0.5;
+		conf.CompressionX[0] = beforePlate;
+
+		startPlate.pos = par.Xplate;
+		startPlate.q_com = 1.5;
+		startPlate.N_cells = conf.nX - beforePlate.N_cells;
+		conf.CompressionX.push_back(startPlate);
+
+		// Y
+		bottomNode.q_com = 2.0;
+		bottomNode.N_cells = conf.nY;
+		conf.CompressionY[0] = bottomNode;
+
+		// Compute driven velocity
 		double Udr = ComputeInletVelocity();
+
 
 		// Discribe Boundary conditions
 		// Subsonic inlet
@@ -610,8 +629,8 @@ namespace BlasiusFlowTestDebug {
 
 		// Computational settings
 		conf.MaxTime = 10 * par.Lx / Udr;
-		conf.MaxIteration = 20;
-		conf.SaveSolutionTime = 0.02;
+		conf.MaxIteration = 25;
+		conf.SaveSolutionTime = 0.1;
 		conf.SaveSolutionIterations = 1;
 		conf.ResidualOutputIterations = 1;
 

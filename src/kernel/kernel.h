@@ -1447,6 +1447,19 @@ public:
 			ofs << "\"" << "P" << "\" ";
 			ofs << "\"" << "e" << "\" ";
 			ofs << "\"" << "T" << "\" ";
+
+			if (I != -1) {
+				ofs << "\"" << "x_cnst" << "\" ";
+				dims++;
+			};
+			if (J != -1) {
+				ofs << "\"" << "y_cnst" << "\" ";
+				dims++;
+			};
+			if (K != -1) {
+				ofs << "\"" << "z_cnst" << "\" ";
+				dims++;
+			};
 			ofs << std::endl;
 
 			ofs << "ZONE T=\"1\"";	//zone name
@@ -1459,7 +1472,7 @@ public:
 			if (K == -1) ofs << "K=" << grid.nZ;
 			else ofs << "K=" << 1;
 			ofs << "F=POINT\n";
-			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
+			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
 		}
 		else {
 			//Wait for previous process to finish writing
@@ -1499,6 +1512,9 @@ public:
 					ofs << P << " ";
 					ofs << e << " ";
 					ofs << T << " ";
+					if (I != -1) ofs << x << " ";
+					if (J != -1) ofs << y << " ";
+					if (K != -1) ofs << z << " ";
 					ofs << std::endl;
 				};
 			};
