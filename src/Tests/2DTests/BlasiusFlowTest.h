@@ -54,21 +54,42 @@ namespace BlasiusFlowTest {
 		// Init config structure
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 100;
+		conf.nX = 120;
 		conf.nY = 40;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
 		conf.isPeriodicY = false;
 		conf.Gamma = par.gamma;
-		conf.IsViscousFlow = false;		// TO DO change
-		//conf.Viscosity = par.viscosity;
+		conf.IsViscousFlow = true;		
+		conf.Viscosity = par.viscosity;
 
-		// Compute driven velocity
-		double Udr = ComputeInletVelocity();
+		// Describe grid compression
+		BlockNode beforePlate, startPlate, endPlate, bottomNode;
 
-		// Discribe Boundary conditions
+		// X direction first
+		beforePlate.N_cells = 0.15 * conf.nX;
+		beforePlate.q_com = 0.95;
+		conf.CompressionX[0] = beforePlate;
+
+		startPlate.pos = par.Xplate;
+		startPlate.q_com = 1.0 / beforePlate.q_com;
+		startPlate.N_cells = beforePlate.N_cells;
+
+		endPlate.pos = 2.0 * par.Xplate;
+		endPlate.N_cells = conf.nX - 2 * beforePlate.N_cells;
+
+		// Y
+		bottomNode.q_com = 1.05;
+		bottomNode.N_cells = conf.nY;
+
+		conf.CompressionX.push_back(startPlate);
+		conf.CompressionX.push_back(endPlate);
+		conf.CompressionY[0] = bottomNode;
+
+		// Describe boundary conditions
 		// Subsonic inlet
+		auto Udr = ComputeInletVelocity();
 		BoundaryConditionConfiguration Inlet(BoundaryConditionType::SubsonicInlet);
 		Inlet.Density = par.ro;
 		Inlet.Pstatic = par.Pin;
@@ -110,9 +131,10 @@ namespace BlasiusFlowTest {
 		// Computational settings
 		conf.MaxTime = 10 * par.Lx / Udr;
 		conf.MaxIteration = 10000000;
-		conf.SaveSolutionTime = 0.05;
+		conf.SaveSolutionTime = 0.1;
+		conf.SaveSolutionIterations = 0;
 		conf.SaveSliceTime = par.Lx / Udr;
-		conf.ResidualOutputIterations = 50;
+		conf.ResidualOutputIterations = 500;
 		
 		// init kernel
 		std::unique_ptr<Kernel> kernel;
@@ -175,14 +197,14 @@ namespace BlasiusFlowTest {
 			res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
 			return res;
 		};
-		kernel->SetInitialConditions(InitLinearBL, Integ);
+		kernel->SetInitialConditions(InitDriven, Integ);
 
 		// Create slices
 		kernel->slices.push_back(Slice((int)(0.9 * conf.nX), -1, 0));
-		//kernel->SaveSliceToTecplot("ySlice_init.dat", kernel->slices[0]);
+		kernel->SaveSliceToTecplot("ySlice_init.dat", kernel->slices[0]);
 
 		//save init solution and run the test
-		kernel->SaveSolution("init.dat");
+		kernel->SaveSolutionToTecplot("init.dat");
 
 		// Run test
 		if (kernel->pManager->IsMaster()) std::cout << "Flat plate test runs." << std::endl <<
@@ -208,8 +230,8 @@ namespace BlasiusFlowTest {
 	};
 };
 
-// TO DO DELETE
-namespace BlasiusFlowTestDebug {
+// Try to save and load solution
+namespace BlasiusFlowTest_SLtest {
 
 	// struct for main parameters of the test
 	struct Parameters {
@@ -226,17 +248,15 @@ namespace BlasiusFlowTestDebug {
 
 	// Default parameters
 	void DefaultSettings() {
-		auto Udr = 10.0;
-
 		par.gamma = 1.4;
-		par.Lx = 0.4;
+		par.Lx = 1.2;
 		par.Ly = 0.5;
 		par.Xplate = 0.2;
 		par.Pin = 101579;
 		par.Pout = par.Pin;
 		par.ro = par.Pin * par.gamma / (1006.43 * 300.214 * (par.gamma - 1));
 		par.viscosity = 1.7894e-03;
-		par.M = Udr / sqrt(par.gamma * par.Pin / par.ro);		// Udriven = 10
+		par.M = 10.0 / sqrt(par.gamma * par.Pin / par.ro);		// Udriven = 10
 	};
 
 	// compute viscosity value
@@ -251,21 +271,38 @@ namespace BlasiusFlowTestDebug {
 		// Init config structure
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 4;
-		conf.nY = 2;
+		conf.nX = 80;
+		conf.nY = 40;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
 		conf.isPeriodicY = false;
 		conf.Gamma = par.gamma;
-		conf.IsViscousFlow = false;		// TO DO change
-		//conf.Viscosity = par.viscosity;
+		conf.IsViscousFlow = true;
+		conf.Viscosity = par.viscosity;
 
-		// Compute driven velocity
-		double Udr = ComputeInletVelocity();
+		
+		// Describe grid compression
+		BlockNode beforePlate, startPlate, bottomNode;
 
-		// Discribe Boundary conditions
+		// X direction first
+		beforePlate.N_cells = 0.1666 * conf.nX;
+		beforePlate.q_com = 1.0 / 1.3;
+		conf.CompressionX[0] = beforePlate;
+
+		startPlate.pos = par.Xplate;
+		startPlate.q_com = 1.05;
+		startPlate.N_cells = conf.nX - beforePlate.N_cells;
+		conf.CompressionX.push_back(startPlate);
+
+		// Y
+		bottomNode.q_com = 1.1;
+		bottomNode.N_cells = conf.nY;
+		conf.CompressionY[0] = bottomNode;
+
+		// Describe boundary conditions
 		// Subsonic inlet
+		auto Udr = ComputeInletVelocity();
 		BoundaryConditionConfiguration Inlet(BoundaryConditionType::SubsonicInlet);
 		Inlet.Density = par.ro;
 		Inlet.Pstatic = par.Pin;
@@ -306,10 +343,11 @@ namespace BlasiusFlowTestDebug {
 
 		// Computational settings
 		conf.MaxTime = 10 * par.Lx / Udr;
-		conf.MaxIteration = 20;
-		conf.SaveSolutionTime = 0.02;
-		conf.SaveSolutionIterations = 1;
-		conf.ResidualOutputIterations = 1;
+		conf.MaxIteration = 10000000;
+		conf.SaveSolutionTime = 0.1;
+		conf.SaveSolutionIterations = 0;
+		conf.SaveSliceTime = par.Lx / Udr;
+		conf.ResidualOutputIterations = 10;
 
 		// init kernel
 		std::unique_ptr<Kernel> kernel;
@@ -326,7 +364,7 @@ namespace BlasiusFlowTestDebug {
 
 		// init distributions
 		NumericQuadrature Integ(3, 2);
-		auto Init = [Udr](Vector r) {
+		auto InitDriven = [Udr](Vector r) {
 			// Density
 			double rho = par.ro;
 
@@ -347,15 +385,48 @@ namespace BlasiusFlowTestDebug {
 			res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
 			return res;
 		};
-		kernel->SetInitialConditions(Init, Integ);
+		auto InitLinearBL = [Udr](Vector r) {
+			// Compute laminar layer height
+			double h = 4.91 * sqrt(par.viscosity * (r.x - par.Xplate) / (Udr * par.ro));
+
+			// Density
+			double rho = par.ro;
+
+			// Velocity
+			double u = Udr;
+			if (r.y < h) u *= r.y / h;
+			double v = 0;
+			double w = 0;
+
+			// Energy
+			double roe = par.Pin / (par.gamma - 1.0);
+
+			// Compute local initial values
+			std::vector<double> res(5, 0);
+			res[0] = rho;
+			res[1] = rho * u;
+			res[2] = rho * v;
+			res[3] = rho * w;
+			res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
+			return res;
+		};
+		kernel->SetInitialConditions(InitLinearBL, Integ);
+		//kernel->LoadSolution("sol.sol");
+
+		// Create slices
+		kernel->slices.push_back(Slice((int)(0.95 * conf.nX), -1, 0));
+		kernel->SaveSliceToTecplot("ySlice_init.dat", kernel->slices[0]);
 
 		//save init solution and run the test
-		kernel->SaveSolution("init.dat");
+		kernel->SaveSolutionToTecplot("init.dat");
 
 		// Run test
 		if (kernel->pManager->IsMaster()) std::cout << "Flat plate test runs." << std::endl <<
 			"Inlet velocity: " << Udr << std::endl;
 		kernel->Run();
+
+		//save solution
+		kernel->SaveSolution("sol.sol");
 
 		//finalize kernel
 		kernel->Finalize();

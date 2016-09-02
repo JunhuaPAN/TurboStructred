@@ -67,8 +67,6 @@ namespace AleshinExp {
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
 		conf.isPeriodicY = false;
-		conf.isUniformAlongX = true;
-		conf.isUniformAlongY = true;
 		conf.Gamma = par.gamma;
 
 		// BC
@@ -103,7 +101,7 @@ namespace AleshinExp {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 		};
 		if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2psLim) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limVenkatar> >(&argc, &argv));
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limBarsJespersen> >(&argc, &argv));
 		};
 		kernel->Init(conf);
 
@@ -156,7 +154,7 @@ namespace AleshinExp {
 		kernel->SetInitialConditions(initD);
 
 		//save solution
-		kernel->SaveSolution("init.dat");
+		kernel->SaveSolutionToTecplot("init.dat");
 
 		// Set sensors if needed
 		auto GetInEnergy = [](std::valarray<double> vals) {
@@ -312,7 +310,7 @@ namespace AleshinExp {
 		kernel->SetInitialConditions(initD);
 
 		//save solution
-		kernel->SaveSolution("init.dat");
+		kernel->SaveSolutionToTecplot("init.dat");
 
 		// Set sensors if needed
 		kernel->isSensorEnable = true;

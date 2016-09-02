@@ -112,7 +112,7 @@ namespace DrivenCavityTest {
 		//kernel->SaveSliceToTecplot("ySlice_init.dat", kernel->slices[0]);
 
 		//save init solution and run the test
-		kernel->SaveSolution("init.dat");
+		kernel->SaveSolutionToTecplot("init.dat");
 
 		// Run test
 		if (kernel->pManager->IsMaster()) std::cout << "Lid-driven cavity test runs." << std::endl <<

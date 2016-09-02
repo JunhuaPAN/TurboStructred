@@ -23,8 +23,40 @@ public:
 	//constructor
 	Linear2psLim() { };
 	Linear2psLim(Linear2PointsStencil& base) : Linear2PointsStencil(base) { };
-	Linear2psLim(std::valarray<double> _vals, int _nDims, int _nValues, std::vector<Vector> _grads) :
-		Linear2PointsStencil(_vals, _nDims, _nValues, _grads) {};
+
+	// Initialization
+	virtual void Init(int _nValues, int _nDims) {
+		Linear2PointsStencil::Init(_nValues, _nDims);
+		lim.resize(_nValues);
+	};
+
+	// Serrialization part
+	static std::size_t GetBufferLenght(int nD, int nV) {
+		return (2 + nD) * nV;
+	};
+	virtual std::valarray<double> Serialize() override {
+		auto size = GetBufferLenght(nDims, nValues);
+		std::valarray<double> res(size);
+
+		// serialize all except the limiter values
+		res[std::slice(0, size - nValues, 1)] = Linear2PointsStencil::Serialize();
+		
+		// add limiter values
+		for (auto i = 0; i < nValues; i++) res[size - nValues + i] = lim[i];
+
+		return res;
+	};
+	virtual void Deserialize(const std::valarray<double>& _values) override {
+		auto size = Linear2PointsStencil::GetBufferLenght(nDims, nValues);
+
+		// first get first part of data and deserialize it
+		auto _val_cut = _values[std::slice(0, size, 1)];
+		Linear2PointsStencil::Deserialize(_val_cut);
+
+		// get limiter values
+		for (auto i = 0; i < nValues; i++) lim(i) = _values[size + i];
+		return;
+	};
 
 };
 

@@ -34,8 +34,6 @@ namespace ContactDisTest
 		conf.nX = 200;
 		conf.LX = 1.0;
 		conf.isPeriodicX = false;
-		conf.isUniformAlongX = true;
-		conf.qx = 1.00;
 		conf.Gamma = TestsUtility::gamma1 + 1;
 
 		// BC
@@ -182,7 +180,7 @@ namespace ContactDisTest
 		fname << MaxTime;
 		fname << ".dat";
 		std::string filename = fname.str();
-		kernel->SaveSolution(filename);
+		kernel->SaveSolutionToTecplot(filename);
 		TestsUtility::SaveExactSolution(filename, kernel->grid, *(kernel->pManager));
 
 		// Save the errors
