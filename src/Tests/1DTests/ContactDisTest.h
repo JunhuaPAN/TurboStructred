@@ -180,7 +180,7 @@ namespace ContactDisTest
 		fname << MaxTime;
 		fname << ".dat";
 		std::string filename = fname.str();
-		kernel->SaveSolution(filename);
+		kernel->SaveSolutionToTecplot(filename);
 		TestsUtility::SaveExactSolution(filename, kernel->grid, *(kernel->pManager));
 
 		// Save the errors

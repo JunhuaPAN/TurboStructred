@@ -61,8 +61,8 @@ namespace BlasiusFlowTest {
 		conf.isPeriodicX = false;
 		conf.isPeriodicY = false;
 		conf.Gamma = par.gamma;
-		conf.IsViscousFlow = false;		// TO DO change
-		//conf.Viscosity = par.viscosity;
+		conf.IsViscousFlow = true;		
+		conf.Viscosity = par.viscosity;
 
 		// Describe grid compression
 		BlockNode beforePlate, startPlate, endPlate, bottomNode;
@@ -197,14 +197,14 @@ namespace BlasiusFlowTest {
 			res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
 			return res;
 		};
-		kernel->SetInitialConditions(InitLinearBL, Integ);
+		kernel->SetInitialConditions(InitDriven, Integ);
 
 		// Create slices
 		kernel->slices.push_back(Slice((int)(0.9 * conf.nX), -1, 0));
 		kernel->SaveSliceToTecplot("ySlice_init.dat", kernel->slices[0]);
 
 		//save init solution and run the test
-		kernel->SaveSolution("init.dat");
+		kernel->SaveSolutionToTecplot("init.dat");
 
 		// Run test
 		if (kernel->pManager->IsMaster()) std::cout << "Flat plate test runs." << std::endl <<
@@ -230,8 +230,8 @@ namespace BlasiusFlowTest {
 	};
 };
 
-// Try to run blasius flow test on not uniform grid
-namespace BlasiusFlowTest_nUniform {
+// Try to save and load solution
+namespace BlasiusFlowTest_SLtest {
 
 	// struct for main parameters of the test
 	struct Parameters {
@@ -281,6 +281,7 @@ namespace BlasiusFlowTest_nUniform {
 		conf.IsViscousFlow = true;
 		conf.Viscosity = par.viscosity;
 
+		
 		// Describe grid compression
 		BlockNode beforePlate, startPlate, bottomNode;
 
@@ -346,7 +347,7 @@ namespace BlasiusFlowTest_nUniform {
 		conf.SaveSolutionTime = 0.1;
 		conf.SaveSolutionIterations = 0;
 		conf.SaveSliceTime = par.Lx / Udr;
-		conf.ResidualOutputIterations = 1000;
+		conf.ResidualOutputIterations = 10;
 
 		// init kernel
 		std::unique_ptr<Kernel> kernel;
@@ -409,19 +410,23 @@ namespace BlasiusFlowTest_nUniform {
 			res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
 			return res;
 		};
-		kernel->SetInitialConditions(InitDriven, Integ);
+		kernel->SetInitialConditions(InitLinearBL, Integ);
+		//kernel->LoadSolution("sol.sol");
 
 		// Create slices
 		kernel->slices.push_back(Slice((int)(0.95 * conf.nX), -1, 0));
 		kernel->SaveSliceToTecplot("ySlice_init.dat", kernel->slices[0]);
 
 		//save init solution and run the test
-		kernel->SaveSolution("init.dat");
+		kernel->SaveSolutionToTecplot("init.dat");
 
 		// Run test
 		if (kernel->pManager->IsMaster()) std::cout << "Flat plate test runs." << std::endl <<
 			"Inlet velocity: " << Udr << std::endl;
 		kernel->Run();
+
+		//save solution
+		kernel->SaveSolution("sol.sol");
 
 		//finalize kernel
 		kernel->Finalize();

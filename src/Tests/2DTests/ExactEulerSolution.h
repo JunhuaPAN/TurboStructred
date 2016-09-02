@@ -134,7 +134,7 @@ namespace ExactEulerSolution {
 		kernel->slices.push_back(Slice(-1, conf.nY / 2, 0));
 
 		//save solution
-		kernel->SaveSolution("init.dat");
+		kernel->SaveSolutionToTecplot("init.dat");
 		kernel->SaveSliceToTecplot("slice_init.dat", kernel->slices[0]);
 
 		//run computation

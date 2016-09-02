@@ -51,11 +51,6 @@
     <ClInclude Include="..\libs\alglib-3.8.0.cpp\cpp\src\stdafx.h" />
     <ClInclude Include="..\src\BoundaryConditions\BCGeneral.h" />
     <ClInclude Include="..\src\BoundaryConditions\BoundaryConditionConfiguration.h" />
-    <ClInclude Include="..\src\EquationsOfState\BarotropicEOS.h" />
-    <ClInclude Include="..\src\EquationsOfState\EquationsOfState.h" />
-    <ClInclude Include="..\src\EquationsOfState\generalEOS.h" />
-    <ClInclude Include="..\src\EquationsOfState\idealGasEOS.h" />
-    <ClInclude Include="..\src\EquationsOfState\VOFMixture\BarotropicTwoPhaseEOS.h" />
     <ClInclude Include="..\src\kernel\grid.h" />
     <ClInclude Include="..\src\kernel\kernel.h" />
     <ClInclude Include="..\src\kernel\KernelConfiguration.h" />

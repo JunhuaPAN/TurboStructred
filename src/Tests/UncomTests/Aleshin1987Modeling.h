@@ -154,7 +154,7 @@ namespace AleshinExp {
 		kernel->SetInitialConditions(initD);
 
 		//save solution
-		kernel->SaveSolution("init.dat");
+		kernel->SaveSolutionToTecplot("init.dat");
 
 		// Set sensors if needed
 		auto GetInEnergy = [](std::valarray<double> vals) {
@@ -310,7 +310,7 @@ namespace AleshinExp {
 		kernel->SetInitialConditions(initD);
 
 		//save solution
-		kernel->SaveSolution("init.dat");
+		kernel->SaveSolutionToTecplot("init.dat");
 
 		// Set sensors if needed
 		kernel->isSensorEnable = true;

@@ -103,8 +103,13 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	};
 	kernel->SetInitialConditions(initD);
 
+	//save init solution and run the test
+	kernel->SaveSolutionToTecplot("init.dat");
+
 	//save solution
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolution("sol.sol");
+	kernel->LoadSolution("sol.sol");
+	kernel->SaveSolutionToTecplot("init2.dat");
 
 	//run computation
 	kernel->Run();
@@ -189,7 +194,7 @@ void RunContactDisconTest1D(int argc, char *argv[]) {
 	kernel->SetInitialConditions(initD);
 
 	// Save solution
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionToTecplot("init.dat");
 
 	// Run computation
 	kernel->Run();
@@ -673,7 +678,7 @@ namespace BlasiusFlowTestDebug {
 		kernel->SetInitialConditions(Init, Integ);
 
 		//save init solution and run the test
-		kernel->SaveSolution("init.dat");
+		kernel->SaveSolutionToTecplot("init.dat");
 
 		// Run test
 		if (kernel->pManager->IsMaster()) std::cout << "Flat plate test runs." << std::endl <<
@@ -784,7 +789,7 @@ void RunSODInverseYTest(int argc, char *argv[]) {
 	kernel->SetInitialConditions(init);
 
 	// Init the slice and save initial solution
-	//kernel->SaveSolution("init.dat");
+	//kernel->SaveSolutionToTecplot("init.dat");
 	kernel->slices.push_back(Slice(1, -1, 0));
 	kernel->SaveSliceToTecplot("init_slice.dat", kernel->slices[0]);
 
@@ -853,7 +858,7 @@ void RunSODTestRoe2D(int argc, char *argv[]) {
 	kernel->SetInitialConditions(initD);
 
 	//save solution
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionToTecplot("init.dat");
 
 	//run computation
 	kernel->Run();
@@ -946,7 +951,7 @@ void RunNohProblem2D(int argc, char *argv[]) {
 	kernel->SetInitialConditions(initD);
 
 	//save solution
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionToTecplot("init.dat");
 
 	//run computation
 	kernel->Run();
@@ -1039,7 +1044,7 @@ void RunTriplePointRoe2D(int argc, char *argv[]) {
 	kernel->SetInitialConditions(initD);
 
 	//save solution
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionToTecplot("init.dat");
 
 	//run computation
 	kernel->Run();
@@ -1126,7 +1131,7 @@ void RunKHI2D(int argc, char *argv[]) {
 	kernel->SetInitialConditions(Init, Integ);
 
 	//save solution
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionToTecplot("init.dat");
 
 	//run computation
 	kernel->Run();
@@ -1202,7 +1207,7 @@ void RunExactEulerTest2D(int argc, char *argv[]) {
 	kernel->SetInitialConditions(initD, IntVolume);
 
 	//save solution
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionToTecplot("init.dat");
 
 	//run computation
 	kernel->Run();
@@ -1298,7 +1303,7 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 		return res;
 	};
 	kernel->SetInitialConditions(NotExactSol, Integ);
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionToTecplot("init.dat");
 
 	// Velocity at center of the channel
 	if (kernel->pManager->IsMaster()) std::cout << "U_max in laminar flow: " << 0.125 * conf.Sigma.x * conf.LY * conf.LY / conf.Viscosity << std::endl;
@@ -1408,7 +1413,7 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 		return res;
 	};
 	kernel->SetInitialConditions(NotExactSol, Integ);
-	//kernel->SaveSolution("init.dat");
+	//kernel->SaveSolutionToTecplot("init.dat");
 
 	// Velocity at center of the channel
 	if (kernel->pManager->IsMaster()) std::cout << "U_max in laminar flow: " << 0.125 * conf.Sigma.x * conf.LY * conf.LY / conf.Viscosity << std::endl;
@@ -1540,7 +1545,7 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	kernel->SetInitialConditions(ContinInitVelocity, Integ);
 
 	//save solution
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionToTecplot("init.dat");
 
 	//Set sensors
 	//auto GetXVel = [](std::valarray<double> vals) {
@@ -1677,7 +1682,7 @@ void RunShearFlow3D(int argc, char *argv[]) {
 	kernel->SetInitialConditions(ExactSol, Integ);
 
 	// Save solution
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionToTecplot("init.dat");
 
 	// Crete slices
 	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.5 * conf.nZ)));
@@ -1799,7 +1804,7 @@ void RunShearFlow3DZ(int argc, char *argv[]) {
 	kernel->SetInitialConditions(ExactSol, Integ);
 
 	// Save solution
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionToTecplot("init.dat");
 
 	// Create slices
 	kernel->slices.push_back(Slice((int)(0.4 * conf.nX), (int)(0.4 * conf.nY), -1));
@@ -1899,7 +1904,7 @@ void RunRTI2D(int argc, char *argv[]) {
 	kernel->SetInitialConditions(initD);
 
 	// Save initial solution
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionToTecplot("init.dat");
 
 	// Run computation
 	kernel->Run();
@@ -1993,7 +1998,7 @@ void RunTurbulentMixing(int argc, char *argv[]) {
 	kernel->SetInitialConditions(Init);
 
 	// Save solution
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionToTecplot("init.dat");
 
 	// Crete slices
 	kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, (int)(0.5 * conf.nZ)));
@@ -2085,7 +2090,7 @@ void RunKonuhovMixing(int argc, char *argv[]) {
 	kernel->SetInitialConditions(Init, Integ);
 
 	//save solution
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionToTecplot("init.dat");
 
 	//Set sensor at center
 	auto GetTemp = [&conf](std::valarray<double> vals) {
@@ -2202,7 +2207,7 @@ void RunPoiseuille3DZ(int argc, char *argv[]) {
 		return res;
 	};
 	kernel->SetInitialConditions(NotExactSol, Integ);
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionToTecplot("init.dat");
 
 	// Print velocity at center of the channel
 	if (kernel->pManager->IsMaster()) std::cout << "U_max in laminar flow: " << 0.125 * conf.Sigma.z * conf.LX * conf.LX / conf.Viscosity << std::endl;
@@ -2313,7 +2318,7 @@ void RunPoiseuille3DX(int argc, char *argv[]) {
 		return res;
 	};
 	kernel->SetInitialConditions(NotExactSol, Integ);
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionToTecplot("init.dat");
 
 	if (kernel->pManager->IsMaster()) std::cout << "U_max in laminar flow: " << 0.125 * conf.Sigma.z * conf.LX * conf.LX / conf.Viscosity << std::endl;
 
@@ -2423,7 +2428,7 @@ void RunPoiseuille3DY(int argc, char *argv[]) {
 		return res;
 	};
 	kernel->SetInitialConditions(NotExactSol, Integ);
-	kernel->SaveSolution("init.dat");
+	kernel->SaveSolutionToTecplot("init.dat");
 
 	if (kernel->pManager->IsMaster()) std::cout << "U_max in laminar flow: " << 0.125 * conf.Sigma.x * conf.LY * conf.LY / conf.Viscosity << std::endl;
 

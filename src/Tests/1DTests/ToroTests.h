@@ -478,7 +478,7 @@ namespace ToroTests
 		fname << params.t_res;
 		fname << ".dat";
 		std::string filename = fname.str();
-		kernel->SaveSolution(filename);
+		kernel->SaveSolutionToTecplot(filename);
 		TestsUtility::SaveExactSolution(filename, kernel->grid, *(kernel->pManager));
 
 		// Save the errors

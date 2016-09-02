@@ -101,8 +101,10 @@ public:
 	double MaxTime;
 	double SaveSolutionTime;
 	double SaveSliceTime;
+	double SaveBinarySolTime;
 	int SaveSolutionIterations;
 	int SaveSliceIterations;
+	int SaveBinarySolIterations;
 
 	int ResidualOutputIterations{ };
 	bool ContinueComputation{ false };
@@ -979,7 +981,93 @@ public:
 		};
 	};
 
-	virtual void SaveSolution(std::string fname) {
+	// Save and load solution functions
+	void SaveSolution(std::string fname) {
+
+		int rank = pManager->getRank();
+
+		// write down the total time
+		std::ofstream ofs;
+		if (pManager->IsMaster()) {
+			ofs.open(fname, std::ios::binary | std::ios::out);
+			ofs.write(reinterpret_cast<char*>(&stepInfo.Time), sizeof stepInfo.Time);
+			ofs.close();
+		};
+
+		// Wait for previous process to finish writing
+		if (!pManager->IsFirstNode()) pManager->Wait(rank - 1);
+
+		// Reopen file for writing and write rank
+		ofs.open(fname, std::ios::binary | std::ios_base::app);
+		ofs.write(reinterpret_cast<char*>(&rank), sizeof rank);
+
+		// Write our solution
+		for (int k = grid.kMin; k <= grid.kMax; k++) {
+			for (int j = grid.jMin; j <= grid.jMax; j++) {
+				for (int i = grid.iMin; i <= grid.iMax; i++) {
+					// write down all cell values
+					auto val = getCellValues(i, j, k);
+					ofs.write(reinterpret_cast<char*>(val), nVariables * sizeof(double) );
+				};
+			};
+		};
+		ofs.close();
+
+		// Signal to next process to begin writing
+		if (!pManager->IsLastNode()) {
+			pManager->Signal(rank + 1);
+		};
+		//Syncronize
+		pManager->Barrier();
+		return;
+	};
+	void LoadSolution(std::string fname) {
+
+		int rank = pManager->getRank();
+		int Nproc = pManager->getProcessorNumber();
+
+		// read down the total time
+		std::ifstream ifs;
+		ifs.open(fname, std::ios::binary | std::ios::in);
+		ifs.read(reinterpret_cast<char*>(&stepInfo.Time), sizeof stepInfo.Time);
+
+		// start to read file
+		for (int np = 0; np < Nproc; np++) {
+
+			// read the rank of process that write the part of solution
+			int read_rank;
+			ifs.read(reinterpret_cast<char*>(&read_rank), sizeof rank);
+
+			// if rank the same as current - read the data
+			if (rank == read_rank) {
+				for (int k = grid.kMin; k <= grid.kMax; k++) {
+					for (int j = grid.jMin; j <= grid.jMax; j++) {
+						for (int i = grid.iMin; i <= grid.iMax; i++) {
+							// read all cell values
+							auto val = getCellValues(i, j, k);
+							ifs.read(reinterpret_cast<char*>(val), nVariables * sizeof(double));
+						};
+					};
+				};
+				// finish of data reading
+				break;	
+			} // if ranks are differrent
+			else {
+				double read_var;
+				for (int i = 0; i < grid.nCellsLocal * nVariables; i++) ifs.read(reinterpret_cast<char*>(&read_var), sizeof read_var);
+			};
+		};
+
+		ifs.close();
+
+		//Syncronize
+		pManager->Barrier();
+		if (pManager->IsLastNode()) std::cout <<"rank " << rank << ": solution is loaded" << std::endl;
+		return;
+	};
+
+	// Tecplot format saver
+	virtual void SaveSolutionToTecplot(std::string fname) {
 		//Tecplot version    
 		int rank = pManager->getRank();
 
@@ -1631,7 +1719,7 @@ public:
 				std::stringstream snapshotFileName;
 				//snapshotFileName.str(std::string());
 				snapshotFileName << "solution, It = " << stepInfo.Iteration << ".dat";
-				SaveSolution(snapshotFileName.str());
+				SaveSolutionToTecplot(snapshotFileName.str());
 
 				if (pManager->IsMaster()) {
 					std::cout << "Solution has been written to file \"" << snapshotFileName.str() << "\"" << std::endl;
@@ -1659,7 +1747,7 @@ public:
 				snapshotFileName << std::fixed;
 				snapshotFileName.precision(SolutionTimePrecision);
 				snapshotFileName << "solution, t = " << stepInfo.Time << ".dat";
-				SaveSolution(snapshotFileName.str());
+				SaveSolutionToTecplot(snapshotFileName.str());
 
 				if (pManager->IsMaster()) {
 					std::cout << "Solution has been written to file \"" << snapshotFileName.str() << "\"" << std::endl;
