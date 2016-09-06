@@ -28,12 +28,6 @@
     <Filter Include="Header Files\Tests">
       <UniqueIdentifier>{a7f52c3f-86bc-416d-92b5-a1c5bbb7f531}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\EquationsOfState">
-      <UniqueIdentifier>{25ec4059-96a0-497e-a0c6-d20e801d511b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\EquationsOfState\VOFMixture">
-      <UniqueIdentifier>{bf1236cd-51d9-4951-994c-58eed3c49a36}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\Sensors">
       <UniqueIdentifier>{b9c6dcee-e4c8-4b21-b568-776f2d2da65c}</UniqueIdentifier>
     </Filter>
@@ -110,9 +104,6 @@
     <ClInclude Include="..\src\utility\Vector.h">
       <Filter>Header Files\Utility</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\utility\Matrix.h">
-      <Filter>Header Files\Utility</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\utility\Timer.h">
       <Filter>Header Files\Utility</Filter>
     </ClInclude>
@@ -140,21 +131,6 @@
     <ClInclude Include="..\src\tests\tests.h">
       <Filter>Header Files\Tests</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\EquationsOfState\generalEOS.h">
-      <Filter>Header Files\EquationsOfState</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\EquationsOfState\idealGasEOS.h">
-      <Filter>Header Files\EquationsOfState</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\EquationsOfState\EquationsOfState.h">
-      <Filter>Header Files\EquationsOfState</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\EquationsOfState\VOFMixture\BarotropicTwoPhaseEOS.h">
-      <Filter>Header Files\EquationsOfState\VOFMixture</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\EquationsOfState\BarotropicEOS.h">
-      <Filter>Header Files\EquationsOfState</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\Sensors\Sensor.h">
       <Filter>Header Files\Sensors</Filter>
     </ClInclude>
@@ -176,13 +152,7 @@
     <ClInclude Include="..\src\Reconstruction\ENO2PointsStencil.h">
       <Filter>Header Files\Reconstruction</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Reconstruction\WENO2PointsStencil.h">
-      <Filter>Header Files\Reconstruction</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\BoundaryConditions\BoundaryConditionConfiguration.h">
-      <Filter>Header Files\BoundaryConditions</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\BoundaryConditions\IBoundaryCondition.h">
       <Filter>Header Files\BoundaryConditions</Filter>
     </ClInclude>
     <ClInclude Include="..\src\Tests\UncomTests\Aleshin1987Modeling.h">
@@ -260,12 +230,6 @@
     <ClInclude Include="..\src\utility\Integration.h">
       <Filter>Header Files\Utility</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Tests\1DTests\RarefactionTest1.h">
-      <Filter>Header Files\Tests\1DTests</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\Tests\1DTests\RarefactionTest2.h">
-      <Filter>Header Files\Tests\1DTests</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\utility\Direction.h">
       <Filter>Header Files\Utility</Filter>
     </ClInclude>
@@ -293,15 +257,34 @@
     <ClInclude Include="..\src\kernel\GasProperties.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Reconstruction\ENO2CharactVars.h">
-      <Filter>Header Files\Reconstruction</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\Tests\2DTests\BlasiusFlowTest.h">
       <Filter>Header Files\Tests\2DTests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\GradientComputer.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\Stencil.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Reconstruction\Linear2PointsStencil.h">
+      <Filter>Header Files\Reconstruction</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Reconstruction\Linear2psLim.h">
+      <Filter>Header Files\Reconstruction</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\Limiters.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\Constants.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\1DTests\xyzTest.h">
+      <Filter>Header Files\Tests\1DTests</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
     <None Include="ClassDiagram1.cd" />
+    <None Include="ClassDiagram2.cd" />
   </ItemGroup>
 </Project>
