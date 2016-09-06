@@ -6,7 +6,7 @@
 
 // Info about cell
 struct CellInfo {
-	int i, j, k;		// indexes of cell
+	//int i, j, k;		// indexes of cell
 	double hx, hy, hz;	// geometric sizes
 	double x, y, z;		// center position
 };
@@ -32,11 +32,6 @@ public:
 	bool IsPeriodicX;
 	bool IsPeriodicY;
 	bool IsPeriodicZ;
-
-	//compression coefficient of grid sizes towards the borders in X Y and Z directions (as geometric progression)
-	double qx;
-	double qy;
-	double qz;
 
 	//Same for local cells
 	int nlocalX;		// grid par
@@ -65,280 +60,378 @@ public:
 	//Constructor
 	Grid() {};
 
-	//Initialize Global Grid
-	void InitGlobal(KernelConfiguration& config) {
-		nDims = config.nDims;
-
-		//Initialize local grid
-		int dummyCellLayers = config.DummyLayerSize; //number of dummy cell layers				
-		nX = config.nX;
-		IsPeriodicX = config.isPeriodicX;
-		dummyCellLayersX = dummyCellLayers;
-		nY = 1;
-		IsPeriodicY = true;
-		dummyCellLayersY = 0;
-		nZ = 1;
-		IsPeriodicZ = true;
-		dummyCellLayersZ = 0;
-		if (nDims > 1) {
-			nY = config.nY;
-			IsPeriodicY = config.isPeriodicY;
-			dummyCellLayersY = dummyCellLayers;
-		};
-		if (nDims > 2) {
-			nZ = config.nZ;
-			IsPeriodicZ = config.isPeriodicZ;
-			dummyCellLayersZ = dummyCellLayers;
-		};
-		// degrees of freedom of global grid
-		nXAll = nX + 2 * dummyCellLayersX;
-		nYAll = nY + 2 * dummyCellLayersY;
-		nZAll = nZ + 2 * dummyCellLayersZ;
-
-		// Prepare coordinate arrays
-		CoordinateX.resize(nXAll);
-		CoordinateY.resize(nYAll);
-		CoordinateZ.resize(nZAll);
-		hx.resize(nXAll);
-		hy.resize(nYAll);
-		hz.resize(nZAll);
-
-		//nullify compression if we have uniform grid
-		if (config.isUniformAlongX == false) {
-			qx = config.qx;
-			assert(IsPeriodicX == false);
-		}
-		else qx = 1;
-		if (config.isUniformAlongY == false) {
-			qy = config.qy;
-			assert(IsPeriodicY == false);
-		}
-		else qy = 1;
-		if (config.isUniformAlongZ == false) {
-			qz = config.qz;
-			assert(IsPeriodicZ == false);
-		}
-		else qz = 1;
-
-	return;
-	};
-
-	// Initialize Local Grid
-	void InitLocal(KernelConfiguration& config) {
-		// Global domain sizes
-		double Lx = config.LX;
-		double Ly = config.LY;
-		double Lz = config.LZ;
-		if (nDims < 3) Lz = 0;
-		if (nDims < 2) Ly = 0;
-
-		// compute local sizes
-		nlocalX = iMax - iMin + 1;
-		nlocalY = jMax - jMin + 1;
-		nlocalZ = kMax - kMin + 1;
-		nlocalXAll = nlocalX + 2 * dummyCellLayersX;
-		nlocalYAll = nlocalY + 2 * dummyCellLayersY;
-		nlocalZAll = nlocalZ + 2 * dummyCellLayersZ;
-		nCellsLocal = nlocalX * nlocalY * nlocalZ;
-		nCellsLocalAll = nlocalXAll * nlocalYAll * nlocalZAll;
-
-		// Compressible Grid scheme
-		//
-		//	_|________|_________|_
-		//	 |        |         |
-		//	 |        |         |
-		//	 |        |         |
-		//	 |        |         |					Second layer of Inner cells
-		//	 |        |         |
-		//	_|________|_________|_
-		//	 |        |         |		)
-		//	 |        |         |		> H			First layer of Inner cells
-		//	_|________|_________|_		)	
-		//	______________________		<-- Border is Here
-		//	 |        |         |		)
-		//	 |        |         |		> H			First lauer of Fictious cells
-		//	_|________|_________|_		)
-		//	 |        |         |		)
-		//	 |        |         |		> H			Second layer of Fictious cells
-		//	_|________|_________|_		)
-		//	 |		  |			|
-
-		// fill cell centers positions and edges sizes
-		double h_x = Lx / nX;			//uniform grid case
-		if ((qx != 1) && (nX % 2 == 0)) h_x = 0.5 * Lx * (1.0 - qx) / (1.0 - pow(qx, 0.5 * nX));	// X step around the border for even cells number
-		if ((qx != 1) && (nX % 2 == 1)) h_x = Lx * (1.0 - qx) / (2.0 - pow(qx, 0.5 * (nX - 1)) * (1.0 + qx));		// for odd cell numbers
-		double xl = -(dummyCellLayersX * h_x) + 0.5 * h_x;				//left cell (global) position
-		double xr = Lx + dummyCellLayersX * h_x - 0.5 * h_x;			//right cell (global) position
-		for (int i = 0; i < dummyCellLayersX; i++) {
-			CoordinateX[i] = xl;
-			CoordinateX[nXAll - 1 - i] = xr;
-			hx[i] = h_x;
-			hx[nXAll - 1 - i] = h_x;
-			xl += h_x;
-			xr -= h_x;
-		};
-
-		for (int i = dummyCellLayersX; i <= 0.5 * (nX - 1) + dummyCellLayersX; i++) {
-			CoordinateX[i] = xl;
-			CoordinateX[nXAll - 1 - i] = xr;
-			hx[i] = h_x;
-			hx[nXAll - 1 - i] = h_x;
-			xl += 0.5 * h_x * (1.0 + qx);
-			xr -= 0.5 * h_x * (1.0 + qx);
-			h_x *= qx;
-		};
-
-		double h_y = Ly / nY;			//uniform grid case
-		if ((qy != 1) && (nY % 2 == 0)) h_y = 0.5 * Ly * (1.0 - qy) / (1.0 - pow(qy, 0.5 * nY));	// Y step around the border for even cells number
-		if ((qy != 1) && (nY % 2 == 1)) h_y = Ly * (1.0 - qy) / (2.0 - pow(qy, 0.5 * (nY - 1)) * (1.0 + qy));		// for odd cell numbers in Y direction
-		double yl = -(dummyCellLayersY * h_y) + 0.5 * h_y;			//	left cell (global) position
-		double yr = Ly + dummyCellLayersY * h_y - 0.5 * h_y;		//	right cell (global) position
-		for (int i = 0; i < dummyCellLayersY; i++) {
-			CoordinateY[i] = yl;
-			CoordinateY[nYAll - 1 - i] = yr;
-			hy[i] = h_y;
-			hy[nYAll - 1 - i] = h_y;
-			yl += h_y;
-			yr -= h_y;
-		};
-
-		for (int j = dummyCellLayersY; j <= 0.5 * (nY - 1) + dummyCellLayersY; j++) {
-			CoordinateY[j] = yl;
-			CoordinateY[nYAll - 1 - j] = yr;
-			hy[j] = h_y;
-			hy[nYAll - 1 - j] = h_y;
-			yl += 0.5 * h_y * (1.0 + qy);
-			yr -= 0.5 * h_y * (1.0 + qy);
-			h_y *= qy;
-		};
-
-		double h_z = Lz / nZ;			//uniform grid case
-		if ((qz != 1) && (nZ % 2 == 0)) h_z = 0.5 * Lz * (1.0 - qz) / (1.0 - pow(qz, 0.5 * nZ));	// Z step around the border for even cells number
-		if ((qz != 1) && (nZ % 2 == 1)) h_z = Lz * (1.0 - qz) / (2.0 - pow(qz, 0.5 * (nZ - 1)) * (1.0 + qz));		// for odd cell numbers in Z direction
-		double zl = -(dummyCellLayersZ * h_z) + 0.5 * h_z;				//left cell (global) position
-		double zr = Lz + dummyCellLayersZ * h_z - 0.5 * h_z;			//right cell (global) position
-		for (int i = 0; i < dummyCellLayersZ; i++) {
-			CoordinateZ[i] = zl;
-			CoordinateZ[nZAll - 1 - i] = zr;
-			hz[i] = h_z;
-			hz[nZAll - 1 - i] = h_z;
-			zl += h_z;
-			zr -= h_z;
-		};
-
-		for (int k = dummyCellLayersZ; k <= 0.5 * (nZ - 1) + dummyCellLayersZ; k++) {
-			CoordinateZ[k] = zl;
-			CoordinateZ[nZAll - 1 - k] = zr;
-			hz[k] = h_z;
-			hz[nZAll - 1 - k] = h_z;
-			zl += 0.5 * h_z * (1.0 + qz);
-			zr -= 0.5 * h_z * (1.0 + qz);
-			h_z *= qz;
-		};
-
-		if (nDims < 2) hy[0] = 1.0;
-		if (nDims < 3) hz[0] = 1.0;
-
-		// compute volumes of local cells
-		volumes.resize(nCellsLocalAll);
-		for (int i = iMin - dummyCellLayersX; i <= iMax + dummyCellLayersX; i++)
-		{
-			for (int j = jMin - dummyCellLayersY; j <= jMax + dummyCellLayersY; j++)
-			{
-				for (int k = kMin - dummyCellLayersZ; k <= kMax + dummyCellLayersZ; k++)
-				{
-					// get serial local index
-					int idx = getSerialIndexLocal(i, j, k);
-					//Compute cell volume
-					volumes[idx] = hx[i] * hy[j] * hz[k];
-				};
-			};
-		};
-	}
-
 	// Get local index for cell
 	inline int getSerialIndexLocal(int i, int j, int k) {
 		int sI = (k - kMin + dummyCellLayersZ) * nlocalXAll * nlocalYAll + (j - jMin + dummyCellLayersY) * nlocalXAll + (i - iMin + dummyCellLayersX);
 		return sI;
 	};
 
+	//Initialize Global Grid
+	void InitGlobal(KernelConfiguration& config);
+
+	// Initialize Local Grid
+	void InitLocal(KernelConfiguration& config);
+
+	// Create new grid as part of initial grid
+	Grid CreateSubGrid(int iMin, int iMax, int jMin, int jMax, int kMin, int kMax);
+
+	// Take information about the cell
+	CellInfo CreateCell(int i, int j, int k);
 };
 
+//Initialize Global Grid
+void Grid::InitGlobal(KernelConfiguration& config) {
+	nDims = config.nDims;
+
+	//Initialize local grid
+	int dummyCellLayers = config.DummyLayerSize; //number of dummy cell layers				
+	nX = config.nX;
+	IsPeriodicX = config.isPeriodicX;
+	dummyCellLayersX = dummyCellLayers;
+	nY = 1;
+	IsPeriodicY = true;
+	dummyCellLayersY = 0;
+	nZ = 1;
+	IsPeriodicZ = true;
+	dummyCellLayersZ = 0;
+	if (nDims > 1) {
+		nY = config.nY;
+		IsPeriodicY = config.isPeriodicY;
+		dummyCellLayersY = dummyCellLayers;
+	};
+	if (nDims > 2) {
+		nZ = config.nZ;
+		IsPeriodicZ = config.isPeriodicZ;
+		dummyCellLayersZ = dummyCellLayers;
+	};
+	// degrees of freedom of global grid
+	nXAll = nX + 2 * dummyCellLayersX;
+	nYAll = nY + 2 * dummyCellLayersY;
+	nZAll = nZ + 2 * dummyCellLayersZ;
+
+	// Prepare coordinate arrays
+	CoordinateX.resize(nXAll);
+	CoordinateY.resize(nYAll);
+	CoordinateZ.resize(nZAll);
+	hx.resize(nXAll);
+	hy.resize(nYAll);
+	hz.resize(nZAll);
+
+	return;
+};
+
+// Initialize Local Grid
+void Grid::InitLocal(KernelConfiguration& config) {
+	// Global domain sizes
+	double Lx = config.LX;
+	double Ly = config.LY;
+	double Lz = config.LZ;
+	if (nDims < 3) Lz = 0;
+	if (nDims < 2) Ly = 0;
+
+	// compute local sizes
+	nlocalX = iMax - iMin + 1;
+	nlocalY = jMax - jMin + 1;
+	nlocalZ = kMax - kMin + 1;
+	nlocalXAll = nlocalX + 2 * dummyCellLayersX;
+	nlocalYAll = nlocalY + 2 * dummyCellLayersY;
+	nlocalZAll = nlocalZ + 2 * dummyCellLayersZ;
+	nCellsLocal = nlocalX * nlocalY * nlocalZ;
+	nCellsLocalAll = nlocalXAll * nlocalYAll * nlocalZAll;
+
+	// Compressible Grid scheme
+	//
+	//	_|________|_________|_
+	//	 |        |         |
+	//	 |        |         |
+	//	 |        |         |
+	//	 |        |         |					Second layer of Inner cells
+	//	 |        |         |
+	//	_|________|_________|_
+	//	 |        |         |		)
+	//	 |        |         |		> H			First layer of Inner cells
+	//	_|________|_________|_		)	
+	//	______________________		<-- Border is Here
+	//	 |        |         |		)
+	//	 |        |         |		> H			First layer of Fictious cells
+	//	_|________|_________|_		)
+	//	 |        |         |		)
+	//	 |        |         |		> H			Second layer of Fictious cells
+	//	_|________|_________|_		)
+	//	 |		  |			|
+
+
+	// check if we have uniform on X grid
+	config.CompressionX.push_back(BlockNode(Lx));	// add final (empty) node (right border point)
+	auto x_stp{ 1.0 };
+	if (config.CompressionX[0].N_cells < 1) {
+		x_stp = Lx / nX;
+		config.CompressionX[0].N_cells = config.nX;		// cells number
+	}	else {
+		auto first_n = config.CompressionX[0];
+		auto bl_len = config.CompressionX[1].pos - first_n.pos;
+		auto Nc = first_n.N_cells;		// number of cells in first block
+
+		// compute first space step
+		if (first_n.q_com == 1.0) x_stp = bl_len / Nc;
+		else x_stp = bl_len * (1.0 - first_n.q_com) / (1.0 - pow(first_n.q_com, Nc));		// first term of geometric progression
+	};
+
+	// compute node positions on the left side of the domain
+	auto xc = -(dummyCellLayersX * x_stp) + 0.5 * x_stp;			//left cell (global) position
+	auto c_idx = 0;
+	for (; c_idx < dummyCellLayersX; c_idx++) {
+		CoordinateX[c_idx] = xc;
+		hx[c_idx] = x_stp;
+		xc += x_stp;
+	};
+
+	// obtain space between block nodes
+	for (auto b = 1; b < config.CompressionX.size(); b++) {
+		auto blNode = config.CompressionX[b - 1];	// left node
+		for (auto i = 0; i < blNode.N_cells; i++) {
+			CoordinateX[c_idx + i] = xc;
+			hx[c_idx + i] = x_stp;
+			xc += 0.5 * x_stp * (1.0 + blNode.q_com);
+			x_stp *= blNode.q_com;
+		};
+		c_idx += blNode.N_cells;
+		// check if we have new not empty node
+		if (config.CompressionX[b].N_cells > 0) {
+			// compute new x_stp
+			auto new_bl_len = config.CompressionX[b + 1].pos - config.CompressionX[b].pos;
+			auto new_Nc = config.CompressionX[b].N_cells;
+			auto new_q = config.CompressionX[b].q_com;
+
+			// compute first space step for new block and first cell position
+			if (new_q == 1.0) x_stp = new_bl_len / new_Nc;
+			else x_stp = new_bl_len * (1.0 - new_q) / (1.0 - pow(new_q, new_Nc));
+			xc = config.CompressionX[b].pos + 0.5 * x_stp;
+		}
+	};
+
+	// final layers of dummy cells
+	for (auto i = 0; i < dummyCellLayersX; i++) {
+		CoordinateX[c_idx + i] = xc;
+		hx[c_idx + i] = x_stp;
+		xc += x_stp;
+	};
+
+	// Repeat that part for Y and Z 
+	// Copy and change
+
+	// for Y direction
+	if (nDims > 1) {
+		config.CompressionY.push_back(BlockNode(Ly));	// add final (empty) node (right border point)
+		auto y_stp{ 1.0 };
+		if (config.CompressionY[0].N_cells < 1) {
+			y_stp = Ly / nY;
+			config.CompressionY[0].N_cells = config.nY;		// cells number
+		}
+		else {
+			auto first_n = config.CompressionY[0];
+			auto bl_len = config.CompressionY[1].pos - first_n.pos;
+			auto Nc = first_n.N_cells;		// number of cells in first block
+
+			// compute first space step
+			if (first_n.q_com == 1.0) y_stp = bl_len / Nc;
+			else y_stp = bl_len * (1.0 - first_n.q_com) / (1.0 - pow(first_n.q_com, Nc));		// first term of geometric progression
+		};
+
+		// compute node positions on the left side of the domain
+		auto yc = -(dummyCellLayersY * y_stp) + 0.5 * y_stp;			//left cell (global) position
+		auto c_idx = 0;
+		for (; c_idx < dummyCellLayersY; c_idx++) {
+			CoordinateY[c_idx] = yc;
+			hy[c_idx] = y_stp;
+			yc += y_stp;
+		};
+
+		// obtain space between block nodes
+		for (auto b = 1; b < config.CompressionY.size(); b++) {
+			auto blNode = config.CompressionY[b - 1];	// left node
+			for (auto i = 0; i < blNode.N_cells; i++) {
+				CoordinateY[c_idx + i] = yc;
+				hy[c_idx + i] = y_stp;
+				yc += 0.5 * y_stp * (1.0 + blNode.q_com);
+				y_stp *= blNode.q_com;
+			};
+			c_idx += blNode.N_cells;
+			// check if we have new not empty node
+			if (config.CompressionY[b].N_cells > 0) {
+				// compute new y_stp
+				auto new_bl_len = config.CompressionY[b + 1].pos - config.CompressionY[b].pos;
+				auto new_Nc = config.CompressionY[b].N_cells;
+				auto new_q = config.CompressionY[b].q_com;
+
+				// compute first space step for new block
+				if (new_q == 1.0) y_stp = new_bl_len / new_Nc;
+				else y_stp = new_bl_len * (1.0 - new_q) / (1.0 - pow(new_q, new_Nc));
+				yc = config.CompressionY[b].pos + 0.5 * y_stp;
+			}
+		};
+
+		// final layers of dummy cells
+		for (auto i = 0; i < dummyCellLayersY; i++) {
+			CoordinateY[c_idx + i] = yc;
+			hy[c_idx + i] = y_stp;
+			yc += y_stp;
+		};
+
+	}
+
+	// for Z direction
+	if (nDims > 2) {
+		config.CompressionZ.push_back(BlockNode(Lz));	// add final (empty) node (right border point)
+		auto z_stp{ 1.0 };
+		if (config.CompressionZ[0].N_cells < 1) {
+			z_stp = Lz / nZ;
+			config.CompressionZ[0].N_cells = config.nZ;		// cells number
+		}
+		else {
+			auto first_n = config.CompressionZ[0];
+			auto bl_len = config.CompressionZ[1].pos - first_n.pos;
+			auto Nc = first_n.N_cells;		// number of cells in first block
+
+											// compute first space step
+			if (first_n.q_com == 1.0) z_stp = bl_len / Nc;
+			else z_stp = bl_len * (1.0 - first_n.q_com) / (1.0 - pow(first_n.q_com, Nc));		// first term of geometric progression
+		};
+
+		// compute node positions on the left side of the domain
+		auto zc = -(dummyCellLayersZ * z_stp) + 0.5 * z_stp;			//left cell (global) position
+		auto c_idx = 0;
+		for (; c_idx < dummyCellLayersZ; c_idx++) {
+			CoordinateZ[c_idx] = zc;
+			hz[c_idx] = z_stp;
+			zc += z_stp;
+		};
+
+		// obtain space between block nodes
+		for (auto b = 1; b < config.CompressionZ.size(); b++) {
+			auto blNode = config.CompressionZ[b - 1];	// left node
+			for (auto i = 0; i < blNode.N_cells; i++) {
+				CoordinateZ[c_idx + i] = zc;
+				hz[c_idx + i] = z_stp;
+				zc += 0.5 * z_stp * (1.0 + blNode.q_com);
+				z_stp *= blNode.q_com;
+			};
+			c_idx += blNode.N_cells;
+			// check if we have new not empty node
+			if (config.CompressionZ[b].N_cells > 0) {
+				// compute new z_stp
+				auto new_bl_len = config.CompressionZ[b + 1].pos - config.CompressionZ[b].pos;
+				auto new_Nc = config.CompressionZ[b].N_cells;
+				auto new_q = config.CompressionZ[b].q_com;
+
+				// compute first space step for new block
+				if (new_q == 1.0) z_stp = new_bl_len / new_Nc;
+				else z_stp = new_bl_len * (1.0 - new_q) / (1.0 - pow(new_q, new_Nc));
+				zc = config.CompressionZ[b].pos + 0.5 * z_stp;
+			}
+		};
+
+		// final layers of dummy cells
+		for (auto i = 0; i < dummyCellLayersZ; i++) {
+			CoordinateZ[c_idx + i] = zc;
+			hz[c_idx + i] = z_stp;
+			zc += z_stp;
+		};
+
+	}
+
+	if (nDims < 2) hy[0] = 1.0;
+	if (nDims < 3) hz[0] = 1.0;
+
+	// compute volumes of local cells
+	volumes.resize(nCellsLocalAll);
+	for (int i = iMin - dummyCellLayersX; i <= iMax + dummyCellLayersX; i++)
+	{
+		for (int j = jMin - dummyCellLayersY; j <= jMax + dummyCellLayersY; j++)
+		{
+			for (int k = kMin - dummyCellLayersZ; k <= kMax + dummyCellLayersZ; k++)
+			{
+				// get serial local index
+				int idx = getSerialIndexLocal(i, j, k);
+				//Compute cell volume
+				volumes[idx] = hx[i] * hy[j] * hz[k];
+			};
+		};
+	};
+}
+
 // Create new grid as part of initial grid
-Grid CreateSubGrid(int iMin, int iMax, int jMin,int jMax, int kMin, int kMax, Grid& g) {
+Grid Grid::CreateSubGrid(int _iMin, int _iMax, int _jMin, int _jMax, int _kMin, int _kMax) {
 	Grid res;
 
 	// define min and max indexes of subgrid in all directions 
 	// X first
-	if ((iMin > g.iMax) || (iMax < g.iMin)) {
+	if ((_iMin > iMax) || (_iMax < iMin)) {
 		// no intersection case
 		res.nlocalX = 0;
-		res.iMin = g.iMin;
-		res.iMax = g.iMin - 1;
+		res.iMin = iMin;
+		res.iMax = iMin - 1;
 	} else {
 		// default (subgrid includes full grid g )
-		res.iMin = g.iMin;
-		res.iMax = g.iMax;
-		if ((iMin >= g.iMin) && (iMin <= g.iMax)) res.iMin = iMin;
-		if ((iMax >= g.iMin) && (iMax <= g.iMax)) res.iMax = iMax;
+		res.iMin = iMin;
+		res.iMax = iMax;
+		if ((_iMin >= iMin) && (_iMin <= iMax)) res.iMin = _iMin;
+		if ((_iMax >= iMin) && (_iMax <= iMax)) res.iMax = _iMax;
 		res.nlocalX = res.iMax - res.iMin + 1;
 	};
 
 	// Y first
-	if ((jMin > g.jMax) || (jMax < g.jMin)) {
+	if ((_jMin > jMax) || (_jMax < jMin)) {
 		// no intersection case
 		res.nlocalY = 0;
-		res.jMin = g.jMin;
-		res.jMax = g.jMin - 1;
+		res.jMin = jMin;
+		res.jMax = jMin - 1;
 	}
 	else {
 		// default (subgrid includes full grid g )
-		res.jMin = g.jMin;
-		res.jMax = g.jMax;
-		if ((jMin >= g.jMin) && (jMin <= g.jMax)) res.jMin = jMin;
-		if ((jMax >= g.jMin) && (jMax <= g.jMax)) res.jMax = jMax;
+		res.jMin = jMin;
+		res.jMax = jMax;
+		if ((_jMin >= jMin) && (_jMin <= jMax)) res.jMin = _jMin;
+		if ((_jMax >= jMin) && (_jMax <= jMax)) res.jMax = _jMax;
 		res.nlocalY = res.jMax - res.jMin + 1;
 	};
 	
 	// Z first
-	if ((kMin > g.kMax) || (kMax < g.kMin)) {
+	if ((_kMin > kMax) || (_kMax < kMin)) {
 		// no intersection case
 		res.nlocalZ = 0;
-		res.kMin = g.kMin;
-		res.kMax = g.kMin - 1;
+		res.kMin = kMin;
+		res.kMax = kMin - 1;
 	}
 	else {
 		// default (subgrid includes full grid g )
-		res.kMin = g.kMin;
-		res.kMax = g.kMax;
-		if ((kMin >= g.kMin) && (kMin <= g.kMax)) res.kMin = kMin;
-		if ((kMax >= g.kMin) && (kMax <= g.kMax)) res.kMax = kMax;
+		res.kMin = kMin;
+		res.kMax = kMax;
+		if ((_kMin >= kMin) && (_kMin <= kMax)) res.kMin = _kMin;
+		if ((_kMax >= kMin) && (_kMax <= kMax)) res.kMax = _kMax;
 		res.nlocalZ = res.kMax - res.kMin + 1;
 	};
 	
 	// define coordinates and space steps
-	res.CoordinateX = g.CoordinateX; //Cell center coordinates			// grid par
-	res.CoordinateY = g.CoordinateY; //Cell center coordinates			// grid par
-	res.CoordinateZ = g.CoordinateZ; //Cell center coordinates			// grid par
-	res.hx = g.hx;
-	res.hy = g.hy;
-	res.hz = g.hz;
+	res.CoordinateX = CoordinateX; //Cell center coordinates			// grid par
+	res.CoordinateY = CoordinateY; //Cell center coordinates			// grid par
+	res.CoordinateZ = CoordinateZ; //Cell center coordinates			// grid par
+	res.hx = hx;
+	res.hy = hy;
+	res.hz = hz;
 
 	return res;
 };
 
 // Take information about the cell
-CellInfo CreateCell(int i, int j, int k, Grid& g) {
+CellInfo Grid::CreateCell(int i, int j, int k) {
 	CellInfo res;
-	res.i = i;
-	res.j = j;
-	res.k = k;
-	res.hx = g.hx[i];
-	res.hy = g.hy[j];
-	res.hz = g.hz[k];
-	res.x = g.CoordinateX[i];
-	res.y = g.CoordinateY[j];
-	res.z = g.CoordinateZ[k];
+	res.hx = hx[i];
+	res.hy = hy[j];
+	res.hz = hz[k];
+	res.x = CoordinateX[i];
+	res.y = CoordinateY[j];
+	res.z = CoordinateZ[k];
 
 	return res;
 };

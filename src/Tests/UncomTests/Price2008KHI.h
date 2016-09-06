@@ -100,7 +100,7 @@ namespace Price2008KHI {
 		kernel->SetInitialConditions(Init, Integ);
 
 		//save solution
-		kernel->SaveSolution("init.dat");
+		kernel->SaveSolutionToTecplot("init.dat");
 
 		//run computation
 		kernel->Run();

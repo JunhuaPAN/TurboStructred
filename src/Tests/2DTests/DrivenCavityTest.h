@@ -56,25 +56,23 @@ namespace DrivenCavityTest {
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
 		conf.isPeriodicY = false;
-		conf.Gamma = 1.4;
+		conf.Gamma = par.gamma;
 		conf.IsViscousFlow = true;
 		conf.Viscosity = ComputeViscosity();
-		//conf.Viscosity = 0;
 
 		// BC
-		conf.xLeftBoundary.BCType = BoundaryConditionType::Wall;
-		conf.xLeftBoundary.Gamma = 1.4;
-		conf.xRightBoundary.BCType = BoundaryConditionType::Wall;
-		conf.xRightBoundary.Gamma = 1.4;
-		conf.yLeftBoundary.BCType = BoundaryConditionType::Wall;
-		conf.yLeftBoundary.Gamma = 1.4;
-		conf.yRightBoundary.BCType = BoundaryConditionType::MovingWall;
-		conf.yRightBoundary.Gamma = 1.4;
-		conf.yRightBoundary.Velocity = Vector(par.U_dr, 0, 0);
+		BoundaryConditionConfiguration TopPlate(BoundaryConditionType::MovingWall);
+		TopPlate.Velocity = Vector(par.U_dr, 0, 0);
+		conf.MyConditions[1] = BoundaryConditionConfiguration(BoundaryConditionType::Wall);
+		conf.MyConditions[2] = TopPlate;
+		conf.xLeftBoundary.SetMarker(1);
+		conf.xRightBoundary.SetMarker(1);
+		conf.yLeftBoundary.SetMarker(1);
+		conf.yRightBoundary.SetMarker(2);
 
 		// Method settings
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-		conf.methodConfiguration.CFL = 0.5;
+		conf.methodConfiguration.CFL = 0.45;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
 		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
@@ -84,9 +82,8 @@ namespace DrivenCavityTest {
 		// Computational settings
 		conf.MaxTime = 100.0;
 		conf.MaxIteration = 10000000;
-		conf.SaveSolutionTime = 0.01;
-		conf.SaveSolutionIterations = 0;
-		conf.SaveSliceTime = 0.01;
+		conf.SaveSolutionTime = 0.1;
+		conf.SaveSliceTime = 0.1;
 		conf.ResidualOutputIterations = 100;
 		
 		// init kernel
@@ -97,15 +94,10 @@ namespace DrivenCavityTest {
 		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
-		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2CharactVars) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2CharactVars>(&argc, &argv));
-		};
 		kernel->Init(conf);
 
 		// init distributions
+		NumericQuadrature Int(5, 2);
 		auto init = [&](Vector r) {
 			double roe = par.p / (par.gamma - 1.0);
 			std::vector<double> res(5, 0);
@@ -113,14 +105,14 @@ namespace DrivenCavityTest {
 			res[4] = roe;
 			return res;
 		};
-		kernel->SetInitialConditions(init);
+		kernel->SetInitialConditions(init, Int);
 
 		// Create slices
 		kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, 0));
 		//kernel->SaveSliceToTecplot("ySlice_init.dat", kernel->slices[0]);
 
 		//save init solution and run the test
-		kernel->SaveSolution("init.dat");
+		kernel->SaveSolutionToTecplot("init.dat");
 
 		// Run test
 		if (kernel->pManager->IsMaster()) std::cout << "Lid-driven cavity test runs." << std::endl <<

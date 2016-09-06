@@ -5,13 +5,6 @@
 #include <valarray>
 #include "utility/Vector.h"
 
-// All type of Riemann's Problem solvers
-enum class RPSolver {
-	GodunovSolver,
-	RoePikeSolver,
-	NoSolver
-};
-
 //Solution information structure
 class RiemannProblemSolutionResult {
 public:

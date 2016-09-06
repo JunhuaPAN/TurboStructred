@@ -4,8 +4,9 @@
 #include "IReconstruction.h"
 #include "PiecewiseConstant.h"
 #include "ENO2PointsStencil.h"
-#include "WENO2PointsStencil.h"
-#include "ENO2CharactVars.h"
+#include "Linear2PointsStencil.h"
+#include "Linear2psLim.h"
+
 
 
 #endif

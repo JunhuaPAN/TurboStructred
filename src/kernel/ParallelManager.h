@@ -70,8 +70,6 @@ public:
 		rankCart[0] = 0;
 		rankCart[1] = 0;
 		rankCart[2] = 0;
-		//if (_nDims == 2) dimsCart[1] = _nProcessors;
-		//if (_nDims == 3) dimsCart[2] = _nProcessors;
 
 		periodic[0] = g.IsPeriodicX;
 		periodic[1] = g.IsPeriodicY;

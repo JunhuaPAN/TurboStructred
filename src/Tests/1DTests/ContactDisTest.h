@@ -34,29 +34,27 @@ namespace ContactDisTest
 		conf.nX = 200;
 		conf.LX = 1.0;
 		conf.isPeriodicX = false;
-		conf.isUniformAlongX = true;
-		conf.qx = 1.00;
 		conf.Gamma = TestsUtility::gamma1 + 1;
 
-		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+		// BC
+		conf.MyConditions[1] = BoundaryConditionConfiguration(BoundaryConditionType::Natural);
+		conf.xLeftBoundary.SetMarker(1);
+		conf.xRightBoundary.SetMarker(1);
 
+		// Method configuration
 		conf.DummyLayerSize = 1;
 		conf.methodConfiguration.CFL = 0.45;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
-		conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
+		conf.methodConfiguration.ReconstructionType = Reconstruction::Linear2psLim;
 		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 
-		conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
-		conf.xLeftBoundary.Gamma = 1.4;
-		conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
-		conf.xRightBoundary.Gamma = 1.4;
-
+		// Computation parameters
 		conf.MaxTime = 0.2;
 		conf.MaxIteration = 1000000;
-		conf.SaveSolutionTime = 0;
+		conf.SaveSolutionTime = 0.1;
 		conf.SaveSolutionIterations = 0;
-		conf.ResidualOutputIterations = 100;
+		conf.ResidualOutputIterations = 50;
 
 		return conf;
 	};
@@ -114,13 +112,13 @@ namespace ContactDisTest
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 			fname << "PWConstant";
 		};
-		if ((conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) || (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2CharactVars)) {
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 			fname << "ENO2";
 		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
-			fname << "WENO2";
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2psLim) {
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<Linear2psLim<limVenkatar> >(&argc, &argv));
+			fname << "LinearRec_VenLim";
 		};
 
 		kernel->Init(conf);
@@ -182,7 +180,7 @@ namespace ContactDisTest
 		fname << MaxTime;
 		fname << ".dat";
 		std::string filename = fname.str();
-		kernel->SaveSolution(filename);
+		kernel->SaveSolutionToTecplot(filename);
 		TestsUtility::SaveExactSolution(filename, kernel->grid, *(kernel->pManager));
 
 		// Save the errors
@@ -202,7 +200,7 @@ namespace ContactDisTest
 		// Reconstruction type
 		//Reconstruction RecType{ Reconstruction::PiecewiseConstant };
 		//Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
-		Reconstruction RecType{ Reconstruction::ENO2CharactVars};
+		Reconstruction RecType{ Reconstruction::Linear2psLim};
 
 		// RP solver
 		RPSolver rSolver{ RPSolver::GodunovSolver };

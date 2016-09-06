@@ -55,27 +55,24 @@ namespace ToroTests
 
 		// Values by default
 		conf.nDims = 1;
-		conf.nX = 200;
 		conf.LX = 1.0;
 		conf.isPeriodicX = false;
-		conf.isUniformAlongX = true;
-		conf.qx = 1.00;
-		conf.Gamma = TestsUtility::gamma1 + 1;
-
-		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
-
 		conf.DummyLayerSize = 1;
+		conf.Gamma = TestsUtility::gamma1 + 1.0;
+
+		// BC
+		conf.MyConditions[1] = BoundaryConditionConfiguration(BoundaryConditionType::Natural);
+		conf.xLeftBoundary.SetMarker(1);
+		conf.xRightBoundary.SetMarker(1);
+
+		// Method settings
 		conf.methodConfiguration.CFL = 0.45;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.0;
 		conf.methodConfiguration.ReconstructionType = Reconstruction::PiecewiseConstant;
 		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
-
-		conf.xLeftBoundary.BCType = BoundaryConditionType::Natural;
-		conf.xLeftBoundary.Gamma = 1.4;
-		conf.xRightBoundary.BCType = BoundaryConditionType::Natural;
-		conf.xRightBoundary.Gamma = 1.4;
-
+		
+		// Task settings
 		conf.MaxTime = 0.2;
 		conf.MaxIteration = 1000000;
 		conf.SaveSolutionTime = 0;
@@ -87,7 +84,7 @@ namespace ToroTests
 
 	ShockTubeParameters DefaultState(int Nexp) {
 		ShockTubeParameters params;
-		params.gamma = TestsUtility::gamma1 + 1;
+		params.gamma = TestsUtility::gamma1 + 1.0;
 		switch (Nexp) {
 		case 1:
 			params.roL = 1.0;
@@ -233,7 +230,7 @@ namespace ToroTests
 		};
 	};
 
-	// compute exact solution in Cell
+	// Compute exact solution in Cell
 	std::vector<double> ComputeExactSolutionInCell(ShockTubeParameters& pars, double x, double t) {
 		//Compute flux (Toro p. 219) 
 		//Sample exact solution at S = x/t
@@ -358,7 +355,7 @@ namespace ToroTests
 		return result;
 	};
 
-	// Comput exact solution for test N
+	// Compute exact solution for test N
 	std::valarray<double> ComputeExactSolution(int Nexp, ShockTubeParameters& pars, Grid& g, double t) {
 		// init result valarray
 		std::valarray<double> res(g.nlocalX * TestsUtility::nVar);
@@ -394,7 +391,7 @@ namespace ToroTests
 		return res;
 	};
 
-	// Collision of two media
+	// Run one computational experiment
 	std::vector<double> RunSingleExperiment(int argc, char *argv[], int Ntest, int Nx, Reconstruction RecType, RPSolver _RPsolver) {
 		// Result
 		std::vector<double> errors;
@@ -420,17 +417,14 @@ namespace ToroTests
 			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
 			fname << "ENO2";
 		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::WENO2PointsStencil) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<WENO2PointsStencil>(&argc, &argv));
-			fname << "WENO2";
-		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2CharactVars) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2CharactVars>(&argc, &argv));
-			fname << "ENO2";
+		if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2psLim) {
+			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limVenkatar> >(&argc, &argv));
+			fname << "LinearBJlim";
 		};
 		kernel->Init(conf);
 
 		// IC
+		NumericQuadrature Integ(3, 1);
 		auto initD = [&conf, &params](Vector r) {
 			double p = params.PL;
 			double u = params.uL;
@@ -449,7 +443,7 @@ namespace ToroTests
 			res[4] = p / TestsUtility::gamma1 + 0.5 * ro * u * u;
 			return res;
 		};
-		kernel->SetInitialConditions(initD);
+		kernel->SetInitialConditions(initD, Integ);
 
 		// Run computation
 		kernel->Run();
@@ -484,7 +478,7 @@ namespace ToroTests
 		fname << params.t_res;
 		fname << ".dat";
 		std::string filename = fname.str();
-		kernel->SaveSolution(filename);
+		kernel->SaveSolutionToTecplot(filename);
 		TestsUtility::SaveExactSolution(filename, kernel->grid, *(kernel->pManager));
 
 		// Save the errors
@@ -499,18 +493,16 @@ namespace ToroTests
 	};
 	
 	void RunExperiment(int argc, char *argv[]) {
-		int Ntest = 4;	// Toro test number
+		int Ntest = 5;	// Toro test number
 		int Nx = 400;
 
 		//	Reconstruction type
 		//	Reconstruction RecType{ Reconstruction::PiecewiseConstant };
-		//	Reconstruction RecType{ Reconstruction::WENO2PointsStencil };
-			Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
-		//	Reconstruction RecType{ Reconstruction::ENO2CharactVars };
+		//	Reconstruction RecType{ Reconstruction::ENO2PointsStencil };
+			Reconstruction RecType{ Reconstruction::Linear2psLim };
 
 		// RP solver
 		RPSolver rSolver{ RPSolver::RoePikeSolver };
-		//RPSolver rSolver{};
 
 		// collect all errors in file
 		std::vector<double> err;
@@ -520,6 +512,5 @@ namespace ToroTests
 	};
 	
 }	//end of namespace area
-
 
 #endif

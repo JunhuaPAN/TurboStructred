@@ -10,22 +10,22 @@
 #include <cassert>
 #include <fstream>
 #include <valarray>
+#include <memory>
 
 #include "KernelConfiguration.h"
 #include "grid.h"
 #include "GasProperties.h"
 #include "ParallelManager.h"
 #include "utility/Vector.h"
-#include "utility/Matrix.h"
 #include "utility/Timer.h"
 #include "utility/Slices.h"
 #include "utility/NumericQuadrature.h"
+#include "utility/Stencil.h"
+#include "utility/VariablesTransition.h"
 #include "RiemannSolvers/RiemannSolversList.h"
 #include "BoundaryConditions/BCGeneral.h"
 #include "Sensors/Sensors.h"
 
-
-// #include "cgnslib.h"
 
 // Step info
 class StepInfo {
@@ -57,8 +57,9 @@ public:
 	StepInfo stepInfo;
 
 	// Gas model information
-	int nVariables;			// number of conservative variables
-	GasProperties gas_prop;	// all parameters of the gas
+	int nVariables;				// number of conservative variables
+	GasProperties gas_prop;		// all parameters of the gas
+	ValuesTransition compute;	// functions for computation of primituve values
 
 	bool isViscousFlow;
 	bool isGradientRequired;
@@ -73,14 +74,16 @@ public:
 	Vector Sigma; //Potential force like presure gradient
 	Vector UniformAcceleration;	//external uniform acceleration
 
-	// Boundary conditions
-	std::unique_ptr<BoundaryConditions::BCGeneral> xLeftBC;
-	std::unique_ptr<BoundaryConditions::BCGeneral> xRightBC;
-	std::unique_ptr<BoundaryConditions::BCGeneral> yLeftBC;
-	std::unique_ptr<BoundaryConditions::BCGeneral> yLeftBCspecial;
-	std::unique_ptr<BoundaryConditions::BCGeneral> yRightBC;
-	std::unique_ptr<BoundaryConditions::BCGeneral> zLeftBC;
-	std::unique_ptr<BoundaryConditions::BCGeneral> zRightBC;
+	// Boundary conditions TO DO refactor
+	std::map<int, std::unique_ptr<BoundaryConditions::BCGeneral> > bConditions;
+
+	BCinfo xLeftBC;
+	BCinfo xRightBC;
+	BCinfo yLeftBC;
+	BCinfo yLeftBCspecial;
+	BCinfo yRightBC;
+	BCinfo zLeftBC;
+	BCinfo zRightBC;
 
 	// Solution data
 	std::valarray<double> values;
@@ -93,26 +96,15 @@ public:
 		return &values[sBegin];
 	};
 
-	// Transition beatween variables (trivial by default)
-	inline std::valarray<double> ForvardVariablesTransition(double* vals) {
-		std::valarray<double> res(nVariables);
-		for (int i = 0; i < nVariables; i++) res[i] = vals[i];
-
-		return std::move(res);
-	};
-
-	// Inverse transition
-	inline std::valarray<double> InverseVariablesTransition(std::valarray<double> &vals) {
-		return vals;
-	};
-
 	// Calculation parameters	
 	int MaxIteration;
 	double MaxTime;
 	double SaveSolutionTime;
 	double SaveSliceTime;
+	double SaveBinarySolTime;
 	int SaveSolutionIterations;
 	int SaveSliceIterations;
+	int SaveBinarySolIterations;
 
 	int ResidualOutputIterations{ };
 	bool ContinueComputation{ false };
@@ -139,9 +131,6 @@ public:
 					int sBegin = grid.getSerialIndexLocal(i, j, k) * nVariables;
 					std::vector<double> U = initF(Vector(x, y, z));
 					for (int varn = 0; varn < nVariables; varn++) values[sBegin + varn] = U[varn];
-
-        //  std::cout << "rank = " << rank << ", x = " << x << ", i = " << i << std::endl << std::flush; //MPI DebugMessage
-        //  std::cout << "rank = " << rank << ", sBegin = " << sBegin << ", ro = " << values[sBegin] << ", rou = " << values[sBegin + 1] << std::endl << std::flush; //MPI DebugMessage
 				};
 			};
 		};
@@ -197,7 +186,7 @@ public:
 		// Initialize cartezian topology
 		pManager->InitCartesianTopology(grid);
 
-		// Compute local gris sizes and initialize local grid
+		// Compute local grid sizes and initialize local grid
 		grid.nlocalX = grid.nX / pManager->dimsCart[0];
 		grid.nlocalY = grid.nY / pManager->dimsCart[1];
 		grid.nlocalZ = grid.nZ / pManager->dimsCart[2];
@@ -207,22 +196,23 @@ public:
 		grid.jMax = (pManager->rankCart[1] + 1) * grid.nlocalY + grid.dummyCellLayersY - 1;
 		grid.kMin = pManager->rankCart[2] * grid.nlocalZ + grid.dummyCellLayersZ;
 		grid.kMax = (pManager->rankCart[2] + 1) * grid.nlocalZ + grid.dummyCellLayersZ - 1;
-		grid.InitLocal(config);
+		grid.InitLocal(config);		// end of grid initialization
+
+		//Sync
 		if (DebugOutputEnabled) {
 			std::cout << "rank = " << pManager->_rankCart << ", iMin = " << grid.iMin << ", iMax = " << grid.iMax << "\n";
 			std::cout << "rank = " << pManager->_rankCart << ", jMin = " << grid.jMin << ", jMax = " << grid.jMax << "\n";
 			std::cout << "rank = " << pManager->_rankCart << ", kMin = " << grid.kMin << ", kMax = " << grid.kMax << "\n";
 		};
-		
-		//Sync
 		pManager->Barrier();
 
 		//Initialize gas model parameters and Riemann solver
 		gas_prop.gamma = config.Gamma;
-		gas_prop.viscosity = config.Viscosity;
 		gas_prop.thermalConductivity = config.ThermalConductivity;
 		gas_prop.molarMass = config.MolarMass;
 		gas_prop.universalGasConstant = config.UniversalGasConstant;
+		gas_prop.viscosity = config.Viscosity;
+		compute.BindGasProperties(gas_prop);
 
 		// Set all flags as configuration requires
 		if (config.IsViscousFlow == true) {
@@ -285,31 +275,36 @@ public:
 
 	// Initialize boundary conditions
 	virtual void InitBoundaryConditions(KernelConfiguration& config) {
-		// TO DO (COARSE IMPLEMENTATION)
-		if (!grid.IsPeriodicX) {
-			if (config.xLeftBoundary.BCType == BoundaryConditionType::SubsonicInlet) {
-				xLeftBC = std::unique_ptr<BoundaryConditions::SubsonicInletBC>(new BoundaryConditions::SubsonicInletBC());
-			} else xLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-			xRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-
-			xLeftBC->loadConfiguration(config.xLeftBoundary);
-			xRightBC->loadConfiguration(config.xRightBoundary);
+		for (auto r : config.MyConditions) {
+			bConditions[r.first] = BoundaryConditions::CreateBC(r.second);
+			bConditions[r.first]->BindGasProperties(gas_prop);
+			bConditions[r.first]->loadConfiguration(r.second);
 		};
+
+		// Check if periodic condition is used then initialize 
+		if (!grid.IsPeriodicX) {
+			if (config.xLeftBoundary.isComplex) xLeftBC = BCinfo(config.xLeftBoundary.getMarker);		// for complex case transmit the function getMarker
+			else xLeftBC = BCinfo(config.xLeftBoundary.GetMarker());		// for trivial case set marker value
+
+			// Do the same for right side
+			if (config.xRightBoundary.isComplex) xRightBC = BCinfo(config.xRightBoundary.getMarker);
+			else xRightBC = BCinfo(config.xRightBoundary.GetMarker());
+		};
+
+		// Repeat process for other directions
 		if ((!grid.IsPeriodicY) && (nDims > 1)) {
-			yLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-			yRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-			yLeftBC->loadConfiguration(config.yLeftBoundary);
-			yRightBC->loadConfiguration(config.yRightBoundary);
-			
-			// to do improve (special case)
-			yLeftBCspecial = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-			yLeftBCspecial->loadConfiguration(config.yLeftSpecialBoundary);
+			if (config.yLeftBoundary.isComplex) yLeftBC = BCinfo(config.yLeftBoundary.getMarker);
+			else yLeftBC = BCinfo(config.yLeftBoundary.GetMarker());
+
+			if (config.yRightBoundary.isComplex) yRightBC = BCinfo(config.yRightBoundary.getMarker);
+			else yRightBC = BCinfo(config.yRightBoundary.GetMarker());
 		};
 		if ((!grid.IsPeriodicZ) && (nDims > 2)) {
-			zLeftBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-			zRightBC = std::unique_ptr<BoundaryConditions::BCGeneral>(new BoundaryConditions::BCGeneral());
-			zLeftBC->loadConfiguration(config.zLeftBoundary);
-			zRightBC->loadConfiguration(config.zRightBoundary);
+			if (config.zLeftBoundary.isComplex) zLeftBC = BCinfo(config.zLeftBoundary.getMarker);
+			else zLeftBC = BCinfo(config.zLeftBoundary.GetMarker());
+
+			if (config.zRightBoundary.isComplex) zRightBC = BCinfo(config.zRightBoundary.getMarker);
+			else zRightBC = BCinfo(config.zRightBoundary.GetMarker());
 		};
 	};
 
@@ -736,8 +731,9 @@ public:
 							int idx = grid.getSerialIndexLocal(i, j, k);
 							int idxIn = grid.getSerialIndexLocal(iIn, j, k);
 
-							//Apply left boundary conditions						
-							std::valarray<double> dValues = xLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
+							//Apply left boundary conditions
+							auto bcMarker = xLeftBC.getMarker(faceCenter);
+							auto dValues = bConditions[bcMarker]->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
 							};
@@ -753,7 +749,8 @@ public:
 							int idxIn = grid.getSerialIndexLocal(iIn, j, k);
 
 							//Apply right boundary conditions						
-							std::valarray<double> dValues = xRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
+							auto bcMarker = xRightBC.getMarker(faceCenter);
+							auto dValues = bConditions[bcMarker]->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
 							};
@@ -804,7 +801,8 @@ public:
 							int idxIn = grid.getSerialIndexLocal(i, jIn, k);
 
 							//Apply left boundary conditions						
-							std::valarray<double> dValues = yLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
+							auto bcMarker = yLeftBC.getMarker(faceCenter);
+							auto dValues = bConditions[bcMarker]->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
 							};
@@ -820,7 +818,8 @@ public:
 							int idxIn = grid.getSerialIndexLocal(i, jIn, k);
 
 							//Apply right boundary conditions						
-							std::valarray<double> dValues = yRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
+							auto bcMarker = yRightBC.getMarker(faceCenter);
+							auto dValues = bConditions[bcMarker]->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
 							};
@@ -872,7 +871,8 @@ public:
 							int idxIn = grid.getSerialIndexLocal(i, j, kIn);
 
 							//Apply left boundary conditions						
-							std::valarray<double> dValues = zLeftBC->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
+							auto bcMarker = zLeftBC.getMarker(faceCenter);
+							auto dValues = bConditions[bcMarker]->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
 							};
@@ -888,7 +888,8 @@ public:
 							int idxIn = grid.getSerialIndexLocal(i, j, kIn);
 
 							//Apply right boundary conditions						
-							std::valarray<double> dValues = zRightBC->getDummyValues(&values[idxIn * nVariables], faceNormalR, faceCenter, cellCenter);
+							auto bcMarker = zRightBC.getMarker(faceCenter);
+							auto dValues = bConditions[bcMarker]->getDummyValues(&values[idxIn * nVariables], faceNormalL, faceCenter, cellCenter);
 							for (int nv = 0; nv < nVariables; nv++) {
 								values[idx * nVariables + nv] = dValues[nv];
 							};
@@ -980,7 +981,93 @@ public:
 		};
 	};
 
-	virtual void SaveSolution(std::string fname) {
+	// Save and load solution functions
+	void SaveSolution(std::string fname) {
+
+		int rank = pManager->getRank();
+
+		// write down the total time
+		std::ofstream ofs;
+		if (pManager->IsMaster()) {
+			ofs.open(fname, std::ios::binary | std::ios::out);
+			ofs.write(reinterpret_cast<char*>(&stepInfo.Time), sizeof stepInfo.Time);
+			ofs.close();
+		};
+
+		// Wait for previous process to finish writing
+		if (!pManager->IsFirstNode()) pManager->Wait(rank - 1);
+
+		// Reopen file for writing and write rank
+		ofs.open(fname, std::ios::binary | std::ios_base::app);
+		ofs.write(reinterpret_cast<char*>(&rank), sizeof rank);
+
+		// Write our solution
+		for (int k = grid.kMin; k <= grid.kMax; k++) {
+			for (int j = grid.jMin; j <= grid.jMax; j++) {
+				for (int i = grid.iMin; i <= grid.iMax; i++) {
+					// write down all cell values
+					auto val = getCellValues(i, j, k);
+					ofs.write(reinterpret_cast<char*>(val), nVariables * sizeof(double) );
+				};
+			};
+		};
+		ofs.close();
+
+		// Signal to next process to begin writing
+		if (!pManager->IsLastNode()) {
+			pManager->Signal(rank + 1);
+		};
+		//Syncronize
+		pManager->Barrier();
+		return;
+	};
+	void LoadSolution(std::string fname) {
+
+		int rank = pManager->getRank();
+		int Nproc = pManager->getProcessorNumber();
+
+		// read down the total time
+		std::ifstream ifs;
+		ifs.open(fname, std::ios::binary | std::ios::in);
+		ifs.read(reinterpret_cast<char*>(&stepInfo.Time), sizeof stepInfo.Time);
+
+		// start to read file
+		for (int np = 0; np < Nproc; np++) {
+
+			// read the rank of process that write the part of solution
+			int read_rank;
+			ifs.read(reinterpret_cast<char*>(&read_rank), sizeof rank);
+
+			// if rank the same as current - read the data
+			if (rank == read_rank) {
+				for (int k = grid.kMin; k <= grid.kMax; k++) {
+					for (int j = grid.jMin; j <= grid.jMax; j++) {
+						for (int i = grid.iMin; i <= grid.iMax; i++) {
+							// read all cell values
+							auto val = getCellValues(i, j, k);
+							ifs.read(reinterpret_cast<char*>(val), nVariables * sizeof(double));
+						};
+					};
+				};
+				// finish of data reading
+				break;	
+			} // if ranks are differrent
+			else {
+				double read_var;
+				for (int i = 0; i < grid.nCellsLocal * nVariables; i++) ifs.read(reinterpret_cast<char*>(&read_var), sizeof read_var);
+			};
+		};
+
+		ifs.close();
+
+		//Syncronize
+		pManager->Barrier();
+		if (pManager->IsLastNode()) std::cout <<"rank " << rank << ": solution is loaded" << std::endl;
+		return;
+	};
+
+	// Tecplot format saver
+	virtual void SaveSolutionToTecplot(std::string fname) {
 		//Tecplot version    
 		int rank = pManager->getRank();
 
@@ -1448,6 +1535,19 @@ public:
 			ofs << "\"" << "P" << "\" ";
 			ofs << "\"" << "e" << "\" ";
 			ofs << "\"" << "T" << "\" ";
+
+			if (I != -1) {
+				ofs << "\"" << "x_cnst" << "\" ";
+				dims++;
+			};
+			if (J != -1) {
+				ofs << "\"" << "y_cnst" << "\" ";
+				dims++;
+			};
+			if (K != -1) {
+				ofs << "\"" << "z_cnst" << "\" ";
+				dims++;
+			};
 			ofs << std::endl;
 
 			ofs << "ZONE T=\"1\"";	//zone name
@@ -1460,7 +1560,7 @@ public:
 			if (K == -1) ofs << "K=" << grid.nZ;
 			else ofs << "K=" << 1;
 			ofs << "F=POINT\n";
-			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
+			ofs << "DT=(SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE SINGLE)\n";
 		}
 		else {
 			//Wait for previous process to finish writing
@@ -1500,6 +1600,9 @@ public:
 					ofs << P << " ";
 					ofs << e << " ";
 					ofs << T << " ";
+					if (I != -1) ofs << x << " ";
+					if (J != -1) ofs << y << " ";
+					if (K != -1) ofs << z << " ";
 					ofs << std::endl;
 				};
 			};
@@ -1582,7 +1685,7 @@ public:
 		if (!pManager->IsLastNode()) pManager->Signal(rank + 1);
 		pManager->Barrier();
 
-		while (1) {
+		while(true) {
 			//Calculate one time step
 			IterationStep();
 
@@ -1614,9 +1717,9 @@ public:
 			if ((SaveSolutionIterations != 0) && (stepInfo.Iteration % SaveSolutionIterations) == 0) {
 				//Save snapshot
 				std::stringstream snapshotFileName;
-				snapshotFileName.str(std::string());
+				//snapshotFileName.str(std::string());
 				snapshotFileName << "solution, It = " << stepInfo.Iteration << ".dat";
-				SaveSolution(snapshotFileName.str());
+				SaveSolutionToTecplot(snapshotFileName.str());
 
 				if (pManager->IsMaster()) {
 					std::cout << "Solution has been written to file \"" << snapshotFileName.str() << "\"" << std::endl;
@@ -1626,7 +1729,7 @@ public:
 				//Save snapshots
 				for (auto i = 0; i < slices.size(); i++) {
 					std::stringstream snapshotFileName;
-					snapshotFileName.str(std::string());
+					//snapshotFileName.str(std::string());
 					snapshotFileName << "slice" << i << ", It =" << stepInfo.Iteration << ".dat";
 					SaveSliceToTecplot(snapshotFileName.str(), slices[i]);
 
@@ -1640,11 +1743,11 @@ public:
 			if ((SaveSolutionTime > 0) && (stepInfo.NextSolutionSnapshotTime == stepInfo.Time)) {
 				//Save snapshot
 				std::stringstream snapshotFileName;
-				snapshotFileName.str(std::string());
+				//snapshotFileName.str(std::string());
 				snapshotFileName << std::fixed;
 				snapshotFileName.precision(SolutionTimePrecision);
 				snapshotFileName << "solution, t = " << stepInfo.Time << ".dat";
-				SaveSolution(snapshotFileName.str());
+				SaveSolutionToTecplot(snapshotFileName.str());
 
 				if (pManager->IsMaster()) {
 					std::cout << "Solution has been written to file \"" << snapshotFileName.str() << "\"" << std::endl;
@@ -1657,7 +1760,7 @@ public:
 				//Save snapshots
 				for (auto i = 0; i < slices.size(); i++) {
 					std::stringstream snapshotFileName;
-					snapshotFileName.str(std::string());
+					//snapshotFileName.str(std::string());
 					snapshotFileName << "slice" << i;
 					snapshotFileName << std::fixed;
 					snapshotFileName.precision(SliceTimePrecision);
