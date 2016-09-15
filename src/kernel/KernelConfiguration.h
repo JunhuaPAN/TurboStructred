@@ -65,6 +65,7 @@ public:
 	double SaveSliceTime{ 0 };
 	int SaveSolutionIterations{ 0 };
 	int SaveSliceIterations{ 0 };
+	int SaveBinarySolIterations{ 0 };
 	int ResidualOutputIterations{ 0 };
 	bool DebugOutputEnabled{ false };
 	

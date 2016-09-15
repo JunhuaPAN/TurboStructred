@@ -59,6 +59,7 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 
 	// Init kernel
 	std::unique_ptr<Kernel> kernel;
+
 	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
 		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 	};

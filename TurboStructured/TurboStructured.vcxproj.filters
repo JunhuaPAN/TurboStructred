@@ -245,9 +245,6 @@
     <ClInclude Include="..\src\Tests\2DTests\ExactEulerSolution.h">
       <Filter>Header Files\Tests\2DTests</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Tests\2DTests\DrivenCavityTest.h">
-      <Filter>Header Files\Tests\2DTests</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\Tests\UncomTests\Price2008KHI.h">
       <Filter>Header Files\Tests\UncomTests</Filter>
     </ClInclude>
@@ -256,9 +253,6 @@
     </ClInclude>
     <ClInclude Include="..\src\kernel\GasProperties.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\Tests\2DTests\BlasiusFlowTest.h">
-      <Filter>Header Files\Tests\2DTests</Filter>
     </ClInclude>
     <ClInclude Include="..\src\utility\GradientComputer.h">
       <Filter>Header Files\Utility</Filter>
@@ -280,6 +274,15 @@
     </ClInclude>
     <ClInclude Include="..\src\Tests\1DTests\xyzTest.h">
       <Filter>Header Files\Tests\1DTests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\2DTests\BlasiusFlow.h">
+      <Filter>Header Files\Tests\2DTests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\2DTests\DrivenCavity.h">
+      <Filter>Header Files\Tests\2DTests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Tests\2DTests\PoiseuilleChanel.h">
+      <Filter>Header Files\Tests\2DTests</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

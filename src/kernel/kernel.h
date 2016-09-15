@@ -38,7 +38,6 @@ public:
 	double NextSliceSnapshotTime;
 };
 
-
 // Calculation kernel
 class Kernel {
 public:
@@ -245,6 +244,7 @@ public:
 		SaveSliceTime = config.SaveSliceTime;
 		SaveSolutionIterations = config.SaveSolutionIterations;
 		SaveSliceIterations = config.SaveSliceIterations;
+		SaveBinarySolIterations = config.SaveBinarySolIterations;
 		ResidualOutputIterations = config.ResidualOutputIterations;
 
 		// Initialize step information
@@ -1029,7 +1029,12 @@ public:
 		// read down the total time
 		std::ifstream ifs;
 		ifs.open(fname, std::ios::binary | std::ios::in);
+		assert(ifs.is_open());
 		ifs.read(reinterpret_cast<char*>(&stepInfo.Time), sizeof stepInfo.Time);
+
+		// change time of solution saving
+		if (SaveSolutionTime > 0) stepInfo.NextSolutionSnapshotTime = (int(stepInfo.Time / SaveSolutionTime) + 1) * SaveSolutionTime;
+		if (SaveSliceTime > 0) stepInfo.NextSliceSnapshotTime = (int(stepInfo.Time / SaveSliceTime) + 1) * SaveSliceTime;
 
 		// start to read file
 		for (int np = 0; np < Nproc; np++) {
@@ -1050,7 +1055,7 @@ public:
 					};
 				};
 				// finish of data reading
-				break;	
+				break;
 			} // if ranks are differrent
 			else {
 				double read_var;
@@ -1714,10 +1719,9 @@ public:
 			};
 
 			//Solution and slice snapshots every few iterations
-			if ((SaveSolutionIterations != 0) && (stepInfo.Iteration % SaveSolutionIterations) == 0) {
+			if ((SaveSolutionIterations != 0) && (stepInfo.Iteration % SaveSolutionIterations == 0)) {
 				//Save snapshot
 				std::stringstream snapshotFileName;
-				//snapshotFileName.str(std::string());
 				snapshotFileName << "solution, It = " << stepInfo.Iteration << ".dat";
 				SaveSolutionToTecplot(snapshotFileName.str());
 
@@ -1725,11 +1729,10 @@ public:
 					std::cout << "Solution has been written to file \"" << snapshotFileName.str() << "\"" << std::endl;
 				};
 			};
-			if ((SaveSliceIterations != 0) && (stepInfo.Iteration % SaveSliceIterations) == 0) {
+			if ((SaveSliceIterations != 0) && (stepInfo.Iteration % SaveSliceIterations == 0)) {
 				//Save snapshots
 				for (auto i = 0; i < slices.size(); i++) {
 					std::stringstream snapshotFileName;
-					//snapshotFileName.str(std::string());
 					snapshotFileName << "slice" << i << ", It =" << stepInfo.Iteration << ".dat";
 					SaveSliceToTecplot(snapshotFileName.str(), slices[i]);
 
@@ -1738,7 +1741,16 @@ public:
 					};
 				};
 			};
-			
+			if ((SaveBinarySolIterations != 0) && (stepInfo.Iteration % SaveBinarySolIterations == 0)) {
+				//Save snapshots
+				for (auto i = 0; i < slices.size(); i++) {
+					std::string filename("solution.sol");
+					SaveSolution(filename);
+					if (pManager->IsMaster())
+						std::cout << "Solution was saved in solution.sol" << std::endl;
+				};
+			};
+
 			//Every fixed time interval
 			if ((SaveSolutionTime > 0) && (stepInfo.NextSolutionSnapshotTime == stepInfo.Time)) {
 				//Save snapshot
@@ -1839,7 +1851,6 @@ public:
 	};
 	
 };
-
 
 
 #endif

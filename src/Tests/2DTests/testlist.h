@@ -7,8 +7,9 @@
 #define TurboStructured_Tests_2DTests_TestList
 
 #include "Tests/2DTests/ExactEulerSolution.h"
-#include "Tests/2DTests/DrivenCavityTest.h"
-#include "Tests/2DTests/BlasiusFlowTest.h"
+#include "Tests/2DTests/DrivenCavity.h"
+#include "Tests/2DTests/BlasiusFlow.h"
+#include "Tests/2DTests/PoiseuilleChanel.h"
 
 
 #endif

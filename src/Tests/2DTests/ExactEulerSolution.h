@@ -1,5 +1,5 @@
-#ifndef TurboStructured_Tests_2DTests_ExactEulerSolution
-#define TurboStructured_Tests_2DTests_ExactEulerSolution
+#ifndef TurboStructured_Tests_2DTests_ExactEulerSolutionTest
+#define TurboStructured_Tests_2DTests_ExactEulerSolutionTest
 
 #include "kernel.h";
 
