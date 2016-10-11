@@ -54,11 +54,12 @@ void RunSODTestRoe1D(int argc, char *argv[]) {
 	conf.MaxTime = 0.25;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionTime = 0.25;
-	conf.SaveSolutionIterations = 0;
-	conf.ResidualOutputIterations = 100;
+	conf.SaveSolutionIters = 0;
+	conf.ResidualOutputIters = 100;
 
 	// Init kernel
 	std::unique_ptr<Kernel> kernel;
+
 	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
 		kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
 	};
@@ -142,8 +143,8 @@ void RunContactDisconTest1D(int argc, char *argv[]) {
 	conf.MaxTime = 0.2;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionTime = 0.1;
-	conf.SaveSolutionIterations = 0;
-	conf.ResidualOutputIterations = 50;
+	conf.SaveSolutionIters = 0;
+	conf.ResidualOutputIters = 50;
 
 	// Init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -243,7 +244,7 @@ void RunSODXTest(int argc, char *argv[]) {
 	conf.MaxIteration = 1000000;
 	//conf.SaveSolutionTime = 0.05;
 	conf.SaveSliceTime = 0.25;
-	conf.ResidualOutputIterations = 100;
+	conf.ResidualOutputIters = 100;
 
 	// Init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -345,7 +346,7 @@ void RunSODYTest(int argc, char *argv[]) {
 	conf.MaxIteration = 1000000;
 	//conf.SaveSolutionTime = 0.1;
 	conf.SaveSliceTime = 0.25;
-	conf.ResidualOutputIterations = 100;
+	conf.ResidualOutputIters = 100;
 
 	// Init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -450,7 +451,7 @@ void RunSODZTest(int argc, char *argv[]) {
 	conf.MaxIteration = 1000000;
 	//conf.SaveSolutionTime = 0.1;
 	conf.SaveSliceTime = 0.25;
-	conf.ResidualOutputIterations = 100;
+	conf.ResidualOutputIters = 100;
 
 	// Init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -514,6 +515,185 @@ void RunSODZTest(int argc, char *argv[]) {
 	kernel->Finalize();
 };
 
+// Poiseuille flow (1D)
+void RunPoiseuille1D(int argc, char *argv[]) {
+
+	// Define test parameters and set all fields
+	struct parameters {
+		double gamma;
+		double Lx;			// domain size
+		double Ly;			// domain size
+		double ro;			// init density
+		double Pin;			// inlet pressure
+		double sigma;		// (Pin - Pout) / Lx 
+		double viscosity;	// dynamic viscosity
+	} par;
+	par.gamma = 1.4;
+	par.Lx = 0.5;
+	//par.Ly = 0.1;
+	par.Pin = 101579;
+	par.sigma = 2.0;
+	par.ro = 1.0;
+	par.viscosity = 0.01;
+
+	// Init config structure
+	KernelConfiguration conf;
+	conf.nDims = 1;
+	conf.nX = 400;
+	conf.LX = par.Lx;
+	//conf.LY = par.Ly;
+	conf.isPeriodicX= false;
+	conf.Gamma = par.gamma;
+	conf.IsViscousFlow = true;
+	conf.Viscosity = par.viscosity;
+	conf.Sigma = Vector(0, par.sigma, 0);
+	conf.IsExternalForceRequared = true;
+
+	// Discribe grid compression
+	BlockNode x_bot, x_cen;
+	x_bot.N_cells = 0.5 * conf.nX;
+	x_bot.q_com = 1.01;
+	conf.CompressionX[0] = x_bot;
+
+	x_cen.pos = 0.5 * par.Lx;
+	x_cen.q_com = 1.0 / x_bot.q_com;
+	x_cen.N_cells = conf.nX - x_bot.N_cells;
+	conf.CompressionX.push_back(x_cen);
+
+	// Discribe boundary conditions
+	BoundaryConditionConfiguration Wall(BoundaryConditionType::Wall);
+	conf.MyConditions[1] = Wall;
+
+	// Describe conditions on the domain sides
+	conf.xLeftBoundary.SetMarker(1);
+	conf.xRightBoundary.SetMarker(1);
+
+	// Method settings
+	conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+	conf.methodConfiguration.CFL = 0.45;
+	conf.methodConfiguration.RungeKuttaOrder = 1;
+	conf.methodConfiguration.Eps = 0.05;
+	conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+	conf.methodConfiguration.ReconstructionType = Reconstruction::Linear2psLim;
+	conf.DummyLayerSize = 1;
+
+	// compute velocity at center of the channel for laminar regime
+	auto Uc = 0.125 * par.sigma * par.Lx * par.Lx / par.viscosity;
+	auto Re = par.ro * Uc * par.Lx / par.viscosity;
+
+	// Computational settings
+	conf.MaxTime = 10;
+	conf.MaxIteration = 10000000;
+	conf.SaveSolutionTime = 0.1;
+	conf.SaveSliceTime = 0.1;
+	conf.SaveBinarySolIters = 100000;
+	conf.ResidualOutputIters = 10000;
+
+	// init kernel
+	auto kernel = CreateKernel(conf, argc, argv);
+	kernel->Init(conf);
+
+	// init distributions
+	NumericQuadrature Integ(5, 2);
+	auto InitTrivial = [&par](Vector r) {
+		// Compute primitive values
+		double rho = par.ro;
+		double u = 0;
+		double v = 0;
+		double w = 0;
+		double roe = par.Pin / (par.gamma - 1.0);
+
+		// Compute local initial values
+		std::vector<double> res(5, 0);
+		res[0] = rho;
+		res[1] = rho * u;
+		res[2] = rho * v;
+		res[3] = rho * w;
+		res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
+		return res;
+	};
+	auto InitExact = [&par, Uc](Vector r) {
+		auto x = 1.0 - abs(2 * r.x / par.Lx - 1.0);
+		auto vel = Uc * x * (2.0 - x);
+
+		// Compute primitive values
+		double rho = par.ro;
+		double u = 0;
+		double v = vel;
+		double w = 0;
+		double roe = par.Pin / (par.gamma - 1.0);
+
+
+		// Compute local initial values
+		std::vector<double> res(5, 0);
+		res[0] = rho;
+		res[1] = rho * u;
+		res[2] = rho * v;
+		res[3] = rho * w;
+		res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
+		return res;
+	};
+	auto InitHigher = [&par, Uc](Vector r) {
+		auto x = 1.0 - abs(2 * r.x / par.Lx - 1.0);
+		auto vel = 1.1 * Uc * x * (2.0 - x);
+
+		// Compute primitive values
+		double rho = par.ro;
+		double u = 0;
+		double v = vel;
+		double w = 0;
+		double roe = par.Pin / (par.gamma - 1.0);
+		
+		// Compute local initial values
+		std::vector<double> res(5, 0);
+		res[0] = rho;
+		res[1] = rho * u;
+		res[2] = rho * v;
+		res[3] = rho * w;
+		res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
+		return res;
+	};
+	auto InitLower = [&par, Uc](Vector r) {
+		auto x = 1.0 - abs(2 * r.x / par.Lx - 1.0);
+		auto vel = 0.9 * Uc * x * (2.0 - x);
+
+		// Compute primitive values
+		double rho = par.ro;
+		double u = 0;
+		double v = vel;
+		double w = 0;
+		double roe = par.Pin / (par.gamma - 1.0);
+		
+		// Compute local initial values
+		std::vector<double> res(5, 0);
+		res[0] = rho;
+		res[1] = rho * u;
+		res[2] = rho * v;
+		res[3] = rho * w;
+		res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
+		return res;
+	};
+	kernel->SetInitialConditions(InitExact, Integ);
+
+	// Create slices
+	//kernel->slices.push_back(-1, 0, 0));
+
+	//save init solution and run the test
+	kernel->SaveSolution("solution.sol");
+	//kernel->LoadSolution("sol_to_load.sol");
+	kernel->SaveSolutionToTecplot("init.dat");
+
+	// Run test
+	if (kernel->pManager->IsMaster()) std::cout << "Poiseuille test runs." << std::endl <<
+		"U_center: " << Uc << ", Re: " << Re << std::endl;
+	kernel->Run();
+
+
+	//end of experiments
+	std::cout << "Poiseuille test is completed";
+	std::cout << std::endl;
+	kernel->Finalize();
+};
 
 //// Test 2D
 
@@ -636,8 +816,8 @@ namespace BlasiusFlowTestDebug {
 		conf.MaxTime = 10 * par.Lx / Udr;
 		conf.MaxIteration = 25;
 		conf.SaveSolutionTime = 0.1;
-		conf.SaveSolutionIterations = 1;
-		conf.ResidualOutputIterations = 1;
+		conf.SaveSolutionIters = 1;
+		conf.ResidualOutputIters = 1;
 
 		// init kernel
 		std::unique_ptr<Kernel> kernel;
@@ -704,6 +884,223 @@ namespace BlasiusFlowTestDebug {
 	};
 };
 
+// Temporal PF
+namespace PoiseuilleFlowTemp {
+
+	// struct for main parameters of the test
+	struct Parameters {
+		double gamma;
+		double Lx;			// domain size
+		double Ly;			// domain size
+		double ro;			// init density
+		double Pin;			// inlet pressure
+		double sigma;		// (Pin - Pout) / Lx 
+		double viscosity;	// dynamic viscosity
+	} par;
+
+	// Default parameters
+	void DefaultSettings() {
+		par.gamma = 1.4;
+		par.Lx = 10.0;
+		par.Ly = 5.0;
+		par.Pin = 101579;
+		par.sigma = 20.0;
+		par.ro = 1.0;
+		par.viscosity = 1.0;
+	};
+
+	// compute velocity at the center of the channel
+	double ComputeCenterVelocity() {
+		return 0.125 * par.sigma * par.Ly * par.Ly / par.viscosity;
+	};
+
+	// compute Re number
+	double ComputeRe() {
+		auto U = ComputeCenterVelocity();
+		return par.ro * U * par.Ly / par.viscosity;
+	};
+
+	// Run one experiment ( parameters is as input data )
+	void RunSingleExperiment(int argc, char *argv[]) {
+
+		// Init config structure
+		KernelConfiguration conf;
+		conf.nDims = 2;
+		conf.nX = 80;
+		conf.nY = 400;
+		//conf.nY = 200;
+		conf.LX = par.Lx;
+		conf.LY = par.Ly;
+		conf.isPeriodicY = false;
+		conf.Gamma = par.gamma;
+		conf.IsViscousFlow = true;
+		conf.Viscosity = par.viscosity;
+		conf.Sigma = Vector(par.sigma, 0, 0);
+		conf.IsExternalForceRequared = true;
+
+		// Discribe grid compression
+		BlockNode y_bot, y_cen;
+
+		// Y direction first
+		y_bot.N_cells = 0.5 * conf.nY;
+		y_bot.q_com = 1.01;
+		conf.CompressionY[0] = y_bot;
+
+		y_cen.pos = 0.5 * par.Ly;
+		y_cen.q_com = 1.0 / y_bot.q_com;
+		y_cen.N_cells = conf.nY - y_bot.N_cells;
+		conf.CompressionY.push_back(y_cen);
+
+		// Discribe boundary conditions
+		BoundaryConditionConfiguration Wall(BoundaryConditionType::Wall);
+		conf.MyConditions[1] = Wall;
+
+		// Describe conditions on the domain sides
+		conf.yLeftBoundary.SetMarker(1);
+		conf.yRightBoundary.SetMarker(1);
+
+		// Method settings
+		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
+		conf.methodConfiguration.CFL = 0.45;
+		conf.methodConfiguration.RungeKuttaOrder = 1;
+		conf.methodConfiguration.Eps = 0.05;
+		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
+		conf.methodConfiguration.ReconstructionType = Reconstruction::Linear2psLim;
+		conf.DummyLayerSize = 1;
+
+		// compute velocity at center of the channel for laminar regime
+		auto Uc = ComputeCenterVelocity();
+		auto Re = ComputeRe();
+
+		// Computational settings
+		conf.MaxTime = 2.0;
+		conf.MaxIteration = 10000000;
+		conf.SaveSolutionTime = 0.01;
+		conf.SaveSliceTime = 0.01;
+		conf.SaveBinarySolIters = 100000;
+		conf.ResidualOutputIters = 100;
+		conf.ChangeHistoryFileIters = 1000000;
+		conf.SaveHistoryFileIters = 50;
+		//conf.ContinueComputation = true;
+
+		// init kernel
+		auto kernel = CreateKernel(conf, argc, argv);
+		kernel->Init(conf);
+
+		// init distributions
+		NumericQuadrature Integ(5, 2);
+		auto InitTrivial = [](Vector r) {
+			// Compute primitive values
+			double rho = par.ro;
+			double u = 0;
+			double v = 0;
+			double w = 0;
+			double roe = par.Pin / (par.gamma - 1.0);
+
+			// Compute local initial values
+			std::vector<double> res(5, 0);
+			res[0] = rho;
+			res[1] = rho * u;
+			res[2] = rho * v;
+			res[3] = rho * w;
+			res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
+			return res;
+		};
+		auto InitExact = [Uc](Vector r) {
+			auto y = 1.0 - abs(2 * r.y / par.Ly - 1.0);
+			auto vel = Uc * y * (2.0 - y);
+
+			// Compute primitive values
+			double rho = par.ro;
+			double u = vel;
+			double v = 0;
+			double w = 0;
+			double roe = par.Pin / (par.gamma - 1.0);
+
+			// Compute local initial values
+			std::vector<double> res(5, 0);
+			res[0] = rho;
+			res[1] = rho * u;
+			res[2] = rho * v;
+			res[3] = rho * w;
+			res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
+			return res;
+		};
+		auto InitHigher = [Uc](Vector r) {
+			auto y = 1.0 - abs(2 * r.y / par.Ly - 1.0);
+			auto vel = 1.1 * Uc * y * (2.0 - y);
+
+			// Compute primitive values
+			double rho = par.ro;
+			double u = vel;
+			double v = 0;
+			double w = 0;
+			double roe = par.Pin / (par.gamma - 1.0);
+
+			// Compute local initial values
+			std::vector<double> res(5, 0);
+			res[0] = rho;
+			res[1] = rho * u;
+			res[2] = rho * v;
+			res[3] = rho * w;
+			res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
+			return res;
+		};
+		auto InitLower = [Uc](Vector r) {
+			auto y = 1.0 - abs(2 * r.y / par.Ly - 1.0);
+			auto vel = 0.9 * Uc * y * (2.0 - y);
+
+			// Compute primitive values
+			double rho = par.ro;
+			double u = vel;
+			double v = 0;
+			double w = 0;
+			double roe = par.Pin / (par.gamma - 1.0);
+
+			// Compute local initial values
+			std::vector<double> res(5, 0);
+			res[0] = rho;
+			res[1] = rho * u;
+			res[2] = rho * v;
+			res[3] = rho * w;
+			res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
+			return res;
+		};
+		if (kernel->ContinueComputation == true) kernel->LoadSolution("sol_to_load.sol");
+		else kernel->SetInitialConditions(InitExact, Integ);
+
+		// Create slices
+		kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, 0));
+
+		//save init solution and run the test
+		kernel->SaveSolution("solution.sol");
+		kernel->SaveSolutionToTecplot("init.dat");
+
+		// Run test
+		if (kernel->pManager->IsMaster()) std::cout << "Poiseuille test runs." << std::endl <<
+			"U_center: " << Uc << ", Re: " << Re << std::endl;
+		kernel->Run();
+
+		//finalize kernel
+		kernel->Finalize();
+	};
+
+	// Run Computation Experiment
+	void RunExperiment(int argc, char *argv[]) {
+		// Fill parameters structure (SI system)
+		DefaultSettings();
+
+		// Run experiments
+		RunSingleExperiment(argc, argv);
+
+		//end of experiments
+		std::cout << "Poiseuille test is completed";
+		std::cout << std::endl;
+		return;
+	};
+};
+
+
 /*
 void RunSODInverseYTest(int argc, char *argv[]) {
 	KernelConfiguration conf;
@@ -737,7 +1134,7 @@ void RunSODInverseYTest(int argc, char *argv[]) {
 	conf.MaxIteration = 1000000;
 	//conf.SaveSolutionTime = 0.1;
 	conf.SaveSliceTime = 0.1;
-	conf.ResidualOutputIterations = 10;
+	conf.ResidualOutputIters = 10;
 
 	// Init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -834,8 +1231,8 @@ void RunSODTestRoe2D(int argc, char *argv[]) {
 	conf.MaxTime = 0.2;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionTime = 0.1;
-	conf.SaveSolutionIterations = 0;
-	conf.ResidualOutputIterations = 10;
+	conf.SaveSolutionIters = 0;
+	conf.ResidualOutputIters = 10;
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -900,8 +1297,8 @@ void RunNohProblem2D(int argc, char *argv[]) {
 	conf.MaxTime = 0.6;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionTime = 0.1;
-	conf.SaveSolutionIterations = 0;
-	conf.ResidualOutputIterations = 20;
+	conf.SaveSolutionIters = 0;
+	conf.ResidualOutputIters = 20;
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -993,8 +1390,8 @@ void RunTriplePointRoe2D(int argc, char *argv[]) {
 	conf.MaxTime = 5.5;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionTime = 0.5;
-	conf.SaveSolutionIterations = 0;
-	conf.ResidualOutputIterations = 10;
+	conf.SaveSolutionIters = 0;
+	conf.ResidualOutputIters = 10;
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -1094,7 +1491,7 @@ void RunKHI2D(int argc, char *argv[]) {
 	conf.MaxTime = 20.0;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionTime = 0.1;
-	conf.ResidualOutputIterations = 50;
+	conf.ResidualOutputIters = 50;
 
 	// Init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -1165,8 +1562,8 @@ void RunExactEulerTest2D(int argc, char *argv[]) {
 	conf.MaxTime = 4.0;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionTime = 1.0;
-	conf.SaveSolutionIterations = 0;
-	conf.ResidualOutputIterations = 50;
+	conf.SaveSolutionIters = 0;
+	conf.ResidualOutputIters = 50;
 
 	//init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -1259,7 +1656,7 @@ void RunPoiseuille2D(int argc, char *argv[]) {
 	conf.MaxIteration = 10000000;
 	conf.SaveSolutionTime = 0.1;
 	conf.SaveSliceTime = 0.1;
-	conf.ResidualOutputIterations = 50;
+	conf.ResidualOutputIters = 50;
 	conf.DebugOutputEnabled = false;
 
 	// Init kernel
@@ -1369,7 +1766,7 @@ void RunPoiseuille3D(int argc, char *argv[]) {
 	conf.MaxIteration = 10000000;
 	//conf.SaveSolutionTime = 0.001;
 	conf.SaveSliceTime = 0.001;
-	conf.ResidualOutputIterations = 50;
+	conf.ResidualOutputIters = 50;
 	conf.DebugOutputEnabled = false;
 
 	// Init kernel
@@ -1470,8 +1867,8 @@ void RunShearFlow2D(int argc, char *argv[]) {
 	conf.MaxTime = 20.0;
 	conf.MaxIteration = 10000000;
 	conf.SaveSolutionTime = 0.05;
-	conf.SaveSolutionIterations = 0;
-	conf.ResidualOutputIterations = 1000;
+	conf.SaveSolutionIters = 0;
+	conf.ResidualOutputIters = 1000;
 	conf.DebugOutputEnabled = false;
 
 	conf.Viscosity = viscosity;
@@ -1609,9 +2006,9 @@ void RunShearFlow3D(int argc, char *argv[]) {
 	conf.MaxTime = 20.0;
 	conf.MaxIteration = 10000000;
 	//conf.SaveSolutionTime = 0.05;
-	//conf.SaveSolutionIterations = 0;
+	//conf.SaveSolutionIters = 0;
 	conf.SaveSliceTime = 0.05;
-	conf.ResidualOutputIterations = 100;
+	conf.ResidualOutputIters = 100;
 	conf.DebugOutputEnabled = false;
 
 	conf.Viscosity = viscosity;
@@ -1735,7 +2132,7 @@ void RunShearFlow3DZ(int argc, char *argv[]) {
 	conf.MaxIteration = 10000000;
 	conf.SaveSolutionTime = 0.0005;
 	conf.SaveSliceTime = 0.0005;
-	conf.ResidualOutputIterations = 10;
+	conf.ResidualOutputIters = 10;
 	conf.DebugOutputEnabled = false;
 
 	// Init kernel
@@ -1860,8 +2257,8 @@ void RunRTI2D(int argc, char *argv[]) {
 	conf.MaxTime = 1.0;
 	conf.MaxIteration = 10000000;
 	conf.SaveSolutionTime = 0.1;
-	conf.SaveSolutionIterations = 0;
-	conf.ResidualOutputIterations = 50;
+	conf.SaveSolutionIters = 0;
+	conf.ResidualOutputIters = 50;
 
 	// Source terms
 	conf.IsUnifromAccelerationRequared = true;
@@ -1956,9 +2353,9 @@ void RunTurbulentMixing(int argc, char *argv[]) {
 	conf.MaxTime = 20.0;
 	conf.MaxIteration = 10000000;
 	conf.SaveSolutionTime = 0.001;
-	//conf.SaveSolutionIterations = 0;
+	//conf.SaveSolutionIters = 0;
 	//conf.SaveSliceTime = 0.05;
-	conf.ResidualOutputIterations = 10;
+	conf.ResidualOutputIters = 10;
 	conf.DebugOutputEnabled = false;
 
 	// Init kernel
@@ -2053,7 +2450,7 @@ void RunKonuhovMixing(int argc, char *argv[]) {
 	conf.MaxTime = 10.0;
 	conf.MaxIteration = 1000000;
 	conf.SaveSolutionTime = 0;
-	conf.ResidualOutputIterations = 20;
+	conf.ResidualOutputIters = 20;
 
 	// Init kernel
 	std::unique_ptr<Kernel> kernel;
@@ -2099,7 +2496,7 @@ void RunKonuhovMixing(int argc, char *argv[]) {
 		return conf.MolarMass * (conf.Gamma - 1) * e / (conf.UniversalGasConstant);
 	};
 	kernel->isSensorEnable = true;
-	kernel->SaveSensorRecordIterations = 10;
+	kernel->SaveSensorRecordIters = 10;
 	std::unique_ptr<CellSensor> sen = std::make_unique<CellSensor>("temp_centr.dat", *kernel->pManager, kernel->grid, GetTemp);
 	sen->SetSensor((int)(conf.nX * 0.5), (int)(conf.nY * 0.5), (int)(conf.nZ * 0.5), 5);
 	kernel->Sensors.push_back(std::move(sen));
@@ -2163,7 +2560,7 @@ void RunPoiseuille3DZ(int argc, char *argv[]) {
 	conf.MaxIteration = 10000000;
 	conf.SaveSolutionTime = 0.005;
 	//conf.SaveSliceTime = 0.005;
-	conf.ResidualOutputIterations = 50;
+	conf.ResidualOutputIters = 50;
 	conf.DebugOutputEnabled = false;
 
 	// Init kernel
@@ -2271,10 +2668,10 @@ void RunPoiseuille3DX(int argc, char *argv[]) {
 
 	conf.MaxTime = 1.0;
 	conf.MaxIteration = 10000000;
-	//conf.SaveSolutionIterations = 1;
+	//conf.SaveSolutionIters = 1;
 	//conf.SaveSolutionTime = 0.005;
 	conf.SaveSliceTime = 0.005;
-	conf.ResidualOutputIterations = 10;
+	conf.ResidualOutputIters = 10;
 	conf.DebugOutputEnabled = false;
 
 	// Init kernel
@@ -2381,10 +2778,10 @@ void RunPoiseuille3DY(int argc, char *argv[]) {
 
 	conf.MaxTime = 1.0;
 	conf.MaxIteration = 10000000;
-	//conf.SaveSolutionIterations = 1;
+	//conf.SaveSolutionIters = 1;
 	//conf.SaveSolutionTime = 0.001;
 	conf.SaveSliceTime = 0.001;
-	conf.ResidualOutputIterations = 20;
+	conf.ResidualOutputIters = 20;
 	conf.DebugOutputEnabled = false;
 
 	// Init kernel

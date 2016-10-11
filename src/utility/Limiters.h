@@ -2,12 +2,8 @@
 #define TurboStructured_Utility_Limiters
 
 #include "utility\Constants.h"
-
-/// Enumerate all available types of limiters
-/*enum class LimiterType {
-	BarsJespersen,		///< from Blazek CFD principles and apps 
-	Venkatakrishnan		///< from Blazek
-};*/
+#include "math.h"
+#include "grid.h"
 
 //! Base class for limiters
 class Limiter {
@@ -82,7 +78,7 @@ public:
 	// ui - U[i] in the cell;
 	// d2 is difference between the reconstructed value and ui
 	virtual double l_function(double um, double ui, double d2) override {
-		return min(1.0, (um - ui) / d2);
+		return std::min(1.0, (um - ui) / d2);
 	};
 };
 

@@ -76,8 +76,8 @@ namespace ToroTests
 		conf.MaxTime = 0.2;
 		conf.MaxIteration = 1000000;
 		conf.SaveSolutionTime = 0;
-		conf.SaveSolutionIterations = 0;
-		conf.ResidualOutputIterations = 100;
+		conf.SaveSolutionIters = 0;
+		conf.ResidualOutputIters = 100;
 
 		return conf;
 	};

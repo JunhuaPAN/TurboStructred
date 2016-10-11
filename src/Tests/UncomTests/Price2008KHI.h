@@ -45,17 +45,16 @@ namespace Price2008KHI {
 		conf.MolarMass = 1.0;
 
 		// BC
-		conf.yLeftBoundary.BCType = BoundaryConditionType::SymmetryY;
-		conf.yLeftBoundary.Gamma = 1.4;
-		conf.yRightBoundary.BCType = BoundaryConditionType::SymmetryY;
-		conf.yRightBoundary.Gamma = 1.4;
+		conf.MyConditions[1] = BoundaryConditionConfiguration(BoundaryConditionType::Symmetry);
+		conf.yLeftBoundary.SetMarker(1);
+		conf.yRightBoundary.SetMarker(1);
 
 		// Method configuration
 		conf.SolutionMethod = KernelConfiguration::Method::ExplicitRungeKuttaFVM;
 		conf.methodConfiguration.CFL = 0.4;
 		conf.methodConfiguration.RungeKuttaOrder = 1;
 		conf.methodConfiguration.Eps = 0.05;
-		conf.methodConfiguration.ReconstructionType = Reconstruction::ENO2PointsStencil;
+		conf.methodConfiguration.ReconstructionType = Reconstruction::Linear2psLim;
 		conf.methodConfiguration.RiemannProblemSolver = RPSolver::RoePikeSolver;
 		conf.DummyLayerSize = 1;
 
@@ -63,18 +62,11 @@ namespace Price2008KHI {
 		conf.MaxTime = 20.0;
 		conf.MaxIteration = 1000000;
 		conf.SaveSolutionTime = 0.1;
-		conf.ResidualOutputIterations = 50;
+		conf.ResidualOutputIters = 50;
 
 		// Init kernel
-		std::unique_ptr<Kernel> kernel;
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
-		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
-		};
+		auto kernel = CreateKernel(conf, argc, argv);
 		kernel->Init(conf);
-
 
 		NumericQuadrature Integ(8, 2);
 		auto Init = [&conf](Vector r) {

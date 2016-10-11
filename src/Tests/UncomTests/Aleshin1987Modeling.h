@@ -62,7 +62,7 @@ namespace AleshinExp {
 		KernelConfiguration conf;
 		conf.nDims = 2;
 		conf.nX = 200;
-		conf.nY = 200;
+		conf.nY = 100;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicX = false;
@@ -89,20 +89,11 @@ namespace AleshinExp {
 		conf.MaxTime = TotalTime;
 		conf.MaxIteration = 1000000;
 		conf.SaveSolutionTime = 4.0e-5;
-		conf.SaveSolutionIterations = 0;
-		conf.ResidualOutputIterations = 10;
+		conf.SaveSolutionIters = 0;
+		conf.ResidualOutputIters = 10;
 
 		// init kernel
-		std::unique_ptr<Kernel> kernel;
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
-		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
-		};
-		if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2psLim) {
-			kernel = std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limBarsJespersen> >(&argc, &argv));
-		};
+		auto kernel = CreateKernel(conf, argc, argv);
 		kernel->Init(conf);
 
 		double u3, ro3, p3;		// state after the shock
@@ -163,7 +154,7 @@ namespace AleshinExp {
 		};
 
 		kernel->isSensorEnable = true;
-		kernel->SaveSensorRecordIterations = 1;
+		kernel->SaveSensorRecordIters = 1;
 
 		// create a sensor
 		std::unique_ptr<MValuePosXSensor2> sen1 = std::make_unique<MValuePosXSensor2>("border_pos.dat", *kernel->pManager, kernel->grid, GetInEnergy);
@@ -239,8 +230,8 @@ namespace AleshinExp {
 		conf.MaxTime = TotalTime;
 		conf.MaxIteration = 1000000;
 		conf.SaveSolutionTime = 1.0e-5;
-		conf.SaveSolutionIterations = 0;
-		conf.ResidualOutputIterations = 10;
+		conf.SaveSolutionIters = 0;
+		conf.ResidualOutputIters = 10;
 
 		// init kernel
 		std::unique_ptr<Kernel> kernel;
@@ -314,7 +305,7 @@ namespace AleshinExp {
 
 		// Set sensors if needed
 		kernel->isSensorEnable = true;
-		kernel->SaveSensorRecordIterations = 1;
+		kernel->SaveSensorRecordIters = 1;
 
 		// Init target function
 		auto GetInEnergy = [](std::valarray<double> vals) {

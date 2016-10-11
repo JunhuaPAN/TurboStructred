@@ -1,5 +1,5 @@
-#ifndef TurboStructured_Tests_2DTests_ExactEulerSolution
-#define TurboStructured_Tests_2DTests_ExactEulerSolution
+#ifndef TurboStructured_Tests_2DTests_ExactEulerSolutionTest
+#define TurboStructured_Tests_2DTests_ExactEulerSolutionTest
 
 #include "kernel.h";
 
@@ -95,7 +95,7 @@ namespace ExactEulerSolution {
 		conf.MaxIteration = 1000000;
 		conf.SaveSolutionTime = 0.2 * par.comp_time;
 		conf.SaveSliceTime = par.comp_time;
-		conf.ResidualOutputIterations = 20;
+		conf.ResidualOutputIters = 20;
 
 		// init kernel
 		std::unique_ptr<Kernel> kernel;

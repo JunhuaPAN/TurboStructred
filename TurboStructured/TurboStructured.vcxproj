@@ -68,6 +68,7 @@
     <ClInclude Include="..\src\RiemannSolvers\RiemannSolversList.h" />
     <ClInclude Include="..\src\RiemannSolvers\RoeSolverPerfectGasEOS.h" />
     <ClInclude Include="..\src\RiemannSolvers\RiemannSolver.h" />
+    <ClInclude Include="..\src\Sensors\CellMultiSensor.h" />
     <ClInclude Include="..\src\Sensors\CellSensor.h" />
     <ClInclude Include="..\src\Sensors\MValuePosXSensor.h" />
     <ClInclude Include="..\src\Sensors\MValuePosXSensor2.h" />
@@ -78,9 +79,10 @@
     <ClInclude Include="..\src\Tests\1DTests\TestsUtility.h" />
     <ClInclude Include="..\src\Tests\1DTests\ToroTests.h" />
     <ClInclude Include="..\src\Tests\1DTests\xyzTest.h" />
-    <ClInclude Include="..\src\Tests\2DTests\BlasiusFlowTest.h" />
-    <ClInclude Include="..\src\Tests\2DTests\DrivenCavityTest.h" />
+    <ClInclude Include="..\src\Tests\2DTests\BlasiusFlow.h" />
+    <ClInclude Include="..\src\Tests\2DTests\DrivenCavity.h" />
     <ClInclude Include="..\src\Tests\2DTests\ExactEulerSolution.h" />
+    <ClInclude Include="..\src\Tests\2DTests\PoiseuilleChanel.h" />
     <ClInclude Include="..\src\Tests\2DTests\testlist.h" />
     <ClInclude Include="..\src\tests\tests.h" />
     <ClInclude Include="..\src\Tests\UncomTests\Aleshin1987Modeling.h" />

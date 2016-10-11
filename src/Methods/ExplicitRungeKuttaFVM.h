@@ -1492,4 +1492,24 @@ public:
 
 };
 
+// Global Function that create pointer to the kernel
+std::unique_ptr<Kernel> CreateKernel(KernelConfiguration& conf, int argc, char *argv[]) {
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::PiecewiseConstant) {
+		return std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<PiecewiseConstant>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::ENO2PointsStencil) {
+		return std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM<ENO2PointsStencil>(&argc, &argv));
+	};
+	if (conf.methodConfiguration.ReconstructionType == Reconstruction::Linear2psLim) {
+		// Check limiter
+		if (conf.methodConfiguration.GeneralLimitter == LimiterType::Venkatakrishnan)
+			return std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limVenkatar> >(&argc, &argv));
+
+		if (conf.methodConfiguration.GeneralLimitter == LimiterType::BarsJespersen)
+			return std::unique_ptr<Kernel>(new ExplicitRungeKuttaFVM< Linear2psLim<limBarsJespersen> >(&argc, &argv));
+	};
+
+	return std::nullptr_t();
+};
+
 #endif

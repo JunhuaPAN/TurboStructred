@@ -52,7 +52,7 @@ namespace SODxyzTest
 		conf.MaxTime = 0.25;
 		conf.MaxIteration = 10000;
 		conf.SaveSliceTime = 0.25;
-		conf.ResidualOutputIterations = 100;
+		conf.ResidualOutputIters = 100;
 		fname << "SODtest";
 	};
 
