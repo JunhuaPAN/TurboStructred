@@ -284,6 +284,9 @@
     <ClInclude Include="..\src\Tests\2DTests\PoiseuilleChanel.h">
       <Filter>Header Files\Tests\2DTests</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\Sensors\CellMultiSensor.h">
+      <Filter>Header Files\Sensors</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />

@@ -2,10 +2,11 @@
 \file
 \brief 2D Test: Poiseuille flow beatween two walls 
 
-Laminar flow for viscous gas or fluid in boundary area around flat plane.
-Analitical solution for uncompressible flow was obtained by Blasius.
-For validation perpose we consider subsonic flow with main parameters are:
-M = 0.2, P = 10^5 ...
+Viscous flow between two walls and enforced by constant acceleration. for viscous medium in boundary area around flat plane.
+Laminar solution for incompressible flow (Poiseuiile Flow):
+U = 4 * Uc * y * (H - y) / H^2
+Uc = 0.125 * Sig * H^2 / my
+Re = rho * Uc * H / my < Re_cr
 */
 
 #ifndef TurboStructured_Tests_2DTests_PoiseuilleChanelTest
@@ -55,8 +56,9 @@ namespace PoiseuilleChanel {
 		// Init config structure
 		KernelConfiguration conf;
 		conf.nDims = 2;
-		conf.nX = 4;
-		conf.nY = 80;
+		conf.nX = 80;
+		//conf.nY = 400;
+		conf.nY = 200;
 		conf.LX = par.Lx;
 		conf.LY = par.Ly;
 		conf.isPeriodicY = false;
@@ -71,7 +73,7 @@ namespace PoiseuilleChanel {
 
 		// Y direction first
 		y_bot.N_cells = 0.5 * conf.nY;
-		y_bot.q_com = 1.05;
+		y_bot.q_com = 1.01;
 		conf.CompressionY[0] = y_bot;
 
 		y_cen.pos = 0.5 * par.Ly;
@@ -101,12 +103,13 @@ namespace PoiseuilleChanel {
 		auto Re = ComputeRe();
 
 		// Computational settings
-		conf.MaxTime = 10 * par.Lx / Uc;
+		conf.MaxTime = 100 * par.Lx / Uc;
 		conf.MaxIteration = 10000000;
 		conf.SaveSolutionTime = 0.1;
-		conf.SaveSliceTime = 0.05;
-		conf.SaveBinarySolIterations = 10000;
-		conf.ResidualOutputIterations = 500;
+		conf.SaveSliceTime = 0.1;
+		conf.SaveBinarySolIters = 100000;
+		conf.ResidualOutputIters = 100;
+		conf.ContinueComputation = true;
 		
 		// init kernel
 		auto kernel = CreateKernel(conf, argc, argv);
@@ -142,7 +145,6 @@ namespace PoiseuilleChanel {
 			double w = 0;
 			double roe = par.Pin / (par.gamma - 1.0);
 
-
 			// Compute local initial values
 			std::vector<double> res(5, 0);
 			res[0] = rho;
@@ -154,7 +156,7 @@ namespace PoiseuilleChanel {
 		};
 		auto InitHigher = [Uc](Vector r) {
 			auto y = 1.0 - abs(2 * r.y / par.Ly - 1.0);
-			auto vel = 1.2 * Uc * y * (2.0 - y);
+			auto vel = 1.1 * Uc * y * (2.0 - y);
 
 			// Compute primitive values
 			double rho = par.ro;
@@ -162,7 +164,6 @@ namespace PoiseuilleChanel {
 			double v = 0;
 			double w = 0;
 			double roe = par.Pin / (par.gamma - 1.0);
-
 
 			// Compute local initial values
 			std::vector<double> res(5, 0);
@@ -184,7 +185,6 @@ namespace PoiseuilleChanel {
 			double w = 0;
 			double roe = par.Pin / (par.gamma - 1.0);
 
-
 			// Compute local initial values
 			std::vector<double> res(5, 0);
 			res[0] = rho;
@@ -194,14 +194,53 @@ namespace PoiseuilleChanel {
 			res[4] = roe + 0.5 * rho * (u * u + v * v + w * w);
 			return res;
 		};
-		kernel->SetInitialConditions(InitLower, Integ);
+		if (kernel->ContinueComputation == true) kernel->LoadSolution("sol_to_load.sol");
+		else kernel->SetInitialConditions(InitExact, Integ);
 
 		// Create slices
 		kernel->slices.push_back(Slice((int)(0.5 * conf.nX), -1, 0));
-		kernel->SaveSliceToTecplot("slice_init.dat", kernel->slices[0]);
 
 		//save init solution and run the test
+		kernel->SaveSolution("solution.sol");
 		kernel->SaveSolutionToTecplot("init.dat");
+
+		// Sensors part
+		kernel->isSensorEnable = false;
+		kernel->SaveSensorRecordIters = 10;
+		auto GetXVel = [](std::valarray<double> vals) {
+			return vals[1] / vals[0];
+		};
+		auto GetYVel = [](std::valarray<double> vals) {
+			return vals[2] / vals[0];
+		};
+		auto GetRho = [](std::valarray<double> vals) {
+			return vals[0];
+		};
+		std::vector<sen_func> sFuns{ GetRho, GetXVel, GetYVel };
+
+		// Positions of sensors
+		CellIdx Pbot((int)(conf.nX * 0.5), (int)(conf.nY * 0.15), 0);	// most bottom sensor
+		CellIdx Pcd((int)(conf.nX * 0.5), (int)(conf.nY * 0.25), 0);	// upper and so on
+		CellIdx Pc((int)(conf.nX * 0.5), (int)(conf.nY * 0.5), 0);
+		CellIdx Pcu((int)(conf.nX * 0.5), (int)(conf.nY * 0.75), 0);
+		CellIdx Ptop((int)(conf.nX * 0.5), (int)(conf.nY * 0.85), 0);
+
+		// Create sonsors
+		std::unique_ptr<CellMultiSensor> sen1 = std::make_unique<CellMultiSensor>("sen_1.dat", *kernel->pManager, kernel->grid, sFuns);
+		std::unique_ptr<CellMultiSensor> sen2 = std::make_unique<CellMultiSensor>("sen_2.dat", *kernel->pManager, kernel->grid, sFuns);
+		std::unique_ptr<CellMultiSensor> sen3 = std::make_unique<CellMultiSensor>("sen_3.dat", *kernel->pManager, kernel->grid, sFuns);
+		std::unique_ptr<CellMultiSensor> sen4 = std::make_unique<CellMultiSensor>("sen_4.dat", *kernel->pManager, kernel->grid, sFuns);
+		std::unique_ptr<CellMultiSensor> sen5 = std::make_unique<CellMultiSensor>("sen_5.dat", *kernel->pManager, kernel->grid, sFuns);
+		sen1->SetSensor(Pbot, kernel->nVariables);
+		sen2->SetSensor(Pcd, kernel->nVariables);
+		sen3->SetSensor(Pc, kernel->nVariables);
+		sen4->SetSensor(Pcu, kernel->nVariables);
+		sen5->SetSensor(Ptop, kernel->nVariables);
+		kernel->Sensors.push_back(std::move(sen1));
+		kernel->Sensors.push_back(std::move(sen2));
+		kernel->Sensors.push_back(std::move(sen3));
+		kernel->Sensors.push_back(std::move(sen4));
+		kernel->Sensors.push_back(std::move(sen5));
 
 		// Run test
 		if (kernel->pManager->IsMaster()) std::cout << "Poiseuille test runs." << std::endl <<

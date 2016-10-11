@@ -67,7 +67,7 @@ public:
 
 	// Sensors operating
 	bool isSensorEnable{ false };
-	int SaveSensorRecordIterations{ 1 };
+	int SaveSensorRecordIters{ 1 };
 
 	// External forces
 	Vector Sigma; //Potential force like presure gradient
@@ -101,11 +101,14 @@ public:
 	double SaveSolutionTime;
 	double SaveSliceTime;
 	double SaveBinarySolTime;
-	int SaveSolutionIterations;
-	int SaveSliceIterations;
-	int SaveBinarySolIterations;
+	int SaveSolutionIters;
+	int SaveSliceIters;
+	int SaveBinarySolIters;
+	int SaveHistoryFileIters;
+	int ChangeHistoryFileIters;
+	int NextHistoryFileIters;
 
-	int ResidualOutputIterations{ };
+	int ResidualOutputIters{ };
 	bool ContinueComputation{ false };
 	bool DebugOutputEnabled{ false };
 
@@ -242,15 +245,19 @@ public:
 		MaxIteration = config.MaxIteration;
 		SaveSolutionTime = config.SaveSolutionTime;
 		SaveSliceTime = config.SaveSliceTime;
-		SaveSolutionIterations = config.SaveSolutionIterations;
-		SaveSliceIterations = config.SaveSliceIterations;
-		SaveBinarySolIterations = config.SaveBinarySolIterations;
-		ResidualOutputIterations = config.ResidualOutputIterations;
+		SaveSolutionIters = config.SaveSolutionIters;
+		SaveSliceIters = config.SaveSliceIters;
+		SaveBinarySolIters = config.SaveBinarySolIters;
+		ResidualOutputIters = config.ResidualOutputIters;
+		ChangeHistoryFileIters = config.ChangeHistoryFileIters;
+		SaveHistoryFileIters = config.SaveHistoryFileIters;
+		NextHistoryFileIters = ChangeHistoryFileIters;
 
 		// Initialize step information
+		stepInfo.Iteration = 0;			// every computation starts with "0" iteration
+		// initial values when we start computation (if continue computing then assign these values in LoadSolution method)
 		if (ContinueComputation == false) {
 			stepInfo.Time = 0;
-			stepInfo.Iteration = 0;
 			stepInfo.NextSolutionSnapshotTime = SaveSolutionTime;
 			stepInfo.NextSliceSnapshotTime = SaveSliceTime;
 		};
@@ -1648,6 +1655,7 @@ public:
 			if (nDims > 1) ofs << "\"" << "rovR" << "\" ";
 			if (nDims > 2) ofs << "\"" << "rowR" << "\" ";
 			if (nVariables > 4) ofs << "\"" << "roeR" << "\" ";
+			ofs << "\"" << "iter" << "\" ";
 			ofs << std::endl;
 		};
 
@@ -1695,10 +1703,10 @@ public:
 			IterationStep();
 
 			//Output step information						
-			if (pManager->IsMaster() && (ResidualOutputIterations != 0) && (stepInfo.Iteration % ResidualOutputIterations) == 0) {
+			if (pManager->IsMaster() && (ResidualOutputIters != 0) && (stepInfo.Iteration % ResidualOutputIters) == 0) {
 				iterTimer.Stop();
 				double iterationsPackTimeAverage = iterTimer.ElapsedTimeMilliseconds();
-				iterationsPackTimeAverage /= ResidualOutputIterations;
+				iterationsPackTimeAverage /= ResidualOutputIters;
 				iterTimer.Start();
 				std::cout << "Iteration = " << stepInfo.Iteration <<
 					"; Total time = " << stepInfo.Time <<
@@ -1709,7 +1717,7 @@ public:
 			};
 
 			//Sensors recording
-			if ((isSensorEnable == true) && (stepInfo.Iteration % SaveSensorRecordIterations == 0))
+			if ((isSensorEnable == true) && (stepInfo.Iteration % SaveSensorRecordIters == 0))
 			{
 				for (auto &r : Sensors) {
 					r->UpdateIteration(stepInfo.Iteration);
@@ -1719,7 +1727,7 @@ public:
 			};
 
 			//Solution and slice snapshots every few iterations
-			if ((SaveSolutionIterations != 0) && (stepInfo.Iteration % SaveSolutionIterations == 0)) {
+			if ((SaveSolutionIters != 0) && (stepInfo.Iteration % SaveSolutionIters == 0)) {
 				//Save snapshot
 				std::stringstream snapshotFileName;
 				snapshotFileName << "solution, It = " << stepInfo.Iteration << ".dat";
@@ -1729,7 +1737,7 @@ public:
 					std::cout << "Solution has been written to file \"" << snapshotFileName.str() << "\"" << std::endl;
 				};
 			};
-			if ((SaveSliceIterations != 0) && (stepInfo.Iteration % SaveSliceIterations == 0)) {
+			if ((SaveSliceIters != 0) && (stepInfo.Iteration % SaveSliceIters == 0)) {
 				//Save snapshots
 				for (auto i = 0; i < slices.size(); i++) {
 					std::stringstream snapshotFileName;
@@ -1741,7 +1749,7 @@ public:
 					};
 				};
 			};
-			if ((SaveBinarySolIterations != 0) && (stepInfo.Iteration % SaveBinarySolIterations == 0)) {
+			if ((SaveBinarySolIters != 0) && (stepInfo.Iteration % SaveBinarySolIters == 0)) {
 				//Save snapshots
 				for (auto i = 0; i < slices.size(); i++) {
 					std::string filename("solution.sol");
@@ -1788,15 +1796,38 @@ public:
 				stepInfo.NextSliceSnapshotTime += SaveSliceTime;
 			};
 
-			//Save convergence history		
-			if (pManager->IsMaster() && (stepInfo.Iteration % ResidualOutputIterations)) {
+
+			//Save convergence history
+
+			// First check if we need create new history file
+			if ((pManager->IsMaster()) && (stepInfo.Iteration > NextHistoryFileIters)) {
+				int n_his = stepInfo.Iteration / ChangeHistoryFileIters;
+				NextHistoryFileIters += ChangeHistoryFileIters;
+
+				// create new history file
+				std::stringstream fname;
+				fname << "history" << n_his << ".dat";
+				ofs.close();
+				ofs.open(fname.str(), std::ios_base::out);
+				ofs << "VARIABLES = ";
+				ofs << "\"" << "time" << "\" ";
+				ofs << "\"" << "roR" << "\" ";
+				ofs << "\"" << "rouR" << "\" ";
+				if (nDims > 1) ofs << "\"" << "rovR" << "\" ";
+				if (nDims > 2) ofs << "\"" << "rowR" << "\" ";
+				if (nVariables > 4) ofs << "\"" << "roeR" << "\" ";
+				ofs << "\"" << "iter" << "\" ";
+				ofs << std::endl;
+			};
+			// Save to the history file
+			if (pManager->IsMaster() && (stepInfo.Iteration % SaveHistoryFileIters == 0)) {
 				ofs << stepInfo.Time << " ";
 				ofs << stepInfo.Residual[0] << " ";
 				ofs << stepInfo.Residual[1] << " ";
 				if (nDims > 1) ofs << stepInfo.Residual[2] << " ";
 				if (nDims > 2) ofs << stepInfo.Residual[3] << " ";
 				if (nVariables > 4) ofs << stepInfo.Residual[4] << " ";
-				ofs << std::endl;
+				ofs << stepInfo.Iteration << std::endl;
 			};
 
 			//Convergence criteria

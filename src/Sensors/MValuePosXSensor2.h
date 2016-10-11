@@ -13,9 +13,9 @@ public:
 	virtual void Process(const std::valarray<double>& values) override {
 		double uMax = -std::numeric_limits<double>::max();
 		int idxMax;			// local index of cell with maximum value
-		if (_isActive == true) {
+		if (isActive == true) {
 			// Find local maximum value of target function
-			int s = _grid.nlocalX;
+			int s = grid.nlocalX;
 			for (auto i = 0; i < s; i++) {
 				int idx = i0 + i;		// local index of cell
 				std::valarray<double> U = values[std::slice(idx * nVariables, nVariables, 1)];	//	slice appropriate part of values array	
@@ -26,24 +26,24 @@ public:
 				};
 			};	// end of Find
 		};
-		_parM.Barrier();
-		double TotalMax = _parM.Max(uMax);	// choose the biggest one
+		parM.Barrier();
+		double TotalMax = parM.Max(uMax);	// choose the biggest one
 
 		// choose the appropriate process. Compute maximum position and write it in the file
 		if (uMax == TotalMax) {
 			double xmax;
 			// left position case
 			if (idxMax == 0) {
-				xmax = _grid.CoordinateX[_grid.iMin] - 0.5 * _grid.hx[_grid.iMin];
+				xmax = grid.CoordinateX[grid.iMin] - 0.5 * grid.hx[grid.iMin];
 			} // right position
-			else if (idxMax == _grid.nlocalX - 1) {
-				xmax = _grid.CoordinateX[_grid.iMax] + 0.5 * _grid.hx[_grid.iMax];
+			else if (idxMax == grid.nlocalX - 1) {
+				xmax = grid.CoordinateX[grid.iMax] + 0.5 * grid.hx[grid.iMax];
 			} // ordinary case
 			else {		
-				int i = _grid.iMin + idxMax;			// i global
-				double xi = _grid.CoordinateX[i];		// position of central cell 
-				double xip = _grid.CoordinateX[i + 1];	// position of right cell
-				double xim = _grid.CoordinateX[i - 1];	// position of left cell
+				int i = grid.iMin + idxMax;			// i global
+				double xi = grid.CoordinateX[i];		// position of central cell 
+				double xip = grid.CoordinateX[i + 1];	// position of right cell
+				double xim = grid.CoordinateX[i - 1];	// position of left cell
 				double dxp = xip - xi;					// right cell scale
 				double dxm = xi - xim;					// left one
 				int idx = i0 + idxMax;					// local index of central cell

@@ -95,7 +95,7 @@ namespace ExactEulerSolution {
 		conf.MaxIteration = 1000000;
 		conf.SaveSolutionTime = 0.2 * par.comp_time;
 		conf.SaveSliceTime = par.comp_time;
-		conf.ResidualOutputIterations = 20;
+		conf.ResidualOutputIters = 20;
 
 		// init kernel
 		std::unique_ptr<Kernel> kernel;

@@ -15,13 +15,13 @@ public:
 
 	inline void SetSensor(int j_slice, int k_slice, int _nVariables) {
 		// check active or not
-		if (	(j_slice >= _grid.jMin - _grid.dummyCellLayersY)
-			&&	(j_slice <= _grid.jMax - _grid.dummyCellLayersY)
-			&&	(k_slice >= _grid.kMin - _grid.dummyCellLayersZ)
-			&&	(k_slice <= _grid.kMax - _grid.dummyCellLayersZ) )
+		if (	(j_slice >= grid.jMin - grid.dummyCellLayersY)
+			&&	(j_slice <= grid.jMax - grid.dummyCellLayersY)
+			&&	(k_slice >= grid.kMin - grid.dummyCellLayersZ)
+			&&	(k_slice <= grid.kMax - grid.dummyCellLayersZ) )
 		{
-			_isActive = true;
-			i0 = (k_slice - _grid.kMin + _grid.dummyCellLayersZ) * _grid.nlocalXAll * _grid.nlocalYAll + (j_slice - _grid.jMin + _grid.dummyCellLayersY) * _grid.nlocalXAll + _grid.dummyCellLayersX;
+			isActive = true;
+			i0 = (k_slice - grid.kMin + grid.dummyCellLayersZ) * grid.nlocalXAll * grid.nlocalYAll + (j_slice - grid.jMin + grid.dummyCellLayersY) * grid.nlocalXAll + grid.dummyCellLayersX;
 			nVariables = _nVariables;
 		};
 	};
@@ -29,9 +29,9 @@ public:
 	virtual void Process(const std::valarray<double>& values) override {
 		double uMax = -std::numeric_limits<double>::max();
 		int iMax;		// local index of cell with maximum value
-		if (_isActive == true) {
+		if (isActive == true) {
 			// Find local maximum value of target function
-			int s = _grid.nlocalX;
+			int s = grid.nlocalX;
 			for (auto i = 0; i < s; i++) {
 				int idx = i0 + i;				// local cell index
 				std::valarray<double> U = values[std::slice(idx * nVariables, nVariables, 1)];	//slice appropriate part of values array
@@ -42,13 +42,13 @@ public:
 				};
 			};	// end of local maximum value search
 		};
-		_parM.Barrier();
-		double TotalMax = _parM.Max(uMax);	// choose the biggest one
+		parM.Barrier();
+		double TotalMax = parM.Max(uMax);	// choose the biggest one
 
 		// choose the appropriate process and write the result
 		if (uMax == TotalMax) {
 			ofs.open(filename, std::ios_base::app);
-			ofs << iteration << ' ' << _grid.CoordinateX[_grid.iMin + iMax] << ' ' << timer;
+			ofs << iteration << ' ' << grid.CoordinateX[grid.iMin + iMax] << ' ' << timer;
 			std::endl(ofs);
 			ofs.close();
 		};

@@ -62,7 +62,7 @@ namespace Price2008KHI {
 		conf.MaxTime = 20.0;
 		conf.MaxIteration = 1000000;
 		conf.SaveSolutionTime = 0.1;
-		conf.ResidualOutputIterations = 50;
+		conf.ResidualOutputIters = 50;
 
 		// Init kernel
 		auto kernel = CreateKernel(conf, argc, argv);

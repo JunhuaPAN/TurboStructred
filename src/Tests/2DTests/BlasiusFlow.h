@@ -3,7 +3,7 @@
 \brief 2D Test: laminar boundary layer on the flat plate
 
 Laminar flow for viscous gas or fluid in boundary area around flat plane.
-Analitical solution for uncompressible flow was obtained by Blasius.
+Analitical solution for incompressible flow was obtained by Blasius.
 For validation perpose we consider subsonic flow with main parameters are:
 M = 0.2, P = 10^5 ...
 */
@@ -132,9 +132,9 @@ namespace BlasiusFlow {
 		conf.MaxTime = 10 * par.Lx / Udr;
 		conf.MaxIteration = 10000000;
 		conf.SaveSolutionTime = 0.1;
-		conf.SaveSolutionIterations = 0;
+		conf.SaveSolutionIters = 0;
 		conf.SaveSliceTime = par.Lx / Udr;
-		conf.ResidualOutputIterations = 500;
+		conf.ResidualOutputIters = 500;
 		
 		// init kernel
 		std::unique_ptr<Kernel> kernel;
@@ -345,9 +345,9 @@ namespace BlasiusFlowTest_SLtest {
 		conf.MaxTime = 10 * par.Lx / Udr;
 		conf.MaxIteration = 100000;
 		conf.SaveSolutionTime = 0.1;
-		conf.SaveSolutionIterations = 0;
+		conf.SaveSolutionIters = 0;
 		conf.SaveSliceTime = 0.1;
-		conf.ResidualOutputIterations = 20;
+		conf.ResidualOutputIters = 20;
 
 		// init kernel
 		auto kernel = CreateKernel(conf, argc, argv);
